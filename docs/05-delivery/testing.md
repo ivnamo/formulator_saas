@@ -1,5 +1,13 @@
 # Testing strategy
 
+## Norma del proyecto
+
+- Todo cambio de codigo debe venir con test o una justificacion explicita de por que no aplica todavia.
+- Cambios en calculo, dominio, API o tenant isolation requieren tests automatizados.
+- Cambios de UI requieren al menos typecheck/lint y smoke test cuando exista servidor local.
+- Cambios documentales requieren checks de coherencia con `rg` y worktree limpio.
+- Cada rama debe cerrar con una verificacion clara antes de commit o push.
+
 ## Tipos de tests
 
 - Unit tests.

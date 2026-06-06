@@ -2,6 +2,27 @@
 
 ## Arquitectura general
 
+### Corte META-001
+
+La primera implementacion debe crear solo la estructura necesaria para la foundation slice:
+
+```text
+apps/
+  web/              # Next.js frontend operativo
+  api/              # FastAPI backend
+
+packages/
+  core/             # calculo determinista y validaciones puras
+  shared/           # contratos compartidos cuando sean necesarios
+
+infra/
+  db/               # migraciones, seeds y configuracion local
+```
+
+`worker`, `packages/ai` y `packages/integrations` quedan como expansion futura hasta que el core determinista este probado.
+
+### Vision completa
+
 ```text
 apps/
   web/              # Next.js frontend

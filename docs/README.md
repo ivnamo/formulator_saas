@@ -35,6 +35,7 @@ La documentación está pensada para desarrollo asistido por IA o por equipo té
 Define cómo usar la documentación como base de trabajo.
 
 - [`meta_prompts.md`](00-meta/meta_prompts.md): modo meta, prompts reutilizables, decisiones congeladas y primera vertical slice.
+- [`meta_001_foundation_slice.md`](00-meta/meta_001_foundation_slice.md): primera meta implementable y criterios de done.
 
 ### `01-product`
 

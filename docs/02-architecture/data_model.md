@@ -8,6 +8,30 @@
 - No borrar datos críticos: usar soft delete o estados.
 - Mantener auditoría para cambios técnicos, precios, fórmulas y reglas.
 
+## Corte META-001
+
+La primera migracion debe limitarse a las tablas necesarias para crear datos por tenant y calcular formulas manuales:
+
+- tenants.
+- users o auth placeholder local.
+- tenant_members.
+- parameters.
+- raw_materials.
+- raw_material_parameter_values.
+- raw_material_prices.
+- formulas.
+- formula_items.
+- formula_calculation_results.
+
+Quedan fuera de la primera migracion: billing real, RAG, IA, ERP, importaciones Excel completas e incompatibilidades avanzadas. Pueden documentarse o dejarse como migraciones posteriores, pero no deben bloquear el primer core ejecutable.
+
+Reglas de implementacion:
+
+- Validar membership antes de aceptar `X-Tenant-Id`.
+- No leer ni escribir entidades funcionales sin tenant context.
+- Indexar claves frecuentes por `(tenant_id, ...)`.
+- Los resultados de calculo deben guardar suficiente `result_json` para auditoria y reproducibilidad basica.
+
 ## SaaS
 
 ```sql

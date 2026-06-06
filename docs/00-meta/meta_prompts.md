@@ -29,6 +29,9 @@ El modo meta no es documentacion infinita. Termina cuando produce:
 - El core inicial es materias primas, parametros, formulas, calculo, precios, importacion Excel, optimizacion e IA controlada.
 - No empezar por chatbot generalista, landing comercial ni redisenos visuales amplios.
 - La primera app debe ser una vertical slice usable, no una demo estetica.
+- El trabajo se hace en ramas descriptivas, no directamente en `main`.
+- Los commits deben ser atomicos y dejar el repo en un estado coherente.
+- Cada cambio debe tener verificacion proporcional: tests automatizados para codigo y checks documentales para docs.
 
 ## Stack congelado para el primer corte
 
@@ -79,6 +82,19 @@ No incluir en esta slice:
 - Billing real.
 - ERP real.
 - Landing comercial.
+
+La definicion operativa de esta slice esta en `docs/00-meta/meta_001_foundation_slice.md`.
+
+## Disciplina de trabajo
+
+- Crear una rama por meta, feature o fix.
+- Nombrar ramas con prefijos claros: `meta/`, `docs/`, `feature/`, `fix/`, `chore/`.
+- Hacer commits pequenos y atomicos.
+- No mezclar cambios documentales, backend y frontend en el mismo commit salvo que sean inseparables.
+- Ejecutar tests o checks antes de cada cierre de tarea.
+- Si no existe aun el test runner, documentar el check ejecutado y anadir el test runner como parte del scaffold.
+- Mantener `main` publicable.
+- No dejar worktree sucio al cerrar una tarea salvo que el usuario pida explicitamente pausar en medio.
 
 ## Cosas adaptables
 

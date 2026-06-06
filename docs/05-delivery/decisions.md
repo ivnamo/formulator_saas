@@ -70,3 +70,17 @@ Consecuencias:
 - Cualquier cambio de dirección relevante debe compararse contra las decisiones congeladas.
 - Las decisiones nuevas se registran como ADR.
 - La primera implementación debe priorizar la vertical slice de tenant, materias primas, parámetros, fórmulas y cálculo determinista.
+
+## ADR-011: Ramas, commits atomicos y testing
+
+Decision: todo trabajo debe hacerse en una rama descriptiva, dividido en commits atomicos y verificado con tests o checks proporcionales al tipo de cambio.
+
+Motivo: mantener `main` publicable, facilitar revision y evitar que una sesion mezcle decisiones, scaffold, backend, frontend y fixes sin trazabilidad.
+
+Consecuencias:
+
+- No trabajar directamente en `main` salvo cambios administrativos explicitamente aprobados.
+- Usar prefijos de rama como `meta/`, `docs/`, `feature/`, `fix/` o `chore/`.
+- Cada commit debe tener un proposito unico.
+- Cambios de dominio, API, tenant isolation o calculo requieren tests automatizados.
+- Cambios documentales requieren al menos checks de coherencia, busqueda de naming anterior y estado Git limpio.
