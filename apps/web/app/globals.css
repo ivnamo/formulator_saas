@@ -879,6 +879,7 @@ label span {
 
 .comparisonHeader,
 .comparisonStats,
+.complianceSummary,
 .comparisonColumns,
 .comparisonList div {
   display: grid;
@@ -895,6 +896,7 @@ label span {
 
 .comparisonHeader span,
 .comparisonStats span,
+.complianceSummary span,
 .comparisonList span,
 .comparisonTitle {
   color: var(--muted);
@@ -905,6 +907,7 @@ label span {
 
 .comparisonHeader strong,
 .comparisonStats strong,
+.complianceSummary strong,
 .comparisonList strong {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -914,7 +917,12 @@ label span {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.complianceSummary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .comparisonStats div,
+.complianceSummary div,
 .comparisonList div {
   min-width: 0;
   min-height: 36px;
@@ -923,9 +931,19 @@ label span {
 }
 
 .comparisonStats code,
+.complianceSummary code,
 .comparisonList code {
   color: var(--teal-dark);
   font-weight: 800;
+}
+
+.complianceSummary code[data-state="failed"] {
+  color: var(--danger);
+}
+
+.complianceSummary code[data-state="missing"],
+.complianceSummary code[data-state="tie"] {
+  color: var(--amber);
 }
 
 .comparisonColumns {
@@ -1330,6 +1348,7 @@ label span {
   .agentCandidateRow,
   .comparisonHeader,
   .comparisonStats,
+  .complianceSummary,
   .comparisonColumns,
   .comparisonList div,
   .constraintEvaluationList div,

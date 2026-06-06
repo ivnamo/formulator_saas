@@ -55,6 +55,7 @@ import {
 } from "./workspace-model";
 import {
   buildConstraintEvaluations,
+  buildConstraintComplianceSummary,
   buildDraftComparison,
   buildSavedFormulaComparison,
   type DraftReviewState,
@@ -169,6 +170,10 @@ export default function Home() {
   const comparisonConstraintEvaluations = useMemo(
     () => buildConstraintEvaluations(savedFormulaComparison, comparisonConstraints),
     [comparisonConstraints, savedFormulaComparison],
+  );
+  const comparisonComplianceSummary = useMemo(
+    () => buildConstraintComplianceSummary(comparisonConstraintEvaluations),
+    [comparisonConstraintEvaluations],
   );
   const totalPercentage = workspace.formulaLines.reduce(
     (sum, line) => sum + line.percentage,
@@ -1018,6 +1023,21 @@ export default function Home() {
     return `${value > 0 ? "+" : ""}${value}`;
   }
 
+  function formatComplianceLeader(
+    leader: "baseline" | "candidate" | "tie",
+  ): string {
+    if (leader === "tie") {
+      return "Tie";
+    }
+    return leader === "baseline" ? "Base leads" : "Candidate leads";
+  }
+
+  function formatComplianceLeaderBadge(
+    leader: "baseline" | "candidate" | "tie",
+  ): string {
+    return leader === "baseline" ? "base" : leader;
+  }
+
   function resetImportState() {
     setImportPreview(null);
     setImportFile(null);
@@ -1548,6 +1568,41 @@ export default function Home() {
                     </code>
                   </div>
                 </div>
+                {comparisonComplianceSummary ? (
+                  <div className="complianceSummary">
+                    <div>
+                      <span>Compliance</span>
+                      <strong>
+                        {formatComplianceLeader(comparisonComplianceSummary.leader)}
+                      </strong>
+                      <code data-state={comparisonComplianceSummary.leader}>
+                        {formatComplianceLeaderBadge(comparisonComplianceSummary.leader)}
+                      </code>
+                    </div>
+                    <div>
+                      <span>Base score</span>
+                      <strong>
+                        {comparisonComplianceSummary.baseline.passed}/
+                        {comparisonComplianceSummary.baseline.total} passed
+                      </strong>
+                      <code data-state={comparisonComplianceSummary.baseline.status}>
+                        {comparisonComplianceSummary.baseline.failed} failed,{" "}
+                        {comparisonComplianceSummary.baseline.missing} missing
+                      </code>
+                    </div>
+                    <div>
+                      <span>Candidate score</span>
+                      <strong>
+                        {comparisonComplianceSummary.candidate.passed}/
+                        {comparisonComplianceSummary.candidate.total} passed
+                      </strong>
+                      <code data-state={comparisonComplianceSummary.candidate.status}>
+                        {comparisonComplianceSummary.candidate.failed} failed,{" "}
+                        {comparisonComplianceSummary.candidate.missing} missing
+                      </code>
+                    </div>
+                  </div>
+                ) : null}
                 {comparisonConstraintEvaluations.length ? (
                   <div className="constraintEvaluationList">
                     <strong className="comparisonTitle">Constraints</strong>

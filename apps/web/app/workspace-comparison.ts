@@ -74,6 +74,20 @@ export type SavedFormulaConstraintEvaluation = {
   candidateStatus: ConstraintStatus;
 };
 
+export type ConstraintComplianceCounts = {
+  passed: number;
+  failed: number;
+  missing: number;
+  total: number;
+  status: ConstraintStatus;
+};
+
+export type SavedFormulaComplianceSummary = {
+  baseline: ConstraintComplianceCounts;
+  candidate: ConstraintComplianceCounts;
+  leader: "baseline" | "candidate" | "tie";
+};
+
 function addLineTotal(
   totals: Map<string, { name: string; percentage: number }>,
   rawMaterialId: string,
@@ -341,4 +355,49 @@ export function buildConstraintEvaluations(
   }
 
   return evaluations;
+}
+
+function summarizeConstraintStatuses(statuses: ConstraintStatus[]): ConstraintComplianceCounts {
+  const passed = statuses.filter((status) => status === "passed").length;
+  const failed = statuses.filter((status) => status === "failed").length;
+  const missing = statuses.filter((status) => status === "missing").length;
+  return {
+    passed,
+    failed,
+    missing,
+    total: statuses.length,
+    status: failed > 0 ? "failed" : missing > 0 ? "missing" : "passed",
+  };
+}
+
+function compareCompliance(left: ConstraintComplianceCounts, right: ConstraintComplianceCounts) {
+  if (left.passed !== right.passed) {
+    return left.passed - right.passed;
+  }
+  if (left.failed !== right.failed) {
+    return right.failed - left.failed;
+  }
+  return right.missing - left.missing;
+}
+
+export function buildConstraintComplianceSummary(
+  evaluations: SavedFormulaConstraintEvaluation[],
+): SavedFormulaComplianceSummary | null {
+  if (!evaluations.length) {
+    return null;
+  }
+
+  const baseline = summarizeConstraintStatuses(
+    evaluations.map((evaluation) => evaluation.baselineStatus),
+  );
+  const candidate = summarizeConstraintStatuses(
+    evaluations.map((evaluation) => evaluation.candidateStatus),
+  );
+  const comparison = compareCompliance(baseline, candidate);
+
+  return {
+    baseline,
+    candidate,
+    leader: comparison > 0 ? "baseline" : comparison < 0 ? "candidate" : "tie",
+  };
 }
