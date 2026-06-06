@@ -28,7 +28,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -37,19 +38,32 @@ button {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-width: 0;
-  height: 34px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 0 9px;
   background: white;
   color: var(--text);
 }
 
+input,
+select {
+  height: 34px;
+  padding: 0 9px;
+}
+
+textarea {
+  min-height: 92px;
+  resize: vertical;
+  padding: 9px;
+  line-height: 1.4;
+}
+
 input:disabled,
-select:disabled {
+select:disabled,
+textarea:disabled {
   background: #f6f8f6;
   color: var(--muted);
 }
@@ -314,6 +328,10 @@ label span {
   grid-column: 1 / -1;
 }
 
+.aiPanel {
+  grid-column: 1 / -1;
+}
+
 .materialForm {
   grid-template-columns: 90px minmax(150px, 1fr) 112px 112px auto;
   margin-bottom: 16px;
@@ -503,6 +521,89 @@ label span {
 .suggestionButton:disabled {
   cursor: not-allowed;
   opacity: 0.56;
+}
+
+.aiControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.aiActions {
+  display: flex;
+  gap: 10px;
+}
+
+.aiResultGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.aiResultGrid div {
+  min-width: 0;
+  min-height: 58px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px;
+}
+
+.aiResultGrid .wide {
+  grid-column: 1 / -1;
+}
+
+.aiResultGrid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.aiResultGrid strong {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.aiRunList {
+  display: grid;
+}
+
+.aiRunHead,
+.aiRunRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(110px, 0.8fr) 80px 82px 70px;
+  gap: 10px;
+  align-items: center;
+}
+
+.aiRunHead {
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.aiRunRow {
+  min-height: 42px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.aiRunRow [data-state="success"] {
+  color: var(--teal-dark);
+  font-weight: 800;
+}
+
+.aiRunRow [data-state="error"] {
+  color: var(--danger);
+  font-weight: 800;
 }
 
 .libraryActions {
@@ -721,7 +822,8 @@ label span {
   .grid,
   .formGrid.threeColumns,
   .materialForm,
-  .importActions {
+  .importActions,
+  .aiControls {
     grid-template-columns: 1fr;
   }
 
@@ -795,18 +897,27 @@ label span {
   .formulaLine,
   .importHead,
   .importRow,
-  .importSummary {
+  .importSummary,
+  .aiResultGrid,
+  .aiRunHead,
+  .aiRunRow {
     grid-template-columns: 1fr;
   }
 
+  .aiActions {
+    display: grid;
+  }
+
   .materialHead,
-  .importHead {
+  .importHead,
+  .aiRunHead {
     display: none;
   }
 
   .materialRow,
   .formulaLine,
-  .importRow {
+  .importRow,
+  .aiRunRow {
     gap: 7px;
     padding: 10px 0;
   }

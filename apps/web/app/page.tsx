@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   Beaker,
+  BrainCircuit,
   Calculator,
   Check,
   Database,
@@ -32,6 +33,7 @@ import {
   withRawMaterialAlias,
   withResolvedImportRow,
   type CalculationResult,
+  type AiRun,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
   type ExcelImportSheets,
@@ -41,6 +43,8 @@ import {
   type RawMaterialAliasRead,
   type ParameterRead,
   type RawMaterialRead,
+  type RequirementConstraint,
+  type RequirementParse,
   type Status,
   type TenantRead,
   type WorkspaceState,
@@ -64,6 +68,11 @@ export default function Home() {
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
   const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
+  const [requirementText, setRequirementText] = useState(
+    "Liquido barato con contenido activo minimo 12% y precio maximo 2 EUR/kg. Dame 2 alternativas.",
+  );
+  const [requirementParse, setRequirementParse] = useState<RequirementParse | null>(null);
+  const [aiRuns, setAiRuns] = useState<AiRun[]>([]);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importFileName, setImportFileName] = useState("");
@@ -105,6 +114,8 @@ export default function Home() {
     importPreview?.rows.length !== 0 &&
     importPreview?.pending_rows === 0 &&
     !isBusy;
+  const canParseRequirements =
+    Boolean(workspace.tenant) && requirementText.trim().length >= 3 && !isBusy;
 
   async function createWorkspace() {
     await runAction("Creating workspace", async () => {
@@ -125,6 +136,8 @@ export default function Home() {
       setResult(null);
       setFormulas([]);
       setCalculationHistory([]);
+      setRequirementParse(null);
+      setAiRuns([]);
       resetImportState();
       setMessage("Workspace ready");
     });
@@ -435,6 +448,45 @@ export default function Home() {
     setCalculationHistory(history);
   }
 
+  async function parseRequirements() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (requirementText.trim().length < 3) {
+      setError("Requirement text is required");
+      return;
+    }
+
+    await runAction("Parsing requirements", async () => {
+      const parsed = await request<RequirementParse>("/api/v1/ai/requirements/parse", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ text: requirementText.trim() }),
+      });
+      setRequirementParse(parsed);
+      await refreshAiRuns({ silent: true });
+      setMessage("Requirements parsed");
+    });
+  }
+
+  async function refreshAiRuns(options: { silent?: boolean } = {}) {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (options.silent) {
+      const runs = await request<AiRun[]>("/api/v1/ai/runs", { method: "GET", headers });
+      setAiRuns(runs);
+      return;
+    }
+    await runAction("Refreshing AI runs", async () => {
+      const runs = await request<AiRun[]>("/api/v1/ai/runs", { method: "GET", headers });
+      setAiRuns(runs);
+      setMessage("AI runs refreshed");
+    });
+  }
+
   async function selectExcelImportFile(file: File | null) {
     if (!workspace.tenant) {
       setError("Create a workspace first");
@@ -561,6 +613,21 @@ export default function Home() {
     resolveImportRow(row.row_number, row.suggested_raw_material_id);
   }
 
+  function formatConstraint(constraint: RequirementConstraint): string {
+    const value =
+      constraint.value === null
+        ? ""
+        : ` ${constraint.operator} ${constraint.value}${constraint.unit ? ` ${constraint.unit}` : ""}`;
+    return `${constraint.target}${value}`;
+  }
+
+  function formatRunCost(run: AiRun): string {
+    if (run.cost_estimate_usd === null) {
+      return "-";
+    }
+    return `$${run.cost_estimate_usd.toFixed(6)}`;
+  }
+
   function resetImportState() {
     setImportPreview(null);
     setImportFile(null);
@@ -610,6 +677,9 @@ export default function Home() {
           </a>
           <a className="navItem" href="#import">
             <Upload size={18} /> Import
+          </a>
+          <a className="navItem" href="#ai">
+            <BrainCircuit size={18} /> AI parser
           </a>
           <a className="navItem" href="#results">
             <ListChecks size={18} /> Results
@@ -1051,6 +1121,117 @@ export default function Home() {
                 ))
               ) : (
                 <div className="empty">No import preview.</div>
+              )}
+            </div>
+          </section>
+
+          <section id="ai" className="panel aiPanel">
+            <div className="panelHeader">
+              <h2>AI requirement parser</h2>
+              <span>{requirementParse ? requirementParse.source : "Pending"}</span>
+            </div>
+            <div className="aiControls">
+              <label className="fullWidthLabel">
+                <span>Requirement</span>
+                <textarea
+                  value={requirementText}
+                  onChange={(event) => setRequirementText(event.target.value)}
+                  disabled={!workspace.tenant || isBusy}
+                />
+              </label>
+              <div className="aiActions">
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={parseRequirements}
+                  disabled={!canParseRequirements}
+                >
+                  <BrainCircuit size={17} />
+                  Parse
+                </button>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={() => refreshAiRuns()}
+                  disabled={!canEditTenantData}
+                >
+                  <RefreshCw size={17} />
+                  Runs
+                </button>
+              </div>
+            </div>
+            {requirementParse ? (
+              <div className="aiResultGrid">
+                <div>
+                  <span>Product</span>
+                  <strong>{requirementParse.product_type ?? "-"}</strong>
+                </div>
+                <div>
+                  <span>Alternatives</span>
+                  <strong>{requirementParse.alternatives ?? "-"}</strong>
+                </div>
+                <div>
+                  <span>Model</span>
+                  <strong>{requirementParse.model ?? "deterministic"}</strong>
+                </div>
+                <div>
+                  <span>Objectives</span>
+                  <strong>{requirementParse.objectives.join(", ") || "-"}</strong>
+                </div>
+                <div>
+                  <span>Technical constraints</span>
+                  <strong>
+                    {requirementParse.technical_constraints.map(formatConstraint).join(", ") ||
+                      "-"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Economic constraints</span>
+                  <strong>
+                    {requirementParse.economic_constraints.map(formatConstraint).join(", ") ||
+                      "-"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Required materials</span>
+                  <strong>{requirementParse.mandatory_raw_materials.join(", ") || "-"}</strong>
+                </div>
+                <div>
+                  <span>Excluded materials</span>
+                  <strong>{requirementParse.excluded_raw_materials.join(", ") || "-"}</strong>
+                </div>
+                <div className="wide">
+                  <span>Uncertainties</span>
+                  <strong>{requirementParse.uncertainties.join(", ") || "-"}</strong>
+                </div>
+              </div>
+            ) : (
+              <div className="empty">No parsed requirements.</div>
+            )}
+            <div className="aiRunList">
+              <div className="aiRunHead">
+                <span>Time</span>
+                <span>Provider</span>
+                <span>Status</span>
+                <span>Tokens</span>
+                <span>Cost</span>
+              </div>
+              {aiRuns.length === 0 ? (
+                <div className="empty">No AI runs yet.</div>
+              ) : (
+                aiRuns.map((run) => (
+                  <div className="aiRunRow" key={run.id}>
+                    <span>{formatDateTime(run.created_at)}</span>
+                    <span>{run.model ?? run.provider}</span>
+                    <span data-state={run.status}>{run.status}</span>
+                    <span>
+                      {run.prompt_tokens === null && run.completion_tokens === null
+                        ? "-"
+                        : `${run.prompt_tokens ?? 0}/${run.completion_tokens ?? 0}`}
+                    </span>
+                    <span>{formatRunCost(run)}</span>
+                  </div>
+                ))
               )}
             </div>
           </section>

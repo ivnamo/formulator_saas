@@ -159,6 +159,50 @@ export type ExcelImportSheets = {
   default_sheet: string;
 };
 
+export type RequirementConstraint = {
+  kind: string;
+  target: string;
+  operator: string;
+  value: number | null;
+  unit: string | null;
+  raw_text: string | null;
+};
+
+export type RequirementParse = {
+  run_id: string;
+  source: "deterministic" | "llm";
+  model: string | null;
+  product_type: string | null;
+  objectives: string[];
+  technical_constraints: RequirementConstraint[];
+  economic_constraints: RequirementConstraint[];
+  mandatory_raw_materials: string[];
+  excluded_raw_materials: string[];
+  preferences: {
+    only_active_materials: boolean | null;
+    avoid_incompatibilities: boolean | null;
+    notes: string[];
+  };
+  alternatives: number | null;
+  uncertainties: string[];
+};
+
+export type AiRun = {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  run_type: string;
+  provider: string;
+  model: string | null;
+  status: string;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  cost_estimate_usd: number | null;
+  created_at: string;
+  completed_at: string | null;
+  error: string | null;
+};
+
 export function withResolvedImportRow(
   preview: ExcelImportPreview,
   rowNumber: number,
