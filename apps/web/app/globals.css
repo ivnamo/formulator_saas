@@ -982,6 +982,64 @@ label span {
   width: auto;
 }
 
+.draftComparison {
+  display: grid;
+  gap: 8px;
+}
+
+.draftComparisonStats,
+.draftLineChanges div {
+  display: grid;
+  gap: 10px;
+  align-items: center;
+}
+
+.draftComparisonStats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.draftComparisonStats div,
+.draftLineChanges div {
+  min-width: 0;
+  min-height: 34px;
+  border-top: 1px solid var(--border);
+}
+
+.draftComparisonStats div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+}
+
+.draftComparisonStats span,
+.draftLineChanges span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.draftComparisonStats strong,
+.draftLineChanges strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.draftComparisonStats code,
+.draftLineChanges code {
+  color: var(--teal-dark);
+  font-weight: 800;
+}
+
+.draftLineChanges {
+  display: grid;
+  gap: 4px;
+}
+
+.draftLineChanges div {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto) 72px;
+}
+
 .formulaLine {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) 86px 34px;
@@ -1133,6 +1191,8 @@ label span {
   .formGrid,
   .aliasEditor,
   .agentCandidateRow,
+  .draftComparisonStats,
+  .draftLineChanges div,
   .agentFormulaStats,
   .agentFormulaItems div,
   .agentToolSummary,

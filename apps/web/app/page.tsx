@@ -54,11 +54,107 @@ import {
   type WorkspaceState,
 } from "./workspace-model";
 
+type DraftReviewLineSnapshot = {
+  rawMaterialId: string;
+  name: string;
+  percentage: number;
+};
+
 type DraftReviewState = {
   candidateName: string;
+  baselineLines: DraftReviewLineSnapshot[];
+  baselineResult: CalculationResult;
+  reviewedResult: CalculationResult | null;
+  requiredParameterCodes: string[];
   status: "pending" | "confirmed";
   notes: string;
 };
+
+type DraftLineComparison = {
+  rawMaterialId: string;
+  name: string;
+  proposed: number;
+  reviewed: number;
+  delta: number;
+};
+
+type DraftComparison = {
+  priceDelta: number | null;
+  totalDelta: number;
+  proposedLineCount: number;
+  reviewedLineCount: number;
+  lineChanges: DraftLineComparison[];
+};
+
+function addLineTotal(
+  totals: Map<string, { name: string; percentage: number }>,
+  rawMaterialId: string,
+  name: string,
+  percentage: number,
+) {
+  const current = totals.get(rawMaterialId);
+  totals.set(rawMaterialId, {
+    name: current?.name ?? name,
+    percentage: (current?.percentage ?? 0) + percentage,
+  });
+}
+
+function buildDraftComparison(
+  review: DraftReviewState | null,
+  currentLines: FormulaLine[],
+  rawMaterialsById: Map<string, { name: string }>,
+): DraftComparison | null {
+  if (!review?.reviewedResult) {
+    return null;
+  }
+
+  const proposedTotals = new Map<string, { name: string; percentage: number }>();
+  review.baselineLines.forEach((line) =>
+    addLineTotal(proposedTotals, line.rawMaterialId, line.name, line.percentage),
+  );
+
+  const reviewedTotals = new Map<string, { name: string; percentage: number }>();
+  currentLines.forEach((line) =>
+    addLineTotal(
+      reviewedTotals,
+      line.rawMaterialId,
+      rawMaterialsById.get(line.rawMaterialId)?.name ?? "Unknown material",
+      line.percentage,
+    ),
+  );
+
+  const materialIds = Array.from(
+    new Set([...proposedTotals.keys(), ...reviewedTotals.keys()]),
+  );
+  const lineChanges = materialIds
+    .map((rawMaterialId) => {
+      const proposed = proposedTotals.get(rawMaterialId);
+      const reviewed = reviewedTotals.get(rawMaterialId);
+      const proposedPercentage = proposed?.percentage ?? 0;
+      const reviewedPercentage = reviewed?.percentage ?? 0;
+      return {
+        rawMaterialId,
+        name: reviewed?.name ?? proposed?.name ?? "Unknown material",
+        proposed: proposedPercentage,
+        reviewed: reviewedPercentage,
+        delta: reviewedPercentage - proposedPercentage,
+      };
+    })
+    .filter((line) => Math.abs(line.delta) >= 0.0001)
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  return {
+    priceDelta:
+      review.baselineResult.price_total === null ||
+      review.reviewedResult.price_total === null
+        ? null
+        : review.reviewedResult.price_total - review.baselineResult.price_total,
+    totalDelta: review.reviewedResult.total_percentage - review.baselineResult.total_percentage,
+    proposedLineCount: review.baselineLines.length,
+    reviewedLineCount: currentLines.length,
+    lineChanges,
+  };
+}
 
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
@@ -112,6 +208,10 @@ export default function Home() {
   const rawMaterialsById = useMemo(
     () => new Map(workspace.rawMaterials.map((material) => [material.id, material])),
     [workspace.rawMaterials],
+  );
+  const draftComparison = useMemo(
+    () => buildDraftComparison(draftReview, workspace.formulaLines, rawMaterialsById),
+    [draftReview, rawMaterialsById, workspace.formulaLines],
   );
   const totalPercentage = workspace.formulaLines.reduce(
     (sum, line) => sum + line.percentage,
@@ -349,7 +449,9 @@ export default function Home() {
 
   function markDraftReviewPending() {
     setDraftReview((current) =>
-      current && current.status === "confirmed" ? { ...current, status: "pending" } : current,
+      current && current.status === "confirmed"
+        ? { ...current, reviewedResult: null, status: "pending" }
+        : current,
     );
   }
 
@@ -359,13 +461,14 @@ export default function Home() {
         ? {
             ...current,
             notes,
+            reviewedResult: current.status === "confirmed" ? null : current.reviewedResult,
             status: current.status === "confirmed" ? "pending" : current.status,
           }
         : current,
     );
   }
 
-  function confirmDraftReview() {
+  async function confirmDraftReview() {
     if (!draftReview) {
       return;
     }
@@ -374,12 +477,25 @@ export default function Home() {
       setError("Decision notes are required before saving a draft");
       return;
     }
-    setDraftReview({
-      ...draftReview,
-      notes,
-      status: "confirmed",
+
+    await runAction("Confirming draft review", async () => {
+      const reviewedResult = await calculateAdHocFormula(
+        workspace.formulaLines,
+        draftReview.requiredParameterCodes,
+      );
+      setDraftReview((current) =>
+        current
+          ? {
+              ...current,
+              notes,
+              reviewedResult,
+              status: "confirmed",
+            }
+          : current,
+      );
+      setResult(reviewedResult);
+      setMessage("Draft review confirmed");
     });
-    setMessage("Draft review confirmed");
   }
 
   function addFormulaLine(rawMaterialId: string) {
@@ -489,6 +605,14 @@ export default function Home() {
       setResult(calculation);
       setDraftReview({
         candidateName: candidate.name,
+        baselineLines: candidate.items.map((item) => ({
+          rawMaterialId: item.raw_material_id,
+          name: item.name,
+          percentage: item.percentage,
+        })),
+        baselineResult: calculation,
+        reviewedResult: null,
+        requiredParameterCodes,
         status: "pending",
         notes: "",
       });
@@ -825,6 +949,25 @@ export default function Home() {
     return candidate.price_total === null
       ? "-"
       : `${candidate.price_total.toFixed(2)} ${candidate.currency}/kg`;
+  }
+
+  function formatResultPrice(resultValue: CalculationResult | null): string {
+    return resultValue?.price_total == null
+      ? "-"
+      : `${resultValue.price_total.toFixed(2)} ${resultValue.currency}/kg`;
+  }
+
+  function formatSignedDelta(value: number | null, suffix = ""): string {
+    if (value === null) {
+      return "-";
+    }
+    const normalized = Math.abs(value) < 0.005 ? 0 : value;
+    const sign = normalized > 0 ? "+" : "";
+    return `${sign}${normalized.toFixed(2)}${suffix}`;
+  }
+
+  function formatSignedInteger(value: number): string {
+    return `${value > 0 ? "+" : ""}${value}`;
   }
 
   function resetImportState() {
@@ -1628,6 +1771,67 @@ export default function Home() {
                     Confirm review
                   </button>
                 </div>
+                {draftComparison && draftReview.reviewedResult ? (
+                  <div className="draftComparison">
+                    <div className="draftComparisonStats">
+                      <div>
+                        <span>Price</span>
+                        <strong>
+                          {formatResultPrice(draftReview.baselineResult)} /{" "}
+                          {formatResultPrice(draftReview.reviewedResult)}
+                        </strong>
+                        <code>
+                          {formatSignedDelta(
+                            draftComparison.priceDelta,
+                            ` ${draftReview.reviewedResult.currency}/kg`,
+                          )}
+                        </code>
+                      </div>
+                      <div>
+                        <span>Total</span>
+                        <strong>
+                          {draftReview.baselineResult.total_percentage.toFixed(1)}% /{" "}
+                          {draftReview.reviewedResult.total_percentage.toFixed(1)}%
+                        </strong>
+                        <code>{formatSignedDelta(draftComparison.totalDelta, "%")}</code>
+                      </div>
+                      <div>
+                        <span>Lines</span>
+                        <strong>
+                          {draftComparison.proposedLineCount} /{" "}
+                          {draftComparison.reviewedLineCount}
+                        </strong>
+                        <code>
+                          {formatSignedInteger(
+                            draftComparison.reviewedLineCount -
+                              draftComparison.proposedLineCount,
+                          )}
+                        </code>
+                      </div>
+                    </div>
+                    {draftComparison.lineChanges.length ? (
+                      <div className="draftLineChanges">
+                        {draftComparison.lineChanges.map((line) => (
+                          <div key={line.rawMaterialId}>
+                            <span>{line.name}</span>
+                            <strong>
+                              {line.proposed.toFixed(1)}% / {line.reviewed.toFixed(1)}%
+                            </strong>
+                            <code>{formatSignedDelta(line.delta, "%")}</code>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="draftLineChanges">
+                        <div>
+                          <span>Formula lines</span>
+                          <strong>No percentage changes</strong>
+                          <code>0.00%</code>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <div className="formulaLines">
