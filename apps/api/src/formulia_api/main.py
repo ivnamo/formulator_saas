@@ -659,6 +659,13 @@ def _excel_preview_row(
             "matched_by": "alias",
             "status": "matched_exact",
         }
+    if row.material_code and (material := by_alias.get(_normalize(row.material_code))):
+        return {
+            **_parsed_row_dict(row),
+            "raw_material_id": material.id,
+            "matched_by": "alias",
+            "status": "matched_exact",
+        }
     return {
         **_parsed_row_dict(row),
         "raw_material_id": None,
