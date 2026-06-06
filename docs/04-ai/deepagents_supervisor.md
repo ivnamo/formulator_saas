@@ -40,8 +40,19 @@ Cada plan crea:
 
 - `ai_runs.run_type = formulation_supervisor`
 - `ai_tool_calls.tool_name = RequirementParserAgent`
+- `ai_tool_calls.tool_name = RawMaterialResearchAgent`
+- `ai_tool_calls.tool_name = OptimizationAgent`
 
 El detalle del run devuelve los tool calls y respeta `tenant_id`.
+
+## META-013
+
+El modo determinista ya ejecuta tools reales para pasar de requisitos a candidatos controlados:
+
+- `RawMaterialResearchAgent` devuelve materias primas activas y no obsoletas del tenant, con precio EUR/kg, valores tecnicos, score y warnings.
+- `OptimizationAgent` prepara objetivo, constraints y candidate ids, pero deja `solver = not_started`.
+
+El resultado puede estar `ready` para un solver posterior o `blocked` si faltan candidatos, cobertura tecnica o precios necesarios.
 
 ## Regla de seguridad funcional
 
