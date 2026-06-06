@@ -90,6 +90,10 @@ export type SavedFormulaComplianceSummary = {
   leader: "baseline" | "candidate" | "tie";
 };
 
+export function hasConstraintIssue(evaluation: SavedFormulaConstraintEvaluation) {
+  return evaluation.baselineStatus !== "passed" || evaluation.candidateStatus !== "passed";
+}
+
 function addLineTotal(
   totals: Map<string, { name: string; percentage: number }>,
   rawMaterialId: string,

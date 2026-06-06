@@ -966,7 +966,35 @@ label span {
   gap: 4px;
 }
 
-.constraintEvaluationList div {
+.constraintEvaluationHeader {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.constraintFilter {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.constraintFilter input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--teal);
+}
+
+.constraintFilter code {
+  color: var(--teal-dark);
+}
+
+.constraintEvaluationList > div:not(.constraintEvaluationHeader):not(.constraintEvaluationEmpty) {
   display: grid;
   grid-template-columns: minmax(100px, 0.7fr) minmax(100px, 0.8fr) minmax(120px, 1fr) minmax(120px, 1fr);
   gap: 10px;
@@ -982,14 +1010,18 @@ label span {
   overflow-wrap: anywhere;
 }
 
-.constraintEvaluationList > div > span:first-child {
+.constraintEvaluationList
+  > div:not(.constraintEvaluationHeader):not(.constraintEvaluationEmpty)
+  > span:first-child {
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.constraintEvaluationList span:not(:first-child) {
+.constraintEvaluationList
+  > div:not(.constraintEvaluationHeader):not(.constraintEvaluationEmpty)
+  > span:not(:first-child) {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
@@ -1001,6 +1033,11 @@ label span {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.constraintEvaluationEmpty {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .constraintEvaluationList code {
@@ -1358,7 +1395,8 @@ label span {
   .complianceSummary,
   .comparisonColumns,
   .comparisonList div,
-  .constraintEvaluationList div,
+  .constraintEvaluationList > div:not(.constraintEvaluationHeader):not(.constraintEvaluationEmpty),
+  .constraintEvaluationHeader,
   .draftComparisonStats,
   .draftLineChanges div,
   .agentFormulaStats,

@@ -58,6 +58,7 @@ import {
   buildConstraintComplianceSummary,
   buildDraftComparison,
   buildSavedFormulaComparison,
+  hasConstraintIssue,
   type DraftReviewState,
   type SavedFormulaComparison,
 } from "./workspace-comparison";
@@ -99,6 +100,7 @@ export default function Home() {
     minMaterialPercentage: "",
     maxMaterialPercentage: "",
   });
+  const [showOnlyConstraintIssues, setShowOnlyConstraintIssues] = useState(false);
   const [savedFormulaComparison, setSavedFormulaComparison] =
     useState<SavedFormulaComparison | null>(null);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
@@ -175,6 +177,17 @@ export default function Home() {
     () => buildConstraintComplianceSummary(comparisonConstraintEvaluations),
     [comparisonConstraintEvaluations],
   );
+  const comparisonConstraintIssueCount = useMemo(
+    () => comparisonConstraintEvaluations.filter(hasConstraintIssue).length,
+    [comparisonConstraintEvaluations],
+  );
+  const visibleComparisonConstraintEvaluations = useMemo(
+    () =>
+      showOnlyConstraintIssues
+        ? comparisonConstraintEvaluations.filter(hasConstraintIssue)
+        : comparisonConstraintEvaluations,
+    [comparisonConstraintEvaluations, showOnlyConstraintIssues],
+  );
   const totalPercentage = workspace.formulaLines.reduce(
     (sum, line) => sum + line.percentage,
     0,
@@ -239,6 +252,7 @@ export default function Home() {
         minMaterialPercentage: "",
         maxMaterialPercentage: "",
       });
+      setShowOnlyConstraintIssues(false);
       setSavedFormulaComparison(null);
       setAiRuns([]);
       resetImportState();
@@ -1605,31 +1619,50 @@ export default function Home() {
                 ) : null}
                 {comparisonConstraintEvaluations.length ? (
                   <div className="constraintEvaluationList">
-                    <strong className="comparisonTitle">Constraints</strong>
-                    {comparisonConstraintEvaluations.map((evaluation) => (
-                      <div key={evaluation.key}>
-                        <span>{evaluation.label}</span>
-                        <strong>{evaluation.rule}</strong>
-                        <span>
-                          {formatOptionalValue(evaluation.baselineValue, evaluation.unit)}
-                          <code data-state={evaluation.baselineStatus}>
-                            {evaluation.baselineStatus}
-                          </code>
-                          {evaluation.baselineExplanation ? (
-                            <small>{evaluation.baselineExplanation}</small>
-                          ) : null}
-                        </span>
-                        <span>
-                          {formatOptionalValue(evaluation.candidateValue, evaluation.unit)}
-                          <code data-state={evaluation.candidateStatus}>
-                            {evaluation.candidateStatus}
-                          </code>
-                          {evaluation.candidateExplanation ? (
-                            <small>{evaluation.candidateExplanation}</small>
-                          ) : null}
-                        </span>
+                    <div className="constraintEvaluationHeader">
+                      <strong className="comparisonTitle">Constraints</strong>
+                      <label className="constraintFilter">
+                        <input
+                          checked={showOnlyConstraintIssues}
+                          onChange={(event) =>
+                            setShowOnlyConstraintIssues(event.target.checked)
+                          }
+                          type="checkbox"
+                        />
+                        <span>Needs attention</span>
+                        <code>{comparisonConstraintIssueCount}</code>
+                      </label>
+                    </div>
+                    {visibleComparisonConstraintEvaluations.length ? (
+                      visibleComparisonConstraintEvaluations.map((evaluation) => (
+                        <div key={evaluation.key}>
+                          <span>{evaluation.label}</span>
+                          <strong>{evaluation.rule}</strong>
+                          <span>
+                            {formatOptionalValue(evaluation.baselineValue, evaluation.unit)}
+                            <code data-state={evaluation.baselineStatus}>
+                              {evaluation.baselineStatus}
+                            </code>
+                            {evaluation.baselineExplanation ? (
+                              <small>{evaluation.baselineExplanation}</small>
+                            ) : null}
+                          </span>
+                          <span>
+                            {formatOptionalValue(evaluation.candidateValue, evaluation.unit)}
+                            <code data-state={evaluation.candidateStatus}>
+                              {evaluation.candidateStatus}
+                            </code>
+                            {evaluation.candidateExplanation ? (
+                              <small>{evaluation.candidateExplanation}</small>
+                            ) : null}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="constraintEvaluationEmpty">
+                        No constraints need attention.
                       </div>
-                    ))}
+                    )}
                   </div>
                 ) : null}
                 <div className="comparisonColumns">
