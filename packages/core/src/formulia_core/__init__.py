@@ -14,6 +14,13 @@ from .optimizer import (
     RawMaterialBound,
     minimize_price,
 )
+from .requirement_parser import (
+    RequirementObjective,
+    RequirementParameterBound,
+    RequirementParseResult,
+    RequirementPriceConstraint,
+    parse_requirements,
+)
 
 __all__ = [
     "FormulaCalculation",
@@ -25,7 +32,12 @@ __all__ = [
     "ParameterBound",
     "RawMaterial",
     "RawMaterialBound",
+    "RequirementObjective",
+    "RequirementParameterBound",
+    "RequirementParseResult",
+    "RequirementPriceConstraint",
     "WarningCode",
     "calculate_formula",
     "minimize_price",
+    "parse_requirements",
 ]

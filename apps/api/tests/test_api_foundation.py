@@ -432,6 +432,51 @@ def test_formula_comparison_is_tenant_scoped_and_returns_deltas() -> None:
     assert forbidden.status_code == 404
 
 
+def test_requirement_parser_uses_tenant_context() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    response = client.post(
+        "/api/v1/requirements/parse",
+        headers=headers,
+        json={
+            "text": "Minimiza coste con active content entre 20 y 40 y precio maximo 2 EUR/kg",
+            "active_parameter_code": "active_content",
+            "active_parameter_name": "Active content",
+        },
+    )
+
+    assert response.status_code == 200
+    parsed = response.json()
+    assert parsed["tenant_id"] == tenant_id
+    assert parsed["user_id"] == USER_A
+    assert parsed["source"] == "deterministic"
+    assert parsed["objectives"] == [{"type": "minimize", "target": "price"}]
+    assert parsed["parameter_bounds"] == [
+        {
+            "code": "active_content",
+            "min_value": 20.0,
+            "max_value": 40.0,
+            "source_text": "active content entre 20 y 40",
+        }
+    ]
+    assert parsed["price_constraint"]["max_price"] == 2.0
+
+
+def test_requirement_parser_rejects_cross_tenant_access() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+
+    response = client.post(
+        "/api/v1/requirements/parse",
+        headers={"X-User-Id": USER_B, "X-Tenant-Id": tenant_id},
+        json={"text": "Minimiza coste con active content minimo 20"},
+    )
+
+    assert response.status_code == 403
+
+
 def test_optimization_validation_accepts_minimize_price_contract() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

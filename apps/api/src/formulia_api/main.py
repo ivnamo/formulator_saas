@@ -23,6 +23,7 @@ from formulia_core import (
     RawMaterialBound as CoreRawMaterialBound,
     calculate_formula,
     minimize_price,
+    parse_requirements,
 )
 
 from .database import create_db_engine, get_session, init_db
@@ -78,6 +79,8 @@ from .schemas import (
     RawMaterialPriceRead,
     RawMaterialRead,
     RawMaterialUpdate,
+    RequirementParseRead,
+    RequirementParseRequest,
     TenantCreate,
     TenantRead,
 )
@@ -388,6 +391,50 @@ def register_routes(app: FastAPI) -> None:
             "right": right,
             "delta": _formula_comparison_delta(left, right),
         }
+
+    @app.post("/api/v1/requirements/parse", response_model=RequirementParseRead)
+    def parse_requirement(
+        payload: RequirementParseRequest,
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> RequirementParseRead:
+        parsed = parse_requirements(
+            payload.text,
+            active_parameter_code=payload.active_parameter_code,
+            active_parameter_name=payload.active_parameter_name,
+        )
+        return RequirementParseRead(
+            tenant_id=tenant.tenant_id,
+            user_id=tenant.user_id,
+            source=parsed.source,
+            text=payload.text,
+            objectives=[
+                {"type": objective.type, "target": objective.target}
+                for objective in parsed.objectives
+            ],
+            parameter_bounds=[
+                {
+                    "code": bound.code,
+                    "min_value": bound.min_value,
+                    "max_value": bound.max_value,
+                    "source_text": bound.source_text,
+                }
+                for bound in parsed.parameter_bounds
+            ],
+            price_constraint=(
+                None
+                if parsed.price_constraint is None
+                else {
+                    "max_price": parsed.price_constraint.max_price,
+                    "currency": parsed.price_constraint.currency,
+                    "unit": parsed.price_constraint.unit,
+                    "source_text": parsed.price_constraint.source_text,
+                }
+            ),
+            alternatives=parsed.alternatives,
+            mandatory_raw_materials=list(parsed.mandatory_raw_materials),
+            excluded_raw_materials=list(parsed.excluded_raw_materials),
+            uncertainties=list(parsed.uncertainties),
+        )
 
     @app.post("/api/v1/optimizations/validate", response_model=OptimizationValidationRead)
     def validate_optimization(

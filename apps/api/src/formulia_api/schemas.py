@@ -275,6 +275,45 @@ class FormulaComparisonRead(BaseModel):
     delta: FormulaComparisonDeltaRead
 
 
+class RequirementParseRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+    active_parameter_code: str = Field(default="active_content", min_length=1)
+    active_parameter_name: str | None = None
+
+
+class RequirementObjectiveRead(BaseModel):
+    type: str
+    target: str
+
+
+class RequirementParameterBoundRead(BaseModel):
+    code: str
+    min_value: float | None
+    max_value: float | None
+    source_text: str
+
+
+class RequirementPriceConstraintRead(BaseModel):
+    max_price: float
+    currency: str
+    unit: str
+    source_text: str
+
+
+class RequirementParseRead(BaseModel):
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID
+    source: str
+    text: str
+    objectives: list[RequirementObjectiveRead]
+    parameter_bounds: list[RequirementParameterBoundRead]
+    price_constraint: RequirementPriceConstraintRead | None
+    alternatives: int | None
+    mandatory_raw_materials: list[str]
+    excluded_raw_materials: list[str]
+    uncertainties: list[str]
+
+
 class FormulaCalculationHistoryRead(BaseModel):
     id: uuid.UUID
     formula_id: uuid.UUID
