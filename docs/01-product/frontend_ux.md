@@ -89,9 +89,12 @@ La biblioteca muestra el historial de `optimization_runs` del tenant activo:
 - precio calculado si existe,
 - numero de lineas,
 - formula vinculada si el resultado ya fue guardado,
+- accion `Details` para inspeccionar el snapshot,
 - accion `Load` solo para runs exitosos.
 
 Los runs `invalid` e `infeasible` deben ser visibles pero no cargables como formula.
+
+El detalle de un run muestra candidatos, bounds por materia, bounds por parametro, mensajes, issues y resultado calculado cuando exista. El detalle no recalcula ni modifica el snapshot historico.
 
 ## Importador Excel
 
