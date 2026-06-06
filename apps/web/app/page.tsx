@@ -6,6 +6,7 @@ import {
   Calculator,
   Check,
   Database,
+  Download,
   FlaskConical,
   FolderOpen,
   History,
@@ -494,6 +495,35 @@ export default function Home() {
     });
   }
 
+  async function downloadFormulaExcel(formula: FormulaRead) {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    await runAction("Downloading formula Excel", async () => {
+      const response = await fetch(
+        `${apiUrl}/api/v1/formulas/${formula.id}/export/excel`,
+        { method: "GET", headers },
+      );
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`API ${response.status}: ${detail}`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download =
+        filenameFromContentDisposition(response.headers.get("content-disposition")) ??
+        `${slugify(formula.name) || "formula"}.xlsx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setMessage("Formula Excel downloaded");
+    });
+  }
+
   async function applyImportColumnMapping() {
     if (!importFile || !selectedImportSheet) {
       setError("Upload an Excel file and select a sheet first");
@@ -668,6 +698,10 @@ export default function Home() {
     return Boolean(
       mapping.percentageColumn && (mapping.materialNameColumn || mapping.materialCodeColumn),
     );
+  }
+
+  function filenameFromContentDisposition(value: string | null): string | null {
+    return value?.match(/filename="?([^"]+)"?/i)?.[1] ?? null;
   }
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -952,6 +986,7 @@ export default function Home() {
                   <span>Price</span>
                   <span>Lines</span>
                   <span>Open</span>
+                  <span>Export</span>
                 </div>
                 {formulas.length === 0 ? (
                   <div className="empty">No saved formulas yet.</div>
@@ -974,6 +1009,16 @@ export default function Home() {
                         aria-label={`Open ${formula.name}`}
                       >
                         <FolderOpen size={16} />
+                      </button>
+                      <button
+                        className="iconButton"
+                        type="button"
+                        onClick={() => downloadFormulaExcel(formula)}
+                        disabled={!canEditTenantData}
+                        title="Download Excel"
+                        aria-label={`Download ${formula.name} Excel`}
+                      >
+                        <Download size={16} />
                       </button>
                     </div>
                   ))
