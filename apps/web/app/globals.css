@@ -665,7 +665,7 @@ label span {
 
 .formulaLine {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) 86px 34px;
+  grid-template-columns: minmax(120px, 1fr) 86px 76px 34px;
   gap: 10px;
   align-items: center;
   min-height: 46px;
@@ -675,6 +675,12 @@ label span {
 
 .formulaLine input {
   text-align: right;
+}
+
+.lineMoveButtons {
+  display: grid;
+  grid-template-columns: repeat(2, 34px);
+  gap: 8px;
 }
 
 .parameterList {

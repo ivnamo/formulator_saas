@@ -2,6 +2,8 @@
 
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   Beaker,
   Calculator,
   Check,
@@ -379,6 +381,23 @@ export default function Home() {
         line.localId === localId ? { ...line, percentage } : line,
       ),
     }));
+    setResult(null);
+  }
+
+  function moveFormulaLine(localId: string, offset: -1 | 1) {
+    setWorkspace((current) => {
+      const index = current.formulaLines.findIndex((line) => line.localId === localId);
+      const nextIndex = index + offset;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.formulaLines.length) {
+        return current;
+      }
+      const formulaLines = [...current.formulaLines];
+      [formulaLines[index], formulaLines[nextIndex]] = [
+        formulaLines[nextIndex],
+        formulaLines[index],
+      ];
+      return { ...current, formulaLines };
+    });
     setResult(null);
   }
 
@@ -1382,8 +1401,9 @@ export default function Home() {
               {workspace.formulaLines.length === 0 ? (
                 <div className="empty">Add materials to build a formula.</div>
               ) : (
-                workspace.formulaLines.map((line) => {
+                workspace.formulaLines.map((line, index) => {
                   const material = rawMaterialsById.get(line.rawMaterialId);
+                  const materialName = material?.name ?? "material";
                   return (
                     <div className="formulaLine" key={line.localId}>
                       <span>{material?.name ?? "Unknown material"}</span>
@@ -1399,6 +1419,28 @@ export default function Home() {
                         }
                         disabled={isBusy}
                       />
+                      <div className="lineMoveButtons">
+                        <button
+                          className="iconButton"
+                          type="button"
+                          onClick={() => moveFormulaLine(line.localId, -1)}
+                          disabled={isBusy || index === 0}
+                          title="Move up"
+                          aria-label={`Move ${materialName} up`}
+                        >
+                          <ArrowUp size={16} />
+                        </button>
+                        <button
+                          className="iconButton"
+                          type="button"
+                          onClick={() => moveFormulaLine(line.localId, 1)}
+                          disabled={isBusy || index === workspace.formulaLines.length - 1}
+                          title="Move down"
+                          aria-label={`Move ${materialName} down`}
+                        >
+                          <ArrowDown size={16} />
+                        </button>
+                      </div>
                       <button
                         className="iconButton danger"
                         type="button"
