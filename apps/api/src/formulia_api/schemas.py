@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -200,3 +200,53 @@ class ExcelImportSaveRow(BaseModel):
 class ExcelImportSaveRequest(BaseModel):
     name: str
     rows: list[ExcelImportSaveRow]
+
+
+class RequirementConstraintRead(BaseModel):
+    kind: str
+    target: str
+    operator: str
+    value: float | None = None
+    unit: str | None = None
+    raw_text: str | None = None
+
+
+class RequirementPreferencesRead(BaseModel):
+    only_active_materials: bool | None = None
+    avoid_incompatibilities: bool | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
+class RequirementParseRequest(BaseModel):
+    text: str = Field(min_length=3, max_length=4000)
+
+
+class RequirementParseRead(BaseModel):
+    run_id: uuid.UUID
+    source: str
+    model: str | None = None
+    product_type: str | None = None
+    objectives: list[str] = Field(default_factory=list)
+    technical_constraints: list[RequirementConstraintRead] = Field(default_factory=list)
+    economic_constraints: list[RequirementConstraintRead] = Field(default_factory=list)
+    mandatory_raw_materials: list[str] = Field(default_factory=list)
+    excluded_raw_materials: list[str] = Field(default_factory=list)
+    preferences: RequirementPreferencesRead = Field(default_factory=RequirementPreferencesRead)
+    alternatives: int | None = None
+    uncertainties: list[str] = Field(default_factory=list)
+
+
+class AiRunRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID
+    run_type: str
+    provider: str
+    model: str | None
+    status: str
+    prompt_tokens: int | None
+    completion_tokens: int | None
+    cost_estimate_usd: float | None
+    created_at: datetime
+    completed_at: datetime | None
+    error: str | None

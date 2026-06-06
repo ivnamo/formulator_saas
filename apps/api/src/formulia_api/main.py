@@ -19,6 +19,15 @@ from formulia_core import (
     calculate_formula,
 )
 
+from .ai_audit import finish_ai_run, start_ai_run
+from .ai_requirement_parser import (
+    MissingOpenAIKeyError,
+    OpenAIRequirementParserError,
+    parse_requirements_deterministic,
+    parse_requirements_with_openai,
+    requirement_parser_model,
+    requirement_parser_provider,
+)
 from .database import create_db_engine, get_session, init_db
 from .excel_import import (
     ExcelImportError,
@@ -27,7 +36,9 @@ from .excel_import import (
     list_formula_xlsx_sheets,
     parse_formula_xlsx,
 )
+from .local_env import load_local_env
 from .models import (
+    AiRun,
     Formula,
     FormulaCalculationResult,
     FormulaItem,
@@ -60,6 +71,9 @@ from .schemas import (
     RawMaterialPriceCreate,
     RawMaterialRead,
     RawMaterialUpdate,
+    AiRunRead,
+    RequirementParseRead,
+    RequirementParseRequest,
     TenantCreate,
     TenantRead,
 )
@@ -67,6 +81,9 @@ from .tenant import TenantContext, get_current_user, require_tenant_context
 
 
 FUZZY_SUGGESTION_THRESHOLD = 0.82
+
+
+load_local_env()
 
 
 def create_app(engine: Engine | None = None) -> FastAPI:
@@ -444,6 +461,75 @@ def register_routes(app: FastAPI) -> None:
             required_parameter_codes=payload.required_parameter_codes,
         )
 
+    @app.post("/api/v1/ai/requirements/parse", response_model=RequirementParseRead)
+    def parse_requirement(
+        payload: RequirementParseRequest,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        active_parameters = _active_parameter_context(session, tenant.tenant_id)
+        configured_provider = requirement_parser_provider()
+        provider = "openai" if configured_provider in {"llm", "openai"} else configured_provider
+        model = requirement_parser_model() if provider == "openai" else None
+        run = start_ai_run(
+            session,
+            tenant,
+            run_type="requirement_parser",
+            provider=provider,
+            model=model,
+            input_json={
+                "text": payload.text,
+                "active_parameters": active_parameters,
+                "configured_provider": configured_provider,
+            },
+        )
+
+        try:
+            if provider == "deterministic":
+                parsed = parse_requirements_deterministic(payload.text, active_parameters)
+                usage: dict[str, int | float | None] = {}
+            elif provider == "openai":
+                parsed, usage = parse_requirements_with_openai(
+                    payload.text,
+                    active_parameters,
+                    model or requirement_parser_model(),
+                )
+            else:
+                raise OpenAIRequirementParserError(
+                    f"Unsupported requirement parser provider: {configured_provider}"
+                )
+        except MissingOpenAIKeyError as exc:
+            finish_ai_run(session, run, status="error", error=str(exc))
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except OpenAIRequirementParserError as exc:
+            finish_ai_run(session, run, status="error", error=str(exc))
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        result = {**parsed, "run_id": run.id, "model": model}
+        finish_ai_run(
+            session,
+            run,
+            status="success",
+            output_json=result,
+            prompt_tokens=usage.get("prompt_tokens"),
+            completion_tokens=usage.get("completion_tokens"),
+            cost_estimate_usd=usage.get("cost_estimate_usd"),
+        )
+        return result
+
+    @app.get("/api/v1/ai/runs", response_model=list[AiRunRead])
+    def list_ai_runs(
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        runs = session.exec(
+            select(AiRun)
+            .where(AiRun.tenant_id == tenant.tenant_id)
+            .order_by(AiRun.created_at.desc())
+            .limit(20)
+        ).all()
+        return [_model_dict(run) for run in runs]
+
     @app.post(
         "/api/v1/imports/formulas/excel/sheets",
         response_model=ExcelImportSheetsRead,
@@ -496,6 +582,21 @@ def register_routes(app: FastAPI) -> None:
         session.refresh(formula)
         _replace_formula_items(session, tenant.tenant_id, formula.id, payload.rows)
         return _formula_read(session, formula)
+
+
+def _active_parameter_context(
+    session: Session,
+    tenant_id: uuid.UUID,
+) -> list[dict[str, str]]:
+    parameters = session.exec(
+        select(Parameter)
+        .where(Parameter.tenant_id == tenant_id, Parameter.is_active.is_(True))
+        .order_by(Parameter.code)
+    ).all()
+    return [
+        {"code": parameter.code, "name": parameter.name, "unit": parameter.unit}
+        for parameter in parameters
+    ]
 
 
 def _ensure_xlsx_file(file: UploadFile) -> None:

@@ -157,3 +157,38 @@ class FormulaCalculationResult(SQLModel, table=True):
     price_total: float | None = None
     result_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     calculated_at: datetime = Field(default_factory=utc_now)
+
+
+class AiRun(SQLModel, table=True):
+    __tablename__ = "ai_runs"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    user_id: uuid.UUID = Field(index=True, foreign_key="users.id")
+    run_type: str = Field(index=True)
+    provider: str
+    model: str | None = None
+    status: str = Field(default="success", index=True)
+    input_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    output_json: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    error: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    cost_estimate_usd: float | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    completed_at: datetime | None = None
+
+
+class AiToolCall(SQLModel, table=True):
+    __tablename__ = "ai_tool_calls"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    ai_run_id: uuid.UUID = Field(index=True, foreign_key="ai_runs.id")
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    tool_name: str
+    status: str = Field(default="success", index=True)
+    input_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    output_json: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    error: str | None = None
+    started_at: datetime = Field(default_factory=utc_now)
+    completed_at: datetime | None = None
