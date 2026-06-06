@@ -103,6 +103,16 @@ Comparar:
 - cumplimiento de restricciones,
 - disponibilidad.
 
+### META-018
+
+El primer comparador MVP vive en la biblioteca de formulas:
+
+- selecciona una formula base y una candidata,
+- recalcula ambas con el backend determinista,
+- muestra deltas de precio, porcentaje total, parametros y materias primas,
+- no usa IA,
+- no persiste comparaciones.
+
 ## ERP settings
 
 - crear conexión,
