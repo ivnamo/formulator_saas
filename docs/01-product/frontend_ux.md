@@ -96,6 +96,8 @@ Los runs `invalid` e `infeasible` deben ser visibles pero no cargables como form
 
 El detalle de un run muestra candidatos, bounds por materia, bounds por parametro, mensajes, issues y resultado calculado cuando exista. El detalle no recalcula ni modifica el snapshot historico.
 
+La comparacion de runs permite elegir baseline y candidate desde el historial. Debe mostrar estado, objetivo, delta de precio cuando ambos tienen calculo, delta de lineas, candidatos anadidos/retirados/compartidos, bounds por materia, bounds por parametro y mensajes de ambos snapshots. La comparacion no recalcula ni modifica runs historicos.
+
 ## Importador Excel
 
 Pantalla tipo wizard:
