@@ -63,6 +63,7 @@ from .schemas import (
     RawMaterialAliasRead,
     RawMaterialParameterValueCreate,
     RawMaterialPriceCreate,
+    RawMaterialPriceRead,
     RawMaterialRead,
     RawMaterialUpdate,
     TenantCreate,
@@ -256,6 +257,26 @@ def register_routes(app: FastAPI) -> None:
         session.commit()
         session.refresh(raw_alias)
         return raw_alias
+
+    @app.get(
+        "/api/v1/raw-materials/{raw_material_id}/prices",
+        response_model=list[RawMaterialPriceRead],
+    )
+    def list_raw_material_prices(
+        raw_material_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        _get_raw_material(session, tenant.tenant_id, raw_material_id)
+        prices = session.exec(
+            select(RawMaterialPrice)
+            .where(
+                RawMaterialPrice.tenant_id == tenant.tenant_id,
+                RawMaterialPrice.raw_material_id == raw_material_id,
+            )
+            .order_by(RawMaterialPrice.valid_from.desc(), RawMaterialPrice.created_at.desc())
+        ).all()
+        return [_model_dict(price) for price in prices]
 
     @app.post("/api/v1/raw-materials/{raw_material_id}/prices", status_code=201)
     def add_raw_material_price(

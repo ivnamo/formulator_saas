@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -100,6 +100,21 @@ class RawMaterialPriceCreate(BaseModel):
     supplier: str | None = None
     source: str = "manual"
     valid_from: date | None = None
+
+
+class RawMaterialPriceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    raw_material_id: uuid.UUID
+    price: float
+    currency: str
+    unit: str
+    supplier: str | None
+    source: str
+    valid_from: date
+    created_at: datetime
 
 
 class RawMaterialParameterValueCreate(BaseModel):

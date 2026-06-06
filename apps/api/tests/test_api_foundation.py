@@ -124,6 +124,45 @@ def test_raw_material_aliases_are_tenant_scoped() -> None:
     assert forbidden.status_code == 404
 
 
+def test_raw_material_prices_are_tenant_scoped_and_ordered() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+
+    first = client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers_a,
+        json={"price": 1.2, "currency": "EUR", "unit": "kg", "valid_from": "2026-01-01"},
+    )
+    second = client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers_a,
+        json={"price": 1.8, "currency": "EUR", "unit": "kg", "valid_from": "2026-03-01"},
+    )
+    listed = client.get(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers_a,
+    )
+    forbidden = client.get(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers_b,
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert listed.status_code == 200
+    assert [price["price"] for price in listed.json()] == [1.8, 1.2]
+    assert [price["valid_from"] for price in listed.json()] == ["2026-03-01", "2026-01-01"]
+    assert forbidden.status_code == 404
+
+
 def test_persisted_formula_calculation_uses_backend_core() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
@@ -187,6 +226,40 @@ def test_persisted_formula_calculation_uses_backend_core() -> None:
         {"code": "active_content", "value": 17.5, "unit": "% p/p"}
     ]
     assert result["warnings"] == []
+
+
+def test_persisted_formula_calculation_uses_latest_price_history() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    for price, valid_from in [(1.0, "2026-01-01"), (2.5, "2026-04-01")]:
+        created = client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/prices",
+            headers=headers,
+            json={"price": price, "currency": "EUR", "unit": "kg", "valid_from": valid_from},
+        )
+        assert created.status_code == 201
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={
+            "name": "Latest Price Formula",
+            "items": [{"raw_material_id": raw_material["id"], "percentage": 100}],
+        },
+    ).json()
+
+    response = client.post(
+        f"/api/v1/formulas/{formula['id']}/calculate",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["price_total"] == 2.5
 
 
 def test_persisted_formula_requires_active_tenant_parameters() -> None:
