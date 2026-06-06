@@ -53,108 +53,12 @@ import {
   type TenantRead,
   type WorkspaceState,
 } from "./workspace-model";
-
-type DraftReviewLineSnapshot = {
-  rawMaterialId: string;
-  name: string;
-  percentage: number;
-};
-
-type DraftReviewState = {
-  candidateName: string;
-  baselineLines: DraftReviewLineSnapshot[];
-  baselineResult: CalculationResult;
-  reviewedResult: CalculationResult | null;
-  requiredParameterCodes: string[];
-  status: "pending" | "confirmed";
-  notes: string;
-};
-
-type DraftLineComparison = {
-  rawMaterialId: string;
-  name: string;
-  proposed: number;
-  reviewed: number;
-  delta: number;
-};
-
-type DraftComparison = {
-  priceDelta: number | null;
-  totalDelta: number;
-  proposedLineCount: number;
-  reviewedLineCount: number;
-  lineChanges: DraftLineComparison[];
-};
-
-function addLineTotal(
-  totals: Map<string, { name: string; percentage: number }>,
-  rawMaterialId: string,
-  name: string,
-  percentage: number,
-) {
-  const current = totals.get(rawMaterialId);
-  totals.set(rawMaterialId, {
-    name: current?.name ?? name,
-    percentage: (current?.percentage ?? 0) + percentage,
-  });
-}
-
-function buildDraftComparison(
-  review: DraftReviewState | null,
-  currentLines: FormulaLine[],
-  rawMaterialsById: Map<string, { name: string }>,
-): DraftComparison | null {
-  if (!review?.reviewedResult) {
-    return null;
-  }
-
-  const proposedTotals = new Map<string, { name: string; percentage: number }>();
-  review.baselineLines.forEach((line) =>
-    addLineTotal(proposedTotals, line.rawMaterialId, line.name, line.percentage),
-  );
-
-  const reviewedTotals = new Map<string, { name: string; percentage: number }>();
-  currentLines.forEach((line) =>
-    addLineTotal(
-      reviewedTotals,
-      line.rawMaterialId,
-      rawMaterialsById.get(line.rawMaterialId)?.name ?? "Unknown material",
-      line.percentage,
-    ),
-  );
-
-  const materialIds = Array.from(
-    new Set([...proposedTotals.keys(), ...reviewedTotals.keys()]),
-  );
-  const lineChanges = materialIds
-    .map((rawMaterialId) => {
-      const proposed = proposedTotals.get(rawMaterialId);
-      const reviewed = reviewedTotals.get(rawMaterialId);
-      const proposedPercentage = proposed?.percentage ?? 0;
-      const reviewedPercentage = reviewed?.percentage ?? 0;
-      return {
-        rawMaterialId,
-        name: reviewed?.name ?? proposed?.name ?? "Unknown material",
-        proposed: proposedPercentage,
-        reviewed: reviewedPercentage,
-        delta: reviewedPercentage - proposedPercentage,
-      };
-    })
-    .filter((line) => Math.abs(line.delta) >= 0.0001)
-    .sort((left, right) => left.name.localeCompare(right.name));
-
-  return {
-    priceDelta:
-      review.baselineResult.price_total === null ||
-      review.reviewedResult.price_total === null
-        ? null
-        : review.reviewedResult.price_total - review.baselineResult.price_total,
-    totalDelta: review.reviewedResult.total_percentage - review.baselineResult.total_percentage,
-    proposedLineCount: review.baselineLines.length,
-    reviewedLineCount: currentLines.length,
-    lineChanges,
-  };
-}
+import {
+  buildDraftComparison,
+  buildSavedFormulaComparison,
+  type DraftReviewState,
+  type SavedFormulaComparison,
+} from "./workspace-comparison";
 
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
@@ -181,6 +85,12 @@ export default function Home() {
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null);
   const [draftReview, setDraftReview] = useState<DraftReviewState | null>(null);
   const [aiRuns, setAiRuns] = useState<AiRun[]>([]);
+  const [formulaCompareSelection, setFormulaCompareSelection] = useState({
+    baselineId: "",
+    candidateId: "",
+  });
+  const [savedFormulaComparison, setSavedFormulaComparison] =
+    useState<SavedFormulaComparison | null>(null);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importFileName, setImportFileName] = useState("");
@@ -230,6 +140,12 @@ export default function Home() {
     workspace.formulaLines.length > 0 &&
     !hasPendingDraftReview &&
     !isBusy;
+  const canCompareSavedFormulas =
+    Boolean(workspace.tenant) &&
+    Boolean(formulaCompareSelection.baselineId) &&
+    Boolean(formulaCompareSelection.candidateId) &&
+    formulaCompareSelection.baselineId !== formulaCompareSelection.candidateId &&
+    !isBusy;
   const canSelectImportSheet = availableImportSheets.length > 1 && Boolean(importFile) && !isBusy;
   const canSaveImport =
     Boolean(importPreview) &&
@@ -262,6 +178,8 @@ export default function Home() {
       setRequirementParse(null);
       setAgentPlan(null);
       setDraftReview(null);
+      setFormulaCompareSelection({ baselineId: "", candidateId: "" });
+      setSavedFormulaComparison(null);
       setAiRuns([]);
       resetImportState();
       setMessage("Workspace ready");
@@ -548,6 +466,65 @@ export default function Home() {
     });
   }
 
+  async function calculatePersistedFormula(formulaId: string): Promise<CalculationResult> {
+    return request<CalculationResult>(`/api/v1/formulas/${formulaId}/calculate`, {
+      method: "POST",
+      headers,
+    });
+  }
+
+  function selectFormulaForComparison(field: "baselineId" | "candidateId", formulaId: string) {
+    setFormulaCompareSelection((current) => ({
+      ...current,
+      [field]: formulaId,
+    }));
+    setSavedFormulaComparison(null);
+  }
+
+  async function compareSavedFormulas() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (
+      !formulaCompareSelection.baselineId ||
+      !formulaCompareSelection.candidateId ||
+      formulaCompareSelection.baselineId === formulaCompareSelection.candidateId
+    ) {
+      setError("Select two different saved formulas");
+      return;
+    }
+
+    const baseline = formulas.find(
+      (formula) => formula.id === formulaCompareSelection.baselineId,
+    );
+    const candidate = formulas.find(
+      (formula) => formula.id === formulaCompareSelection.candidateId,
+    );
+    if (!baseline || !candidate) {
+      setError("Refresh the formula library before comparing");
+      return;
+    }
+
+    await runAction("Comparing saved formulas", async () => {
+      const [baselineResult, candidateResult] = await Promise.all([
+        calculatePersistedFormula(baseline.id),
+        calculatePersistedFormula(candidate.id),
+      ]);
+      setSavedFormulaComparison(
+        buildSavedFormulaComparison(
+          baseline,
+          candidate,
+          baselineResult,
+          candidateResult,
+          rawMaterialsById,
+        ),
+      );
+      await refreshFormulaLibrary({ silent: true });
+      setMessage("Formula comparison ready");
+    });
+  }
+
   async function applyOptimizerDraft(candidate: AgentFormulaCandidate) {
     if (!workspace.tenant) {
       setError("Create a workspace first");
@@ -666,6 +643,7 @@ export default function Home() {
       }));
       setResult(calculation);
       setDraftReview(null);
+      setSavedFormulaComparison(null);
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
       setMessage("Calculation complete");
@@ -889,6 +867,7 @@ export default function Home() {
       await loadCalculationHistory(formula.id);
       setResult(null);
       setDraftReview(null);
+      setSavedFormulaComparison(null);
       setMessage("Imported formula saved");
     });
   }
@@ -955,6 +934,13 @@ export default function Home() {
     return resultValue?.price_total == null
       ? "-"
       : `${resultValue.price_total.toFixed(2)} ${resultValue.currency}/kg`;
+  }
+
+  function formatOptionalValue(value: number | null, unit: string | null = null): string {
+    if (value === null) {
+      return "-";
+    }
+    return `${value.toFixed(2)}${unit ? ` ${unit}` : ""}`;
   }
 
   function formatSignedDelta(value: number | null, suffix = ""): string {
@@ -1246,6 +1232,42 @@ export default function Home() {
               <span>{formulas.length} formulas</span>
             </div>
             <div className="libraryActions">
+              <label>
+                <span>Base</span>
+                <select
+                  aria-label="Base formula"
+                  value={formulaCompareSelection.baselineId}
+                  onChange={(event) =>
+                    selectFormulaForComparison("baselineId", event.target.value)
+                  }
+                  disabled={!canEditTenantData || formulas.length < 2}
+                >
+                  <option value="">Select formula</option>
+                  {formulas.map((formula) => (
+                    <option key={formula.id} value={formula.id}>
+                      {formula.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Candidate</span>
+                <select
+                  aria-label="Candidate formula"
+                  value={formulaCompareSelection.candidateId}
+                  onChange={(event) =>
+                    selectFormulaForComparison("candidateId", event.target.value)
+                  }
+                  disabled={!canEditTenantData || formulas.length < 2}
+                >
+                  <option value="">Select formula</option>
+                  {formulas.map((formula) => (
+                    <option key={formula.id} value={formula.id}>
+                      {formula.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 className="secondaryButton"
                 type="button"
@@ -1254,6 +1276,15 @@ export default function Home() {
               >
                 <RefreshCw size={17} />
                 Refresh library
+              </button>
+              <button
+                className="secondaryButton"
+                type="button"
+                onClick={compareSavedFormulas}
+                disabled={!canCompareSavedFormulas}
+              >
+                <ListChecks size={17} />
+                Compare formulas
               </button>
             </div>
             <div className="libraryGrid">
@@ -1315,6 +1346,104 @@ export default function Home() {
                 )}
               </div>
             </div>
+            {savedFormulaComparison ? (
+              <div className="savedFormulaComparison">
+                <div className="comparisonHeader">
+                  <div>
+                    <span>Base</span>
+                    <strong>{savedFormulaComparison.baseline.name}</strong>
+                  </div>
+                  <div>
+                    <span>Candidate</span>
+                    <strong>{savedFormulaComparison.candidate.name}</strong>
+                  </div>
+                </div>
+                <div className="comparisonStats">
+                  <div>
+                    <span>Price</span>
+                    <strong>
+                      {formatResultPrice(savedFormulaComparison.baselineResult)} /{" "}
+                      {formatResultPrice(savedFormulaComparison.candidateResult)}
+                    </strong>
+                    <code>
+                      {formatSignedDelta(
+                        savedFormulaComparison.priceDelta,
+                        ` ${savedFormulaComparison.candidateResult.currency}/kg`,
+                      )}
+                    </code>
+                  </div>
+                  <div>
+                    <span>Total</span>
+                    <strong>
+                      {savedFormulaComparison.baselineResult.total_percentage.toFixed(1)}% /{" "}
+                      {savedFormulaComparison.candidateResult.total_percentage.toFixed(1)}%
+                    </strong>
+                    <code>{formatSignedDelta(savedFormulaComparison.totalDelta, "%")}</code>
+                  </div>
+                  <div>
+                    <span>Lines</span>
+                    <strong>
+                      {savedFormulaComparison.baseline.items.length} /{" "}
+                      {savedFormulaComparison.candidate.items.length}
+                    </strong>
+                    <code>
+                      {formatSignedInteger(
+                        savedFormulaComparison.candidate.items.length -
+                          savedFormulaComparison.baseline.items.length,
+                      )}
+                    </code>
+                  </div>
+                </div>
+                <div className="comparisonColumns">
+                  <div className="comparisonList">
+                    <div className="comparisonTitle">Parameters</div>
+                    {savedFormulaComparison.parameterChanges.length ? (
+                      savedFormulaComparison.parameterChanges.map((parameter) => (
+                        <div key={parameter.code}>
+                          <span>{parameter.code}</span>
+                          <strong>
+                            {formatOptionalValue(parameter.baseline, parameter.unit)} /{" "}
+                            {formatOptionalValue(parameter.candidate, parameter.unit)}
+                          </strong>
+                          <code>
+                            {formatSignedDelta(
+                              parameter.delta,
+                              parameter.unit ? ` ${parameter.unit}` : "",
+                            )}
+                          </code>
+                        </div>
+                      ))
+                    ) : (
+                      <div>
+                        <span>Parameters</span>
+                        <strong>No calculated parameters</strong>
+                        <code>-</code>
+                      </div>
+                    )}
+                  </div>
+                  <div className="comparisonList">
+                    <div className="comparisonTitle">Materials</div>
+                    {savedFormulaComparison.lineChanges.length ? (
+                      savedFormulaComparison.lineChanges.map((line) => (
+                        <div key={line.rawMaterialId}>
+                          <span>{line.name}</span>
+                          <strong>
+                            {line.proposed.toFixed(1)}% / {line.reviewed.toFixed(1)}%
+                          </strong>
+                          <code>{formatSignedDelta(line.delta, "%")}</code>
+                        </div>
+                      ))
+                    ) : (
+                      <div>
+                        <span>Formula lines</span>
+                        <strong>No percentage changes</strong>
+                        <code>0.00%</code>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section id="import" className="panel importPanel">

@@ -789,8 +789,10 @@ label span {
 }
 
 .libraryActions {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
   margin-bottom: 14px;
 }
 
@@ -857,6 +859,80 @@ label span {
 
 .historyRow strong {
   font-size: 14px;
+}
+
+.savedFormulaComparison {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.comparisonHeader,
+.comparisonStats,
+.comparisonColumns,
+.comparisonList div {
+  display: grid;
+  gap: 10px;
+}
+
+.comparisonHeader {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.comparisonHeader div {
+  min-width: 0;
+}
+
+.comparisonHeader span,
+.comparisonStats span,
+.comparisonList span,
+.comparisonTitle {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.comparisonHeader strong,
+.comparisonStats strong,
+.comparisonList strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.comparisonStats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.comparisonStats div,
+.comparisonList div {
+  min-width: 0;
+  min-height: 36px;
+  align-content: center;
+  border-top: 1px solid var(--border);
+}
+
+.comparisonStats code,
+.comparisonList code {
+  color: var(--teal-dark);
+  font-weight: 800;
+}
+
+.comparisonColumns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.comparisonList {
+  display: grid;
+  gap: 4px;
+}
+
+.comparisonList div {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto) 74px;
+  align-items: center;
 }
 
 .importRow [data-state="matched_exact"] {
@@ -1115,6 +1191,7 @@ label span {
   .formGrid.threeColumns,
   .materialForm,
   .importActions,
+  .libraryActions,
   .aiControls {
     grid-template-columns: 1fr;
   }
@@ -1191,6 +1268,10 @@ label span {
   .formGrid,
   .aliasEditor,
   .agentCandidateRow,
+  .comparisonHeader,
+  .comparisonStats,
+  .comparisonColumns,
+  .comparisonList div,
   .draftComparisonStats,
   .draftLineChanges div,
   .agentFormulaStats,
