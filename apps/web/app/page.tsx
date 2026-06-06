@@ -149,6 +149,11 @@ export default function Home() {
   const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
   const canRunOptimizer =
     Boolean(workspace.tenant) && selectedOptimizerMaterials.length > 0 && !isBusy;
+  const canSaveOptimizedFormula =
+    Boolean(workspace.tenant) &&
+    optimizationRun?.status === "success" &&
+    workspace.formulaLines.length > 0 &&
+    !isBusy;
   const canCompareFormulas =
     Boolean(workspace.tenant) &&
     Boolean(comparisonLeftId) &&
@@ -474,27 +479,20 @@ export default function Home() {
       return;
     }
 
-    await runAction("Calculating formula", async () => {
-      const items = workspace.formulaLines.map((line, index) => ({
-        raw_material_id: line.rawMaterialId,
-        percentage: line.percentage,
-        order_index: index,
-      }));
-      const payload = {
-        name: workspace.formulaName.trim() || "Manual Formula",
-        items,
-      };
-      const formula = workspace.formulaId
-        ? await request<FormulaRead>(`/api/v1/formulas/${workspace.formulaId}`, {
-            method: "PATCH",
-            headers,
-            body: JSON.stringify(payload),
-          })
-        : await request<FormulaRead>("/api/v1/formulas", {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-          });
+    await saveFormulaAndCalculate("Calculating formula", "Calculation complete");
+  }
+
+  async function saveOptimizedFormula() {
+    if (!canSaveOptimizedFormula) {
+      setError("Run a successful optimization first");
+      return;
+    }
+    await saveFormulaAndCalculate("Saving optimized formula", "Optimized formula saved");
+  }
+
+  async function saveFormulaAndCalculate(label: string, successMessage: string) {
+    await runAction(label, async () => {
+      const formula = await persistCurrentFormula();
       const calculation = await request<CalculationResult>(
         `/api/v1/formulas/${formula.id}/calculate`,
         { method: "POST", headers },
@@ -507,8 +505,31 @@ export default function Home() {
       setResult(calculation);
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
-      setMessage("Calculation complete");
+      setMessage(successMessage);
     });
+  }
+
+  async function persistCurrentFormula(): Promise<FormulaRead> {
+    const items = workspace.formulaLines.map((line, index) => ({
+      raw_material_id: line.rawMaterialId,
+      percentage: line.percentage,
+      order_index: index,
+    }));
+    const payload = {
+      name: workspace.formulaName.trim() || "Manual Formula",
+      items,
+    };
+    return workspace.formulaId
+      ? request<FormulaRead>(`/api/v1/formulas/${workspace.formulaId}`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify(payload),
+        })
+      : request<FormulaRead>("/api/v1/formulas", {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        });
   }
 
   async function runOptimizer() {
@@ -1919,6 +1940,17 @@ export default function Home() {
                         </div>
                       ))}
                     </div>
+                  ) : null}
+                  {optimizationRun.status === "success" ? (
+                    <button
+                      className="secondaryButton"
+                      type="button"
+                      onClick={saveOptimizedFormula}
+                      disabled={!canSaveOptimizedFormula}
+                    >
+                      <Save size={17} />
+                      Save optimized
+                    </button>
                   ) : null}
                 </>
               ) : null}
