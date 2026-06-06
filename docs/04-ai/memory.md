@@ -63,7 +63,7 @@ Toda memoria aprendida debe ser revisable/editable por el tenant.
 
 Guardar en `ai_runs`:
 
-- petición original,
+- petición redaccionada,
 - interpretación estructurada,
 - tools usadas,
 - evidencias,
@@ -73,6 +73,8 @@ Guardar en `ai_runs`:
 - tokens/coste si disponible.
 
 El parser determinista de requisitos tambien se registra en `ai_runs` con `provider=deterministic` y `model=rules:v1`. Cuando se conecte un LLM real, cada llamada debera conservar el mismo contrato y anadir tokens/coste si el proveedor lo devuelve.
+
+Los payloads de `ai_runs` y `ai_tool_calls` se redaccionan antes de persistirse. Esto no sustituye una politica DLP completa, pero evita que secretos obvios queden guardados en historico.
 
 ## Reglas anti-contaminación
 

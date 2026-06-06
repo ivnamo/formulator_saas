@@ -20,6 +20,7 @@
 - Credenciales ERP cifradas.
 - Variables de entorno para secrets globales.
 - No guardar tokens en logs.
+- Redactar payloads de `ai_runs` y `ai_tool_calls` antes de persistirlos.
 - Rotación de tokens.
 
 ## Uploads
@@ -36,6 +37,7 @@
 - Registrar tool calls.
 - Permitir configuración de privacidad por tenant.
 - Redactar secretos antes de prompts.
+- Redactar secretos tambien antes de guardar trazas IA; la UI no debe ser la primera barrera.
 
 ## Auditoría
 

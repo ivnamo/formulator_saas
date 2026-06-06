@@ -173,6 +173,8 @@ GET /ai/runs/{run_id}
 
 Lista runs IA del tenant activo y permite inspeccionar sus tool calls. Los endpoints siempre filtran por tenant context.
 
+`input_json` y `output_json` se guardan despues de aplicar redaccion backend sobre claves y patrones sensibles obvios. Estos campos sirven para trazabilidad tecnica, no como almacenamiento bruto de prompts sin filtrar.
+
 Response de lista:
 
 ```json
