@@ -21,6 +21,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_008_excel_row_create_alias.md`](00-meta/meta_008_excel_row_create_alias.md)
 - [`00-meta/meta_009_excel_fuzzy_suggestions.md`](00-meta/meta_009_excel_fuzzy_suggestions.md)
 - [`00-meta/meta_010_excel_sheet_selection.md`](00-meta/meta_010_excel_sheet_selection.md)
+- [`00-meta/meta_011_excel_column_mapping.md`](00-meta/meta_011_excel_column_mapping.md)
 
 ## Producto
 
