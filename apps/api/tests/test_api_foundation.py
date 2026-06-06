@@ -89,6 +89,39 @@ def test_raw_material_from_another_tenant_is_not_found() -> None:
     assert response.status_code == 404
 
 
+def test_raw_material_aliases_are_tenant_scoped() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+
+    created = client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/aliases",
+        headers=headers_a,
+        json={"alias": "Active Alpha"},
+    )
+    listed = client.get(
+        f"/api/v1/raw-materials/{raw_material['id']}/aliases",
+        headers=headers_a,
+    )
+    forbidden = client.get(
+        f"/api/v1/raw-materials/{raw_material['id']}/aliases",
+        headers=headers_b,
+    )
+
+    assert created.status_code == 201
+    assert created.json()["normalized_alias"] == "active alpha"
+    assert listed.status_code == 200
+    assert listed.json()[0]["alias"] == "Active Alpha"
+    assert forbidden.status_code == 404
+
+
 def test_persisted_formula_calculation_uses_backend_core() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

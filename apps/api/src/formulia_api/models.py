@@ -79,6 +79,18 @@ class RawMaterial(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class RawMaterialAlias(SQLModel, table=True):
+    __tablename__ = "raw_material_aliases"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    raw_material_id: uuid.UUID = Field(index=True, foreign_key="raw_materials.id")
+    alias: str
+    normalized_alias: str = Field(index=True)
+    source: str = "manual"
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class RawMaterialParameterValue(SQLModel, table=True):
     __tablename__ = "raw_material_parameter_values"
 

@@ -77,6 +77,22 @@ class RawMaterialRead(RawMaterialCreate):
     is_obsolete: bool
 
 
+class RawMaterialAliasCreate(BaseModel):
+    alias: str = Field(min_length=1)
+    source: str = "manual"
+
+
+class RawMaterialAliasRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    raw_material_id: uuid.UUID
+    alias: str
+    normalized_alias: str
+    source: str
+
+
 class RawMaterialPriceCreate(BaseModel):
     price: float
     currency: str = "EUR"

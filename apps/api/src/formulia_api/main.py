@@ -26,6 +26,7 @@ from .models import (
     FormulaItem,
     Parameter,
     RawMaterial,
+    RawMaterialAlias,
     RawMaterialParameterValue,
     RawMaterialPrice,
     Tenant,
@@ -45,6 +46,8 @@ from .schemas import (
     ParameterCreate,
     ParameterRead,
     RawMaterialCreate,
+    RawMaterialAliasCreate,
+    RawMaterialAliasRead,
     RawMaterialParameterValueCreate,
     RawMaterialPriceCreate,
     RawMaterialRead,
@@ -193,6 +196,50 @@ def register_routes(app: FastAPI) -> None:
         session.commit()
         session.refresh(raw_material)
         return raw_material
+
+    @app.get(
+        "/api/v1/raw-materials/{raw_material_id}/aliases",
+        response_model=list[RawMaterialAliasRead],
+    )
+    def list_raw_material_aliases(
+        raw_material_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[RawMaterialAlias]:
+        _get_raw_material(session, tenant.tenant_id, raw_material_id)
+        return session.exec(
+            select(RawMaterialAlias).where(
+                RawMaterialAlias.tenant_id == tenant.tenant_id,
+                RawMaterialAlias.raw_material_id == raw_material_id,
+            )
+        ).all()
+
+    @app.post(
+        "/api/v1/raw-materials/{raw_material_id}/aliases",
+        response_model=RawMaterialAliasRead,
+        status_code=201,
+    )
+    def create_raw_material_alias(
+        raw_material_id: uuid.UUID,
+        payload: RawMaterialAliasCreate,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> RawMaterialAlias:
+        _get_raw_material(session, tenant.tenant_id, raw_material_id)
+        alias = payload.alias.strip()
+        if not alias:
+            raise HTTPException(status_code=400, detail="Alias cannot be empty.")
+        raw_alias = RawMaterialAlias(
+            tenant_id=tenant.tenant_id,
+            raw_material_id=raw_material_id,
+            alias=alias,
+            normalized_alias=_normalize(alias),
+            source=payload.source,
+        )
+        session.add(raw_alias)
+        session.commit()
+        session.refresh(raw_alias)
+        return raw_alias
 
     @app.post("/api/v1/raw-materials/{raw_material_id}/prices", status_code=201)
     def add_raw_material_price(
@@ -557,8 +604,9 @@ def _excel_preview(
         if material.code
     }
     by_name = {material.normalized_name: material for material in materials}
+    by_alias = _raw_materials_by_alias(session, tenant_id)
     rows = [
-        _excel_preview_row(row, by_code=by_code, by_name=by_name)
+        _excel_preview_row(row, by_code=by_code, by_name=by_name, by_alias=by_alias)
         for row in parsed.rows
     ]
     resolved_rows = sum(1 for row in rows if row["raw_material_id"] is not None)
@@ -582,6 +630,7 @@ def _excel_preview_row(
     *,
     by_code: dict[str, RawMaterial],
     by_name: dict[str, RawMaterial],
+    by_alias: dict[str, RawMaterial],
 ) -> dict[str, Any]:
     if row.status == "invalid_percentage":
         return {
@@ -603,6 +652,13 @@ def _excel_preview_row(
             "matched_by": "name",
             "status": "matched_exact",
         }
+    if row.material_name and (material := by_alias.get(_normalize(row.material_name))):
+        return {
+            **_parsed_row_dict(row),
+            "raw_material_id": material.id,
+            "matched_by": "alias",
+            "status": "matched_exact",
+        }
     return {
         **_parsed_row_dict(row),
         "raw_material_id": None,
@@ -610,6 +666,21 @@ def _excel_preview_row(
         "status": "needs_review",
         "message": "No exact raw material match was found.",
     }
+
+
+def _raw_materials_by_alias(
+    session: Session,
+    tenant_id: uuid.UUID,
+) -> dict[str, RawMaterial]:
+    rows = session.exec(
+        select(RawMaterialAlias, RawMaterial)
+        .join(RawMaterial, RawMaterialAlias.raw_material_id == RawMaterial.id)
+        .where(
+            RawMaterialAlias.tenant_id == tenant_id,
+            RawMaterial.tenant_id == tenant_id,
+        )
+    ).all()
+    return {alias.normalized_alias: material for alias, material in rows}
 
 
 def _parsed_row_dict(row: ParsedFormulaRow) -> dict[str, Any]:

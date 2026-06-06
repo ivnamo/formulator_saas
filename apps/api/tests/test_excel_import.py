@@ -101,6 +101,40 @@ def test_preview_matches_by_code_and_normalized_name() -> None:
     assert preview["rows"][1]["matched_by"] == "name"
 
 
+def test_preview_matches_by_alias() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Carrier B", "code": "CAR-B"},
+    ).json()
+    alias = client.post(
+        f"/api/v1/raw-materials/{material['id']}/aliases",
+        headers=headers,
+        json={"alias": "Carrier beta"},
+    )
+    assert alias.status_code == 201
+    content = workbook_bytes(
+        [
+            ["Raw Material", "Percentage"],
+            ["Carrier beta", 100],
+        ]
+    )
+
+    response = client.post(
+        "/api/v1/imports/formulas/excel/preview",
+        headers=headers,
+        files={"file": ("formula.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+
+    assert response.status_code == 200
+    row = response.json()["rows"][0]
+    assert row["raw_material_id"] == material["id"]
+    assert row["matched_by"] == "alias"
+
+
 def test_preview_flags_unmatched_and_invalid_rows() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
