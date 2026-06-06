@@ -16,6 +16,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_003_basic_excel_import.md`](00-meta/meta_003_basic_excel_import.md)
 - [`00-meta/meta_004_formula_library_history.md`](00-meta/meta_004_formula_library_history.md)
 - [`00-meta/meta_005_raw_material_aliases.md`](00-meta/meta_005_raw_material_aliases.md)
+- [`00-meta/meta_006_excel_row_resolution.md`](00-meta/meta_006_excel_row_resolution.md)
 
 ## Producto
 
