@@ -4,6 +4,7 @@ import uuid
 import os
 from contextlib import asynccontextmanager
 from datetime import date
+from difflib import SequenceMatcher
 from typing import Any
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
@@ -56,6 +57,9 @@ from .schemas import (
     TenantRead,
 )
 from .tenant import TenantContext, get_current_user, require_tenant_context
+
+
+FUZZY_SUGGESTION_THRESHOLD = 0.82
 
 
 def create_app(engine: Engine | None = None) -> FastAPI:
@@ -606,7 +610,13 @@ def _excel_preview(
     by_name = {material.normalized_name: material for material in materials}
     by_alias = _raw_materials_by_alias(session, tenant_id)
     rows = [
-        _excel_preview_row(row, by_code=by_code, by_name=by_name, by_alias=by_alias)
+        _excel_preview_row(
+            row,
+            by_code=by_code,
+            by_name=by_name,
+            by_alias=by_alias,
+            materials=materials,
+        )
         for row in parsed.rows
     ]
     resolved_rows = sum(1 for row in rows if row["raw_material_id"] is not None)
@@ -631,6 +641,7 @@ def _excel_preview_row(
     by_code: dict[str, RawMaterial],
     by_name: dict[str, RawMaterial],
     by_alias: dict[str, RawMaterial],
+    materials: list[RawMaterial],
 ) -> dict[str, Any]:
     if row.status == "invalid_percentage":
         return {
@@ -666,13 +677,48 @@ def _excel_preview_row(
             "matched_by": "alias",
             "status": "matched_exact",
         }
+    suggestion = _fuzzy_material_suggestion(row, materials)
+    suggested_fields = (
+        {
+            "suggested_raw_material_id": suggestion[0].id,
+            "suggested_material_name": suggestion[0].name,
+            "suggested_match_score": suggestion[1],
+        }
+        if suggestion
+        else {}
+    )
     return {
         **_parsed_row_dict(row),
+        **suggested_fields,
         "raw_material_id": None,
         "matched_by": None,
         "status": "needs_review",
         "message": "No exact raw material match was found.",
     }
+
+
+def _fuzzy_material_suggestion(
+    row: ParsedFormulaRow,
+    materials: list[RawMaterial],
+) -> tuple[RawMaterial, float] | None:
+    query = _normalize(row.material_name or row.material_code or "")
+    if not query:
+        return None
+
+    best_material: RawMaterial | None = None
+    best_score = 0.0
+    for material in materials:
+        candidates = [material.normalized_name]
+        if material.code:
+            candidates.append(_normalize(material.code))
+        score = max(SequenceMatcher(None, query, candidate).ratio() for candidate in candidates)
+        if score > best_score:
+            best_material = material
+            best_score = score
+
+    if best_material is None or best_score < FUZZY_SUGGESTION_THRESHOLD:
+        return None
+    return best_material, round(best_score, 2)
 
 
 def _raw_materials_by_alias(

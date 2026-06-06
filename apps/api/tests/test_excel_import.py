@@ -169,6 +169,41 @@ def test_preview_matches_material_code_by_alias() -> None:
     assert row["matched_by"] == "alias"
 
 
+def test_preview_suggests_fuzzy_match_without_resolving() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Carrier Meta 009", "code": "CAR-009"},
+    ).json()
+    content = workbook_bytes(
+        [
+            ["Raw Material", "Percentage"],
+            ["Carier Meta 009", 100],
+        ]
+    )
+
+    response = client.post(
+        "/api/v1/imports/formulas/excel/preview",
+        headers=headers,
+        files={"file": ("formula.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+
+    assert response.status_code == 200
+    preview = response.json()
+    row = preview["rows"][0]
+    assert preview["resolved_rows"] == 0
+    assert preview["pending_rows"] == 1
+    assert row["status"] == "needs_review"
+    assert row["raw_material_id"] is None
+    assert row["matched_by"] is None
+    assert row["suggested_raw_material_id"] == material["id"]
+    assert row["suggested_material_name"] == "Carrier Meta 009"
+    assert row["suggested_match_score"] >= 0.82
+
+
 def test_preview_flags_unmatched_and_invalid_rows() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

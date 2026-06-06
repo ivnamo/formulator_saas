@@ -172,6 +172,9 @@ class ExcelImportPreviewRowRead(BaseModel):
     matched_by: str | None
     status: str
     message: str | None = None
+    suggested_raw_material_id: uuid.UUID | None = None
+    suggested_material_name: str | None = None
+    suggested_match_score: float | None = None
 
 
 class ExcelImportPreviewRead(BaseModel):
