@@ -159,6 +159,28 @@ export type ExcelImportSheets = {
   default_sheet: string;
 };
 
+export type ExcelImportColumns = {
+  sheet_name: string;
+  available_sheets: string[];
+  header_row: number;
+  columns: string[];
+  detected_material_name: string | null;
+  detected_material_code: string | null;
+  detected_percentage: string | null;
+};
+
+export type ExcelColumnMapping = {
+  materialNameColumn: string;
+  materialCodeColumn: string;
+  percentageColumn: string;
+};
+
+export const emptyExcelColumnMapping: ExcelColumnMapping = {
+  materialNameColumn: "",
+  materialCodeColumn: "",
+  percentageColumn: "",
+};
+
 export function withResolvedImportRow(
   preview: ExcelImportPreview,
   rowNumber: number,

@@ -401,6 +401,18 @@ label span {
   min-width: 0;
 }
 
+.columnMapping {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(130px, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-muted);
+}
+
 .importSummary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -721,6 +733,7 @@ label span {
   .grid,
   .formGrid.threeColumns,
   .materialForm,
+  .columnMapping,
   .importActions {
     grid-template-columns: 1fr;
   }

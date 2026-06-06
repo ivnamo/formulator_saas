@@ -23,6 +23,7 @@ import { apiUrl, request, userId } from "./workspace-api";
 import {
   aliasFromImportRow,
   emptyWorkspace,
+  emptyExcelColumnMapping,
   formatDateTime,
   makeLocalId,
   normalizeCode,
@@ -32,6 +33,8 @@ import {
   withRawMaterialAlias,
   withResolvedImportRow,
   type CalculationResult,
+  type ExcelColumnMapping,
+  type ExcelImportColumns,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
   type ExcelImportSheets,
@@ -69,6 +72,9 @@ export default function Home() {
   const [importFileName, setImportFileName] = useState("");
   const [availableImportSheets, setAvailableImportSheets] = useState<string[]>([]);
   const [selectedImportSheet, setSelectedImportSheet] = useState("");
+  const [availableImportColumns, setAvailableImportColumns] = useState<string[]>([]);
+  const [importColumnMapping, setImportColumnMapping] =
+    useState<ExcelColumnMapping>(emptyExcelColumnMapping);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("Ready");
 
@@ -100,6 +106,12 @@ export default function Home() {
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
   const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
   const canSelectImportSheet = availableImportSheets.length > 1 && Boolean(importFile) && !isBusy;
+  const canApplyImportColumnMapping =
+    Boolean(importFile) &&
+    Boolean(selectedImportSheet) &&
+    Boolean(importColumnMapping.percentageColumn) &&
+    Boolean(importColumnMapping.materialNameColumn || importColumnMapping.materialCodeColumn) &&
+    !isBusy;
   const canSaveImport =
     Boolean(importPreview) &&
     importPreview?.rows.length !== 0 &&
@@ -450,16 +462,19 @@ export default function Home() {
       setImportFileName(file.name);
       setAvailableImportSheets(sheets.sheets);
       setSelectedImportSheet(selectedSheet);
+      setAvailableImportColumns([]);
+      setImportColumnMapping(emptyExcelColumnMapping);
       setImportPreview(null);
       if (!selectedSheet) {
         setMessage("Select Excel sheet");
         return;
       }
-      const preview = await requestExcelImportPreview(file, selectedSheet);
-      setImportPreview(preview);
-      setAvailableImportSheets(preview.available_sheets);
-      setSelectedImportSheet(preview.sheet_name);
-      setMessage("Import preview ready");
+      const detectedMapping = await loadExcelImportColumns(file, selectedSheet);
+      if (!isCompleteExcelColumnMapping(detectedMapping)) {
+        setMessage("Map Excel columns");
+        return;
+      }
+      await loadExcelImportPreview(file, selectedSheet, detectedMapping);
     });
   }
 
@@ -470,12 +485,56 @@ export default function Home() {
     }
     setSelectedImportSheet(sheetName);
     await runAction("Reading Excel sheet", async () => {
-      const preview = await requestExcelImportPreview(importFile, sheetName);
-      setImportPreview(preview);
-      setAvailableImportSheets(preview.available_sheets);
-      setSelectedImportSheet(preview.sheet_name);
-      setMessage("Import preview ready");
+      const detectedMapping = await loadExcelImportColumns(importFile, sheetName);
+      if (!isCompleteExcelColumnMapping(detectedMapping)) {
+        setMessage("Map Excel columns");
+        return;
+      }
+      await loadExcelImportPreview(importFile, sheetName, detectedMapping);
     });
+  }
+
+  async function applyImportColumnMapping() {
+    if (!importFile || !selectedImportSheet) {
+      setError("Upload an Excel file and select a sheet first");
+      return;
+    }
+    if (!importColumnMapping.percentageColumn) {
+      setError("Percentage column is required");
+      return;
+    }
+    if (!isCompleteExcelColumnMapping(importColumnMapping)) {
+      setError("Map a material name or code column");
+      return;
+    }
+
+    await runAction("Applying column mapping", async () => {
+      await loadExcelImportPreview(importFile, selectedImportSheet, importColumnMapping);
+    });
+  }
+
+  async function loadExcelImportColumns(
+    file: File,
+    sheetName: string,
+  ): Promise<ExcelColumnMapping> {
+    const columns = await listExcelImportColumns(file, sheetName);
+    const detectedMapping = mappingFromExcelColumns(columns);
+    setAvailableImportColumns(columns.columns);
+    setImportColumnMapping(detectedMapping);
+    setImportPreview(null);
+    return detectedMapping;
+  }
+
+  async function loadExcelImportPreview(
+    file: File,
+    sheetName: string,
+    columnMapping: ExcelColumnMapping,
+  ) {
+    const preview = await requestExcelImportPreview(file, sheetName, columnMapping);
+    setImportPreview(preview);
+    setAvailableImportSheets(preview.available_sheets);
+    setSelectedImportSheet(preview.sheet_name);
+    setMessage("Import preview ready");
   }
 
   async function listExcelImportSheets(file: File): Promise<ExcelImportSheets> {
@@ -488,14 +547,40 @@ export default function Home() {
     });
   }
 
+  async function listExcelImportColumns(
+    file: File,
+    sheetName: string,
+  ): Promise<ExcelImportColumns> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (sheetName) {
+      formData.append("sheet_name", sheetName);
+    }
+    return request<ExcelImportColumns>("/api/v1/imports/formulas/excel/columns", {
+      method: "POST",
+      headers: uploadHeaders,
+      body: formData,
+    });
+  }
+
   async function requestExcelImportPreview(
     file: File,
     sheetName: string,
+    columnMapping: ExcelColumnMapping,
   ): Promise<ExcelImportPreview> {
     const formData = new FormData();
     formData.append("file", file);
     if (sheetName) {
       formData.append("sheet_name", sheetName);
+    }
+    if (columnMapping.materialNameColumn) {
+      formData.append("material_name_column", columnMapping.materialNameColumn);
+    }
+    if (columnMapping.materialCodeColumn) {
+      formData.append("material_code_column", columnMapping.materialCodeColumn);
+    }
+    if (columnMapping.percentageColumn) {
+      formData.append("percentage_column", columnMapping.percentageColumn);
     }
     return request<ExcelImportPreview>("/api/v1/imports/formulas/excel/preview", {
       method: "POST",
@@ -567,6 +652,22 @@ export default function Home() {
     setImportFileName("");
     setAvailableImportSheets([]);
     setSelectedImportSheet("");
+    setAvailableImportColumns([]);
+    setImportColumnMapping(emptyExcelColumnMapping);
+  }
+
+  function mappingFromExcelColumns(columns: ExcelImportColumns): ExcelColumnMapping {
+    return {
+      materialNameColumn: columns.detected_material_name ?? "",
+      materialCodeColumn: columns.detected_material_code ?? "",
+      percentageColumn: columns.detected_percentage ?? "",
+    };
+  }
+
+  function isCompleteExcelColumnMapping(mapping: ExcelColumnMapping): boolean {
+    return Boolean(
+      mapping.percentageColumn && (mapping.materialNameColumn || mapping.materialCodeColumn),
+    );
   }
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -951,6 +1052,82 @@ export default function Home() {
                 Save formula
               </button>
             </div>
+            {availableImportColumns.length ? (
+              <div className="columnMapping">
+                <label>
+                  <span>Material name</span>
+                  <select
+                    aria-label="Material name column"
+                    value={importColumnMapping.materialNameColumn}
+                    onChange={(event) =>
+                      setImportColumnMapping((current) => ({
+                        ...current,
+                        materialNameColumn: event.target.value,
+                      }))
+                    }
+                    disabled={isBusy}
+                  >
+                    <option value="">No name column</option>
+                    {availableImportColumns.map((column, index) => (
+                      <option key={`${column}-${index}`} value={column}>
+                        {column}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Material code</span>
+                  <select
+                    aria-label="Material code column"
+                    value={importColumnMapping.materialCodeColumn}
+                    onChange={(event) =>
+                      setImportColumnMapping((current) => ({
+                        ...current,
+                        materialCodeColumn: event.target.value,
+                      }))
+                    }
+                    disabled={isBusy}
+                  >
+                    <option value="">No code column</option>
+                    {availableImportColumns.map((column, index) => (
+                      <option key={`${column}-${index}`} value={column}>
+                        {column}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Percentage</span>
+                  <select
+                    aria-label="Percentage column"
+                    value={importColumnMapping.percentageColumn}
+                    onChange={(event) =>
+                      setImportColumnMapping((current) => ({
+                        ...current,
+                        percentageColumn: event.target.value,
+                      }))
+                    }
+                    disabled={isBusy}
+                  >
+                    <option value="">Select share column</option>
+                    {availableImportColumns.map((column, index) => (
+                      <option key={`${column}-${index}`} value={column}>
+                        {column}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={applyImportColumnMapping}
+                  disabled={!canApplyImportColumnMapping}
+                >
+                  <RefreshCw size={17} />
+                  Apply mapping
+                </button>
+              </div>
+            ) : null}
             <div className="importSummary">
               <div>
                 <span>File</span>
