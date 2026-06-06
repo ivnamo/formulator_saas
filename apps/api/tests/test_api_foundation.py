@@ -1,6 +1,8 @@
+from io import BytesIO
 import uuid
 
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine
 
@@ -292,6 +294,81 @@ def test_formula_calculation_history_is_tenant_scoped() -> None:
     assert history.status_code == 200
     assert len(history.json()) == 2
     assert history.json()[0]["result_json"]["price_total"] == 1.25
+    assert forbidden.status_code == 404
+
+
+def test_formula_excel_export_is_tenant_scoped_and_contains_workbook() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers_a,
+        json={"code": "active_content", "name": "Active Content", "unit": "% p/p"},
+    ).json()
+    active = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    carrier = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Carrier B", "code": "CAR-B"},
+    ).json()
+    for raw_material, price, parameter_value in [
+        (active, 2.0, 40),
+        (carrier, 1.0, 10),
+    ]:
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/prices",
+            headers=headers_a,
+            json={"price": price, "currency": "EUR", "unit": "kg"},
+        )
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/parameter-values",
+            headers=headers_a,
+            json={"parameter_id": parameter["id"], "value": parameter_value},
+        )
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers_a,
+        json={
+            "name": "Export Formula",
+            "items": [
+                {"raw_material_id": active["id"], "percentage": 25},
+                {"raw_material_id": carrier["id"], "percentage": 75},
+            ],
+        },
+    ).json()
+
+    response = client.get(
+        f"/api/v1/formulas/{formula['id']}/export/excel",
+        headers=headers_a,
+    )
+    forbidden = client.get(
+        f"/api/v1/formulas/{formula['id']}/export/excel",
+        headers=headers_b,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert 'filename="Export_Formula.xlsx"' in response.headers["content-disposition"]
+    workbook = load_workbook(BytesIO(response.content), data_only=True)
+    assert workbook.sheetnames == ["Summary", "Lines", "Parameters", "Warnings"]
+    assert workbook["Summary"]["B2"].value == "Export Formula"
+    assert workbook["Summary"]["B6"].value == 100
+    assert workbook["Summary"]["B7"].value == 1.25
+    assert workbook["Lines"]["C2"].value == "Active A"
+    assert workbook["Lines"]["D2"].value == 25
+    assert workbook["Lines"]["G2"].value == 0.5
+    assert workbook["Parameters"]["A2"].value == "active_content"
+    assert workbook["Parameters"]["B2"].value == 17.5
     assert forbidden.status_code == 404
 
 

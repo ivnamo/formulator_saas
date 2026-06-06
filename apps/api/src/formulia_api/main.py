@@ -9,6 +9,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from sqlalchemy import Engine
 from sqlmodel import Session, select
 
@@ -29,6 +30,7 @@ from .excel_import import (
     list_formula_xlsx_sheets,
     parse_formula_xlsx,
 )
+from .formula_export import FormulaExportLine, FormulaExportSummary, build_formula_xlsx
 from .models import (
     Formula,
     FormulaCalculationResult,
@@ -368,21 +370,8 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         formula = _get_formula(session, tenant.tenant_id, formula_id)
-        items = session.exec(
-            select(FormulaItem).where(
-                FormulaItem.tenant_id == tenant.tenant_id,
-                FormulaItem.formula_id == formula.id,
-            )
-        ).all()
-        required_parameter_codes = {
-            parameter.code
-            for parameter in session.exec(
-                select(Parameter).where(
-                    Parameter.tenant_id == tenant.tenant_id,
-                    Parameter.is_active.is_(True),
-                )
-            ).all()
-        }
+        items = _formula_items(session, tenant.tenant_id, formula.id)
+        required_parameter_codes = _active_parameter_codes(session, tenant.tenant_id)
         result = _calculate(
             session,
             tenant.tenant_id,
@@ -403,6 +392,37 @@ def register_routes(app: FastAPI) -> None:
         )
         session.commit()
         return result
+
+    @app.get("/api/v1/formulas/{formula_id}/export/excel")
+    def export_formula_excel(
+        formula_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> Response:
+        formula = _get_formula(session, tenant.tenant_id, formula_id)
+        items = _formula_items(session, tenant.tenant_id, formula.id)
+        calculation = _calculate(
+            session,
+            tenant.tenant_id,
+            items,
+            required_parameter_codes=_active_parameter_codes(session, tenant.tenant_id),
+        )
+        content = build_formula_xlsx(
+            FormulaExportSummary(
+                id=str(formula.id),
+                name=formula.name,
+                version=formula.version,
+                status=formula.status,
+            ),
+            _formula_export_lines(session, tenant.tenant_id, items),
+            calculation,
+        )
+        filename = f"{_safe_filename(formula.name)}.xlsx"
+        return Response(
+            content,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
     @app.get(
         "/api/v1/formulas/{formula_id}/calculations",
@@ -605,15 +625,79 @@ def _replace_formula_items(
 
 
 def _formula_read(session: Session, formula: Formula) -> dict[str, Any]:
-    items = session.exec(
-        select(FormulaItem)
-        .where(FormulaItem.tenant_id == formula.tenant_id, FormulaItem.formula_id == formula.id)
-        .order_by(FormulaItem.order_index)
-    ).all()
+    tenant_id = formula.tenant_id
+    formula_id = formula.id
     return {
         **_model_dict(formula),
-        "items": [_model_dict(item) for item in items],
+        "items": [
+            _model_dict(item)
+            for item in _formula_items(session, tenant_id, formula_id)
+        ],
     }
+
+
+def _formula_items(
+    session: Session,
+    tenant_id: uuid.UUID,
+    formula_id: uuid.UUID,
+) -> list[FormulaItem]:
+    return session.exec(
+        select(FormulaItem)
+        .where(FormulaItem.tenant_id == tenant_id, FormulaItem.formula_id == formula_id)
+        .order_by(FormulaItem.order_index)
+    ).all()
+
+
+def _active_parameter_codes(session: Session, tenant_id: uuid.UUID) -> set[str]:
+    return {
+        parameter.code
+        for parameter in session.exec(
+            select(Parameter).where(
+                Parameter.tenant_id == tenant_id,
+                Parameter.is_active.is_(True),
+            )
+        ).all()
+    }
+
+
+def _formula_export_lines(
+    session: Session,
+    tenant_id: uuid.UUID,
+    items: list[FormulaItem],
+) -> list[FormulaExportLine]:
+    if not items:
+        return []
+    material_ids = [item.raw_material_id for item in items]
+    materials = session.exec(
+        select(RawMaterial).where(
+            RawMaterial.tenant_id == tenant_id,
+            RawMaterial.id.in_(material_ids),
+        )
+    ).all()
+    materials_by_id = {material.id: material for material in materials}
+    lines: list[FormulaExportLine] = []
+    for item in items:
+        material = materials_by_id.get(item.raw_material_id)
+        if material is None:
+            continue
+        core_material = _core_raw_material(session, tenant_id, material)
+        weighted_cost = (
+            None
+            if core_material.price is None
+            else core_material.price * item.percentage / 100
+        )
+        lines.append(
+            FormulaExportLine(
+                order_index=item.order_index,
+                material_code=material.code,
+                material_name=material.name,
+                percentage=item.percentage,
+                price=core_material.price,
+                currency=core_material.currency,
+                weighted_cost=weighted_cost,
+            )
+        )
+    return lines
 
 
 def _calculate(
@@ -864,6 +948,14 @@ def _normalize(value: str) -> str:
 
 def _match_key(value: str | None) -> str:
     return "" if value is None else value.strip().casefold()
+
+
+def _safe_filename(value: str) -> str:
+    normalized = "".join(
+        character if character.isalnum() or character in ("-", "_") else "_"
+        for character in value.strip()
+    ).strip("_")
+    return normalized or "formula"
 
 
 def _cors_origins() -> list[str]:
