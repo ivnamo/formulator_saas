@@ -196,6 +196,72 @@ def test_persisted_formula_requires_active_tenant_parameters() -> None:
     assert warnings[0]["parameter_code"] == "viscosity"
 
 
+def test_formula_calculation_history_is_tenant_scoped() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers_a,
+        json={"code": "active_content", "name": "Active Content", "unit": "% p/p"},
+    ).json()
+    rm_1 = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    rm_2 = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Carrier B", "code": "CAR-B"},
+    ).json()
+    for raw_material, price, parameter_value in [
+        (rm_1, 2.0, 40),
+        (rm_2, 1.0, 10),
+    ]:
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/prices",
+            headers=headers_a,
+            json={"price": price, "currency": "EUR", "unit": "kg"},
+        )
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/parameter-values",
+            headers=headers_a,
+            json={"parameter_id": parameter["id"], "value": parameter_value},
+        )
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers_a,
+        json={
+            "name": "History Formula",
+            "items": [
+                {"raw_material_id": rm_1["id"], "percentage": 25},
+                {"raw_material_id": rm_2["id"], "percentage": 75},
+            ],
+        },
+    ).json()
+
+    first = client.post(f"/api/v1/formulas/{formula['id']}/calculate", headers=headers_a)
+    second = client.post(f"/api/v1/formulas/{formula['id']}/calculate", headers=headers_a)
+    assert first.status_code == 200
+    assert second.status_code == 200
+    history = client.get(
+        f"/api/v1/formulas/{formula['id']}/calculations",
+        headers=headers_a,
+    )
+    forbidden = client.get(
+        f"/api/v1/formulas/{formula['id']}/calculations",
+        headers=headers_b,
+    )
+
+    assert history.status_code == 200
+    assert len(history.json()) == 2
+    assert history.json()[0]["result_json"]["price_total"] == 1.25
+    assert forbidden.status_code == 404
+
+
 def test_unknown_raw_material_in_ad_hoc_calculation_returns_warning() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

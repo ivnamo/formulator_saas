@@ -139,6 +139,14 @@ class CalculationRead(BaseModel):
     warnings: list[dict[str, Any]]
 
 
+class FormulaCalculationHistoryRead(BaseModel):
+    id: uuid.UUID
+    formula_id: uuid.UUID
+    price_total: float | None
+    result_json: dict[str, Any]
+    calculated_at: str
+
+
 class ExcelImportPreviewRowRead(BaseModel):
     row_number: int
     material_code: str | None

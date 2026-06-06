@@ -37,6 +37,7 @@ from .schemas import (
     CalculationRead,
     ExcelImportPreviewRead,
     ExcelImportSaveRequest,
+    FormulaCalculationHistoryRead,
     FormulaCalculateRequest,
     FormulaCreate,
     FormulaRead,
@@ -341,6 +342,26 @@ def register_routes(app: FastAPI) -> None:
         )
         session.commit()
         return result
+
+    @app.get(
+        "/api/v1/formulas/{formula_id}/calculations",
+        response_model=list[FormulaCalculationHistoryRead],
+    )
+    def list_formula_calculations(
+        formula_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        _get_formula(session, tenant.tenant_id, formula_id)
+        calculations = session.exec(
+            select(FormulaCalculationResult)
+            .where(
+                FormulaCalculationResult.tenant_id == tenant.tenant_id,
+                FormulaCalculationResult.formula_id == formula_id,
+            )
+            .order_by(FormulaCalculationResult.calculated_at.desc())
+        ).all()
+        return [_model_dict(calculation) for calculation in calculations]
 
     @app.post("/api/v1/formulas/calculate", response_model=CalculationRead)
     def calculate_ad_hoc_formula(
