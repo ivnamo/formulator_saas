@@ -67,6 +67,45 @@ Output:
 }
 ```
 
+## RequirementParserTool
+
+Convierte una peticion textual en requisitos estructurados.
+
+Input:
+
+```json
+{
+  "tenant_id": "uuid",
+  "text": "Minimiza coste con active content entre 20 y 40",
+  "active_parameter_code": "active_content",
+  "active_parameter_name": "Active content"
+}
+```
+
+Output:
+
+```json
+{
+  "source": "deterministic",
+  "objectives": [{"type": "minimize", "target": "price"}],
+  "parameter_bounds": [
+    {"code": "active_content", "min_value": 20.0, "max_value": 40.0}
+  ],
+  "price_constraint": null,
+  "alternatives": null,
+  "mandatory_raw_materials": [],
+  "excluded_raw_materials": [],
+  "uncertainties": []
+}
+```
+
+Notas:
+
+- El corte actual usa reglas deterministas, no LLM.
+- La tool no genera formula final.
+- La tool no selecciona materias candidatas automaticamente.
+- Una version LLM debera registrar `ai_runs` y `ai_tool_calls`.
+
 ## OptimizerTool
 
 Ejecuta optimización matemática.

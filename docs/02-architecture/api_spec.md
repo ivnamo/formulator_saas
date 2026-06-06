@@ -117,6 +117,51 @@ Response:
 }
 ```
 
+## Requisitos estructurados
+
+```http
+POST /requirements/parse
+```
+
+Convierte una peticion textual en requisitos estructurados usando parser determinista. Requiere tenant context y no llama a modelos externos.
+
+Request:
+
+```json
+{
+  "text": "Minimiza coste con active content entre 20 y 40",
+  "active_parameter_code": "active_content",
+  "active_parameter_name": "Active content"
+}
+```
+
+Response:
+
+```json
+{
+  "tenant_id": "uuid",
+  "user_id": "uuid",
+  "source": "deterministic",
+  "text": "Minimiza coste con active content entre 20 y 40",
+  "objectives": [{"type": "minimize", "target": "price"}],
+  "parameter_bounds": [
+    {
+      "code": "active_content",
+      "min_value": 20.0,
+      "max_value": 40.0,
+      "source_text": "active content entre 20 y 40"
+    }
+  ],
+  "price_constraint": null,
+  "alternatives": null,
+  "mandatory_raw_materials": [],
+  "excluded_raw_materials": [],
+  "uncertainties": []
+}
+```
+
+Alcance actual: objetivo de coste, bounds del parametro activo, precio maximo, numero de alternativas, materias obligatorias/excluidas e incertidumbres. No genera formula ni selecciona materias candidatas.
+
 ## Optimización
 
 ```http

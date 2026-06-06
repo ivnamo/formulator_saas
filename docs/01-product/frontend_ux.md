@@ -80,6 +80,23 @@ El workspace actual incluye un panel de optimizacion dentro del editor de formul
 - cargar el resultado exitoso como borrador editable,
 - guardar explicitamente el resultado optimizado.
 
+## Parser de requisitos
+
+El editor de formula incluye un panel compacto de requisitos antes del optimizador:
+
+- texto libre de peticion,
+- accion `Parse`,
+- fuente del parseo,
+- objetivo detectado,
+- precio maximo si existe,
+- numero de alternativas si existe,
+- bounds del parametro activo,
+- materias obligatorias/excluidas,
+- incertidumbres,
+- accion `Apply bounds` para copiar min/max del parametro activo al optimizador.
+
+El parser actual es determinista y no debe mostrarse como IA generativa. Si el texto es ambiguo, la UI debe conservar incertidumbres visibles y no aplicar constraints automaticamente.
+
 ## Historial de optimizaciones
 
 La biblioteca muestra el historial de `optimization_runs` del tenant activo:
