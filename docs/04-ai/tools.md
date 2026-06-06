@@ -76,11 +76,45 @@ Input:
 ```json
 {
   "tenant_id": "uuid",
+  "objective": "minimize_price",
   "candidate_raw_material_ids": ["uuid"],
-  "objective": {"type": "minimize", "target": "price"},
-  "constraints": []
+  "raw_material_bounds": [
+    {"raw_material_id": "uuid", "min_percentage": 10.0, "max_percentage": 80.0}
+  ],
+  "parameter_bounds": [
+    {"code": "active_content", "min_value": 20.0, "max_value": 40.0}
+  ]
 }
 ```
+
+Output:
+
+```json
+{
+  "status": "success",
+  "objective": "minimize_price",
+  "items": [
+    {"raw_material_id": "uuid", "percentage": 40.0}
+  ],
+  "calculation": {
+    "total_percentage": 100.0,
+    "price_total": 2.2,
+    "currency": "EUR",
+    "parameters": [
+      {"code": "active_content", "value": 20.0, "unit": "% p/p"}
+    ],
+    "warnings": []
+  },
+  "messages": [],
+  "issues": []
+}
+```
+
+Notas:
+
+- La tool debe usar el contrato actual de `POST /api/v1/optimizations/run`.
+- `constraints` queda reservado como lenguaje natural o estructura intermedia del agente, no como payload API.
+- El resultado no se persiste automaticamente; si se guarda como formula, debe conservar `objective=minimize_price`.
 
 ## RAGMaterialDocsTool
 

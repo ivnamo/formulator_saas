@@ -120,23 +120,112 @@ Response:
 ## Optimización
 
 ```http
-POST /optimizer/run
+POST /optimizations/validate
+POST /optimizations/run
+```
+
+Alcance actual: objetivo `minimize_price`, materias candidatas del tenant activo, bounds por materia prima y bounds por parametro tecnico. No persiste jobs ni el payload completo de restricciones.
+
+### Validar optimizacion
+
+```http
+POST /optimizations/validate
 ```
 
 Request:
 
 ```json
 {
+  "objective": "minimize_price",
   "candidate_raw_material_ids": ["uuid"],
-  "objective": {"type": "minimize", "target": "price"},
-  "constraints": [
-    {"type": "parameter_min", "parameter_code": "active_content", "value": 12.0},
-    {"type": "parameter_max", "parameter_code": "viscosity", "value": 1500},
-    {"type": "raw_material_max", "raw_material_id": "uuid", "value": 20.0}
+  "raw_material_bounds": [
+    {"raw_material_id": "uuid", "min_percentage": 10.0, "max_percentage": 80.0}
   ],
-  "options": {"alternatives": 3}
+  "parameter_bounds": [
+    {"code": "active_content", "min_value": 20.0, "max_value": 40.0}
+  ]
 }
 ```
+
+Response:
+
+```json
+{
+  "status": "valid",
+  "objective": "minimize_price",
+  "candidate_count": 2,
+  "raw_material_bound_count": 1,
+  "parameter_bound_count": 1,
+  "issues": []
+}
+```
+
+Si el contrato es incoherente o referencia materias fuera del tenant, `status` es `invalid` y `issues` contiene objetos `{code, target, message}`.
+
+### Ejecutar optimizacion
+
+```http
+POST /optimizations/run
+```
+
+Usa el mismo request que `POST /optimizations/validate`.
+
+Response con solucion:
+
+```json
+{
+  "status": "success",
+  "objective": "minimize_price",
+  "items": [
+    {"raw_material_id": "uuid", "percentage": 40.0}
+  ],
+  "calculation": {
+    "total_percentage": 100.0,
+    "price_total": 2.2,
+    "currency": "EUR",
+    "parameters": [
+      {"code": "active_content", "value": 20.0, "unit": "% p/p"}
+    ],
+    "warnings": []
+  },
+  "messages": [],
+  "issues": []
+}
+```
+
+Response sin solucion factible:
+
+```json
+{
+  "status": "infeasible",
+  "objective": "minimize_price",
+  "items": [],
+  "calculation": null,
+  "messages": ["Raw material maximum percentages total 80%, below 100%."],
+  "issues": []
+}
+```
+
+Response con request invalido:
+
+```json
+{
+  "status": "invalid",
+  "objective": "minimize_price",
+  "items": [],
+  "calculation": null,
+  "messages": [],
+  "issues": [
+    {
+      "code": "candidate_not_found",
+      "target": "uuid",
+      "message": "Candidate raw material was not found for the active tenant"
+    }
+  ]
+}
+```
+
+La UI no guarda automaticamente el resultado. Al pulsar `Save optimized`, el frontend persiste la formula mediante `POST /formulas` con `objective: "minimize_price"`; la biblioteca muestra ese objetivo como `Low cost`.
 
 ## Excel import
 
