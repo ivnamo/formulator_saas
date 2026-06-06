@@ -10,15 +10,81 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  Save,
   Settings2,
+  Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-type ApiState = {
-  tenantId?: string;
-  parameterId?: string;
-  rawMaterials: Array<{ id: string; name: string; code: string; percentage: number }>;
-  formulaId?: string;
+type Tenant = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type Parameter = {
+  id: string;
+  code: string;
+  name: string;
+  unit: string;
+};
+
+type RawMaterial = {
+  id: string;
+  code: string | null;
+  name: string;
+  price: number | null;
+  parameterValue: number | null;
+};
+
+type FormulaLine = {
+  localId: string;
+  rawMaterialId: string;
+  percentage: number;
+};
+
+type WorkspaceState = {
+  tenant: Tenant | null;
+  parameter: Parameter | null;
+  rawMaterials: RawMaterial[];
+  formulaId: string | null;
+  formulaName: string;
+  formulaLines: FormulaLine[];
+};
+
+type TenantRead = Tenant & {
+  status: string;
+};
+
+type ParameterRead = Parameter & {
+  tenant_id: string;
+  is_active: boolean;
+};
+
+type RawMaterialRead = {
+  id: string;
+  tenant_id: string;
+  code: string | null;
+  name: string;
+  normalized_name: string;
+  is_active: boolean;
+  is_obsolete: boolean;
+};
+
+type FormulaRead = {
+  id: string;
+  tenant_id: string;
+  name: string;
+  version: number;
+  status: string;
+  objective: string | null;
+  total_price: number | null;
+  currency: string;
+  items: Array<{
+    raw_material_id: string;
+    percentage: number;
+    order_index: number;
+  }>;
 };
 
 type CalculationResult = {
@@ -26,145 +92,274 @@ type CalculationResult = {
   price_total: number | null;
   currency: string;
   parameters: Array<{ code: string; value: number; unit: string | null }>;
-  warnings: Array<{ code: string; message: string }>;
+  warnings: Array<{
+    code: string;
+    message: string;
+    raw_material_id?: string | null;
+    parameter_code?: string | null;
+  }>;
+};
+
+type Status = "idle" | "working" | "error";
+
+type MaterialForm = {
+  code: string;
+  name: string;
+  price: string;
+  parameterValue: string;
 };
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const userId = "10000000-0000-0000-0000-000000000001";
+const emptyWorkspace: WorkspaceState = {
+  tenant: null,
+  parameter: null,
+  rawMaterials: [],
+  formulaId: null,
+  formulaName: "Manual Formula",
+  formulaLines: [],
+};
 
 export default function Home() {
-  const [apiState, setApiState] = useState<ApiState>({ rawMaterials: [] });
+  const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
+  const [workspaceName, setWorkspaceName] = useState("Workspace Lab");
+  const [parameterForm, setParameterForm] = useState({
+    code: "active_content",
+    name: "Active content",
+    unit: "% p/p",
+  });
+  const [materialForm, setMaterialForm] = useState<MaterialForm>({
+    code: "",
+    name: "",
+    price: "",
+    parameterValue: "",
+  });
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [status, setStatus] = useState<"idle" | "seeding" | "calculating" | "error">("idle");
+  const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("Ready");
 
   const headers = useMemo(
     () => ({
       "Content-Type": "application/json",
       "X-User-Id": userId,
-      ...(apiState.tenantId ? { "X-Tenant-Id": apiState.tenantId } : {}),
+      ...(workspace.tenant ? { "X-Tenant-Id": workspace.tenant.id } : {}),
     }),
-    [apiState.tenantId],
+    [workspace.tenant],
   );
 
-  async function seedWorkspace() {
-    setStatus("seeding");
-    setMessage("Creating tenant workspace");
-    setResult(null);
+  const rawMaterialsById = useMemo(
+    () => new Map(workspace.rawMaterials.map((material) => [material.id, material])),
+    [workspace.rawMaterials],
+  );
+  const totalPercentage = workspace.formulaLines.reduce(
+    (sum, line) => sum + line.percentage,
+    0,
+  );
+  const isBusy = status === "working";
+  const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
+  const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
 
-    try {
-      const tenantSlug = `demo-${Date.now()}`;
-      const tenant = await request<{ id: string }>("/api/v1/tenants", {
+  async function createWorkspace() {
+    await runAction("Creating workspace", async () => {
+      const name = workspaceName.trim() || "Workspace Lab";
+      const tenant = await request<TenantRead>("/api/v1/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-User-Id": userId },
-        body: JSON.stringify({ name: "Demo Lab", slug: tenantSlug }),
-      });
-      const tenantHeaders = {
-        "Content-Type": "application/json",
-        "X-User-Id": userId,
-        "X-Tenant-Id": tenant.id,
-      };
-      const parameter = await request<{ id: string }>("/api/v1/parameters", {
-        method: "POST",
-        headers: tenantHeaders,
         body: JSON.stringify({
-          code: "active_content",
-          name: "Active content",
-          unit: "% p/p",
+          name,
+          slug: `${slugify(name)}-${Date.now()}`,
         }),
       });
-      const active = await createRawMaterial(tenantHeaders, {
-        name: "Active A",
-        code: "ACT-A",
-        price: 2,
-        parameterId: parameter.id,
-        parameterValue: 40,
+      setWorkspace({
+        ...emptyWorkspace,
+        tenant,
+        formulaName: `${name} Formula`,
       });
-      const carrier = await createRawMaterial(tenantHeaders, {
-        name: "Carrier B",
-        code: "CAR-B",
-        price: 1,
-        parameterId: parameter.id,
-        parameterValue: 10,
-      });
-      const rawMaterials = [
-        { ...active, percentage: 25 },
-        { ...carrier, percentage: 75 },
-      ];
-      const formula = await request<{ id: string }>("/api/v1/formulas", {
-        method: "POST",
-        headers: tenantHeaders,
-        body: JSON.stringify({
-          name: "Foundation Formula",
-          items: rawMaterials.map((material) => ({
-            raw_material_id: material.id,
-            percentage: material.percentage,
-          })),
-        }),
-      });
-
-      setApiState({
-        tenantId: tenant.id,
-        parameterId: parameter.id,
-        rawMaterials,
-        formulaId: formula.id,
-      });
-      setStatus("idle");
-      setMessage("Workspace seeded");
-    } catch (error) {
-      setStatus("error");
-      setMessage(error instanceof Error ? error.message : "Could not seed workspace");
-    }
+      setResult(null);
+      setMessage("Workspace ready");
+    });
   }
 
-  async function calculate() {
-    if (!apiState.tenantId || !apiState.formulaId) {
-      setStatus("error");
-      setMessage("Seed a workspace first");
+  async function createParameter() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (!parameterForm.code.trim() || !parameterForm.name.trim() || !parameterForm.unit.trim()) {
+      setError("Parameter code, name and unit are required");
       return;
     }
 
-    setStatus("calculating");
-    setMessage("Calculating in backend");
-
-    try {
-      await request(`/api/v1/formulas/${apiState.formulaId}`, {
-        method: "PATCH",
+    await runAction("Creating parameter", async () => {
+      const parameter = await request<ParameterRead>("/api/v1/parameters", {
+        method: "POST",
         headers,
         body: JSON.stringify({
-          items: apiState.rawMaterials.map((material) => ({
-            raw_material_id: material.id,
-            percentage: material.percentage,
-          })),
+          code: normalizeCode(parameterForm.code),
+          name: parameterForm.name.trim(),
+          unit: parameterForm.unit.trim(),
         }),
       });
+      setWorkspace((current) => ({
+        ...current,
+        parameter,
+      }));
+      setResult(null);
+      setMessage("Parameter ready");
+    });
+  }
+
+  async function createMaterial() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (!materialForm.name.trim()) {
+      setError("Raw material name is required");
+      return;
+    }
+
+    await runAction("Creating raw material", async () => {
+      const material = await request<RawMaterialRead>("/api/v1/raw-materials", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          code: materialForm.code.trim() || null,
+          name: materialForm.name.trim(),
+        }),
+      });
+      const price = parseOptionalNumber(materialForm.price);
+      const parameterValue = parseOptionalNumber(materialForm.parameterValue);
+
+      if (price !== null) {
+        await request<Record<string, unknown>>(`/api/v1/raw-materials/${material.id}/prices`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ price, currency: "EUR", unit: "kg" }),
+        });
+      }
+      if (workspace.parameter && parameterValue !== null) {
+        await request<Record<string, unknown>>(
+          `/api/v1/raw-materials/${material.id}/parameter-values`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              parameter_id: workspace.parameter.id,
+              value: parameterValue,
+            }),
+          },
+        );
+      }
+
+      setWorkspace((current) => ({
+        ...current,
+        rawMaterials: [
+          ...current.rawMaterials,
+          {
+            id: material.id,
+            code: material.code,
+            name: material.name,
+            price,
+            parameterValue: workspace.parameter ? parameterValue : null,
+          },
+        ],
+      }));
+      setMaterialForm({ code: "", name: "", price: "", parameterValue: "" });
+      setResult(null);
+      setMessage("Raw material ready");
+    });
+  }
+
+  function addFormulaLine(rawMaterialId: string) {
+    setWorkspace((current) => ({
+      ...current,
+      formulaLines: [
+        ...current.formulaLines,
+        { localId: makeLocalId(), rawMaterialId, percentage: 0 },
+      ],
+    }));
+    setResult(null);
+  }
+
+  function removeFormulaLine(localId: string) {
+    setWorkspace((current) => ({
+      ...current,
+      formulaLines: current.formulaLines.filter((line) => line.localId !== localId),
+    }));
+    setResult(null);
+  }
+
+  function updateFormulaLine(localId: string, percentage: number) {
+    setWorkspace((current) => ({
+      ...current,
+      formulaLines: current.formulaLines.map((line) =>
+        line.localId === localId ? { ...line, percentage } : line,
+      ),
+    }));
+    setResult(null);
+  }
+
+  async function calculateFormula() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (!workspace.formulaLines.length) {
+      setError("Add at least one formula line");
+      return;
+    }
+
+    await runAction("Calculating formula", async () => {
+      const items = workspace.formulaLines.map((line, index) => ({
+        raw_material_id: line.rawMaterialId,
+        percentage: line.percentage,
+        order_index: index,
+      }));
+      const payload = {
+        name: workspace.formulaName.trim() || "Manual Formula",
+        items,
+      };
+      const formula = workspace.formulaId
+        ? await request<FormulaRead>(`/api/v1/formulas/${workspace.formulaId}`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify(payload),
+          })
+        : await request<FormulaRead>("/api/v1/formulas", {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+          });
       const calculation = await request<CalculationResult>(
-        `/api/v1/formulas/${apiState.formulaId}/calculate`,
+        `/api/v1/formulas/${formula.id}/calculate`,
         { method: "POST", headers },
       );
+      setWorkspace((current) => ({
+        ...current,
+        formulaId: formula.id,
+        formulaName: formula.name,
+      }));
       setResult(calculation);
-      setStatus("idle");
       setMessage("Calculation complete");
+    });
+  }
+
+  async function runAction(label: string, action: () => Promise<void>) {
+    setStatus("working");
+    setMessage(label);
+    try {
+      await action();
+      setStatus("idle");
     } catch (error) {
-      setStatus("error");
-      setMessage(error instanceof Error ? error.message : "Calculation failed");
+      setError(error instanceof Error ? error.message : "Action failed");
     }
   }
 
-  function updatePercentage(id: string, percentage: number) {
-    setApiState((current) => ({
-      ...current,
-      rawMaterials: current.rawMaterials.map((material) =>
-        material.id === id ? { ...material, percentage } : material,
-      ),
-    }));
+  function setError(nextMessage: string) {
+    setStatus("error");
+    setMessage(nextMessage);
   }
-
-  const isBusy = status === "seeding" || status === "calculating";
-  const totalPercentage = apiState.rawMaterials.reduce(
-    (sum, material) => sum + material.percentage,
-    0,
-  );
 
   return (
     <main className="shell">
@@ -177,11 +372,11 @@ export default function Home() {
           </div>
         </div>
         <nav className="nav">
-          <a className="navItem active" href="#formula">
-            <FlaskConical size={18} /> Formula
+          <a className="navItem active" href="#workspace">
+            <FlaskConical size={18} /> Workspace
           </a>
           <a className="navItem" href="#materials">
-            <Database size={18} /> Raw materials
+            <Database size={18} /> Materials
           </a>
           <a className="navItem" href="#parameters">
             <Settings2 size={18} /> Parameters
@@ -192,19 +387,19 @@ export default function Home() {
         </nav>
       </aside>
 
-      <section className="workspace">
+      <section className="workspace" id="workspace">
         <header className="topbar">
           <div>
-            <h1>Foundation Formula</h1>
-            <p>{apiState.tenantId ? `Tenant ${apiState.tenantId}` : "No tenant seeded"}</p>
+            <h1>{workspace.formulaName}</h1>
+            <p>
+              {workspace.tenant
+                ? `${workspace.tenant.name} - ${workspace.tenant.id}`
+                : "No workspace active"}
+            </p>
           </div>
           <div className="actions">
-            <button className="secondaryButton" type="button" onClick={seedWorkspace} disabled={isBusy}>
-              {status === "seeding" ? <Loader2 className="spin" size={17} /> : <Plus size={17} />}
-              Seed demo
-            </button>
-            <button className="primaryButton" type="button" onClick={calculate} disabled={isBusy}>
-              {status === "calculating" ? <Loader2 className="spin" size={17} /> : <Calculator size={17} />}
+            <button className="primaryButton" type="button" onClick={calculateFormula} disabled={!canCalculate}>
+              {isBusy ? <Loader2 className="spin" size={17} /> : <Calculator size={17} />}
               Calculate
             </button>
           </div>
@@ -217,35 +412,153 @@ export default function Home() {
         </div>
 
         <div className="grid">
-          <section id="materials" className="panel">
+          <section className="panel setupPanel">
+            <div className="panelHeader">
+              <h2>Workspace</h2>
+              <span>{workspace.tenant ? "Active" : "New"}</span>
+            </div>
+            <div className="formGrid">
+              <label>
+                <span>Name</span>
+                <input
+                  value={workspaceName}
+                  onChange={(event) => setWorkspaceName(event.target.value)}
+                  disabled={isBusy}
+                />
+              </label>
+              <button className="secondaryButton" type="button" onClick={createWorkspace} disabled={isBusy}>
+                <Plus size={17} />
+                Create workspace
+              </button>
+            </div>
+          </section>
+
+          <section id="parameters" className="panel setupPanel">
+            <div className="panelHeader">
+              <h2>Parameter</h2>
+              <span>{workspace.parameter ? workspace.parameter.code : "None"}</span>
+            </div>
+            <div className="formGrid threeColumns">
+              <label>
+                <span>Code</span>
+                <input
+                  value={parameterForm.code}
+                  onChange={(event) =>
+                    setParameterForm((current) => ({ ...current, code: event.target.value }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Name</span>
+                <input
+                  value={parameterForm.name}
+                  onChange={(event) =>
+                    setParameterForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Unit</span>
+                <input
+                  value={parameterForm.unit}
+                  onChange={(event) =>
+                    setParameterForm((current) => ({ ...current, unit: event.target.value }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <button className="secondaryButton" type="button" onClick={createParameter} disabled={!canEditTenantData}>
+                <Save size={17} />
+                Save parameter
+              </button>
+            </div>
+          </section>
+
+          <section id="materials" className="panel materialPanel">
             <div className="panelHeader">
               <h2>Raw materials</h2>
-              <span>{apiState.rawMaterials.length || 0} rows</span>
+              <span>{workspace.rawMaterials.length} rows</span>
             </div>
-            <div className="table">
-              <div className="tableHead">
+            <div className="materialForm">
+              <label>
+                <span>Code</span>
+                <input
+                  value={materialForm.code}
+                  onChange={(event) =>
+                    setMaterialForm((current) => ({ ...current, code: event.target.value }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Name</span>
+                <input
+                  value={materialForm.name}
+                  onChange={(event) =>
+                    setMaterialForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Price EUR/kg</span>
+                <input
+                  inputMode="decimal"
+                  value={materialForm.price}
+                  onChange={(event) =>
+                    setMaterialForm((current) => ({ ...current, price: event.target.value }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>{workspace.parameter ? workspace.parameter.name : "Value"}</span>
+                <input
+                  inputMode="decimal"
+                  value={materialForm.parameterValue}
+                  onChange={(event) =>
+                    setMaterialForm((current) => ({
+                      ...current,
+                      parameterValue: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData || !workspace.parameter}
+                />
+              </label>
+              <button className="secondaryButton" type="button" onClick={createMaterial} disabled={!canEditTenantData}>
+                <Plus size={17} />
+                Add material
+              </button>
+            </div>
+            <div className="materialTable">
+              <div className="materialHead">
                 <span>Code</span>
                 <span>Name</span>
-                <span>Share</span>
+                <span>Price</span>
+                <span>{workspace.parameter?.code ?? "Parameter"}</span>
+                <span>Formula</span>
               </div>
-              {apiState.rawMaterials.length === 0 ? (
-                <div className="empty">Seed demo data to create the first materials.</div>
+              {workspace.rawMaterials.length === 0 ? (
+                <div className="empty">No raw materials yet.</div>
               ) : (
-                apiState.rawMaterials.map((material) => (
-                  <div className="tableRow" key={material.id}>
-                    <code>{material.code}</code>
+                workspace.rawMaterials.map((material) => (
+                  <div className="materialRow" key={material.id}>
+                    <code>{material.code || "-"}</code>
                     <span>{material.name}</span>
-                    <input
-                      aria-label={`${material.name} percentage`}
-                      type="number"
-                      value={material.percentage}
-                      min={0}
-                      max={100}
-                      step={0.1}
-                      onChange={(event) =>
-                        updatePercentage(material.id, Number(event.target.value))
-                      }
-                    />
+                    <span>{material.price === null ? "-" : material.price.toFixed(2)}</span>
+                    <span>{material.parameterValue === null ? "-" : material.parameterValue.toFixed(2)}</span>
+                    <button
+                      className="iconButton"
+                      type="button"
+                      onClick={() => addFormulaLine(material.id)}
+                      disabled={isBusy}
+                      title="Add to formula"
+                      aria-label={`Add ${material.name} to formula`}
+                    >
+                      <Plus size={16} />
+                    </button>
                   </div>
                 ))
               )}
@@ -255,10 +568,20 @@ export default function Home() {
           <section id="formula" className="panel formulaPanel">
             <div className="panelHeader">
               <h2>Formula</h2>
-              <span>{totalPercentage}%</span>
+              <span>{totalPercentage.toFixed(1)}%</span>
             </div>
+            <label className="fullWidthLabel">
+              <span>Name</span>
+              <input
+                value={workspace.formulaName}
+                onChange={(event) =>
+                  setWorkspace((current) => ({ ...current, formulaName: event.target.value }))
+                }
+                disabled={isBusy}
+              />
+            </label>
             <div className="formulaMeter" aria-label="Formula percentage total">
-              <div style={{ width: `${Math.min(totalPercentage, 100)}%` }} />
+              <div style={{ width: `${Math.min(Math.max(totalPercentage, 0), 100)}%` }} />
             </div>
             <div className="formulaSummary">
               <div>
@@ -274,19 +597,41 @@ export default function Home() {
                 <strong>Backend</strong>
               </div>
             </div>
-          </section>
-
-          <section id="parameters" className="panel">
-            <div className="panelHeader">
-              <h2>Parameters</h2>
-              <span>Tenant scoped</span>
-            </div>
-            <div className="parameterList">
-              <div>
-                <Beaker size={18} />
-                <span>Active content</span>
-                <code>% p/p</code>
-              </div>
+            <div className="formulaLines">
+              {workspace.formulaLines.length === 0 ? (
+                <div className="empty">Add materials to build a formula.</div>
+              ) : (
+                workspace.formulaLines.map((line) => {
+                  const material = rawMaterialsById.get(line.rawMaterialId);
+                  return (
+                    <div className="formulaLine" key={line.localId}>
+                      <span>{material?.name ?? "Unknown material"}</span>
+                      <input
+                        aria-label={`${material?.name ?? "Material"} percentage`}
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        value={line.percentage}
+                        onChange={(event) =>
+                          updateFormulaLine(line.localId, Number(event.target.value))
+                        }
+                        disabled={isBusy}
+                      />
+                      <button
+                        className="iconButton danger"
+                        type="button"
+                        onClick={() => removeFormulaLine(line.localId)}
+                        disabled={isBusy}
+                        title="Remove line"
+                        aria-label={`Remove ${material?.name ?? "material"} from formula`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </section>
 
@@ -305,22 +650,37 @@ export default function Home() {
                 </strong>
               </div>
               <div>
-                <span>Active content</span>
-                <strong>
-                  {result?.parameters[0]
-                    ? `${result.parameters[0].value.toFixed(2)} ${result.parameters[0].unit ?? ""}`
-                    : "-"}
-                </strong>
+                <span>Total percentage</span>
+                <strong>{result ? `${result.total_percentage.toFixed(1)}%` : "-"}</strong>
               </div>
               <div>
                 <span>Warnings</span>
                 <strong>{result?.warnings.length ?? 0}</strong>
               </div>
             </div>
+            <div className="parameterList">
+              {result?.parameters.length ? (
+                result.parameters.map((parameter) => (
+                  <div key={parameter.code}>
+                    <Beaker size={18} />
+                    <span>{parameter.code}</span>
+                    <code>
+                      {parameter.value.toFixed(2)} {parameter.unit ?? ""}
+                    </code>
+                  </div>
+                ))
+              ) : (
+                <div>
+                  <Beaker size={18} />
+                  <span>No calculated parameters</span>
+                  <code>-</code>
+                </div>
+              )}
+            </div>
             <div className="warningList">
               {result?.warnings.length ? (
                 result.warnings.map((warning) => (
-                  <div key={`${warning.code}-${warning.message}`}>
+                  <div key={`${warning.code}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}`}>
                     <AlertTriangle size={16} />
                     <span>{warning.message}</span>
                   </div>
@@ -336,40 +696,6 @@ export default function Home() {
   );
 }
 
-async function createRawMaterial(
-  headers: HeadersInit,
-  payload: {
-    name: string;
-    code: string;
-    price: number;
-    parameterId: string;
-    parameterValue: number;
-  },
-) {
-  const material = await request<{ id: string; name: string; code: string }>(
-    "/api/v1/raw-materials",
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ name: payload.name, code: payload.code }),
-    },
-  );
-  await request(`/api/v1/raw-materials/${material.id}/prices`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ price: payload.price, currency: "EUR", unit: "kg" }),
-  });
-  await request(`/api/v1/raw-materials/${material.id}/parameter-values`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      parameter_id: payload.parameterId,
-      value: payload.parameterValue,
-    }),
-  });
-  return material;
-}
-
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, init);
   if (!response.ok) {
@@ -377,4 +703,26 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     throw new Error(`API ${response.status}: ${detail}`);
   }
   return response.json() as Promise<T>;
+}
+
+function parseOptionalNumber(value: string): number | null {
+  if (!value.trim()) {
+    return null;
+  }
+  const normalized = Number(value.replace(",", "."));
+  return Number.isFinite(normalized) ? normalized : null;
+}
+
+function normalizeCode(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+function slugify(value: string): string {
+  return normalizeCode(value).replace(/_/g, "-").replace(/[^a-z0-9-]/g, "");
+}
+
+function makeLocalId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`;
 }
