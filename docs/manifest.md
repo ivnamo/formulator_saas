@@ -28,6 +28,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_015_formula_comparison.md`](00-meta/meta_015_formula_comparison.md)
 - [`00-meta/meta_016_optimization_constraints.md`](00-meta/meta_016_optimization_constraints.md)
 - [`00-meta/meta_017_linear_optimizer_mvp.md`](00-meta/meta_017_linear_optimizer_mvp.md)
+- [`00-meta/meta_018_optimizer_ui_panel.md`](00-meta/meta_018_optimizer_ui_panel.md)
 
 ## Producto
 
