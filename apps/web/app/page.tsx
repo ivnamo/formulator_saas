@@ -54,6 +54,7 @@ import {
   type WorkspaceState,
 } from "./workspace-model";
 import {
+  buildConstraintEvaluations,
   buildDraftComparison,
   buildSavedFormulaComparison,
   type DraftReviewState,
@@ -89,6 +90,11 @@ export default function Home() {
     baselineId: "",
     candidateId: "",
   });
+  const [comparisonConstraintForm, setComparisonConstraintForm] = useState({
+    maxPrice: "",
+    parameterCode: "active_content",
+    minParameterValue: "",
+  });
   const [savedFormulaComparison, setSavedFormulaComparison] =
     useState<SavedFormulaComparison | null>(null);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
@@ -122,6 +128,18 @@ export default function Home() {
   const draftComparison = useMemo(
     () => buildDraftComparison(draftReview, workspace.formulaLines, rawMaterialsById),
     [draftReview, rawMaterialsById, workspace.formulaLines],
+  );
+  const comparisonConstraints = useMemo(
+    () => ({
+      maxPrice: parseOptionalNumber(comparisonConstraintForm.maxPrice),
+      parameterCode: normalizeCode(comparisonConstraintForm.parameterCode),
+      minParameterValue: parseOptionalNumber(comparisonConstraintForm.minParameterValue),
+    }),
+    [comparisonConstraintForm],
+  );
+  const comparisonConstraintEvaluations = useMemo(
+    () => buildConstraintEvaluations(savedFormulaComparison, comparisonConstraints),
+    [comparisonConstraints, savedFormulaComparison],
   );
   const totalPercentage = workspace.formulaLines.reduce(
     (sum, line) => sum + line.percentage,
@@ -179,6 +197,11 @@ export default function Home() {
       setAgentPlan(null);
       setDraftReview(null);
       setFormulaCompareSelection({ baselineId: "", candidateId: "" });
+      setComparisonConstraintForm({
+        maxPrice: "",
+        parameterCode: "active_content",
+        minParameterValue: "",
+      });
       setSavedFormulaComparison(null);
       setAiRuns([]);
       resetImportState();
@@ -209,6 +232,10 @@ export default function Home() {
       setWorkspace((current) => ({
         ...current,
         parameter,
+      }));
+      setComparisonConstraintForm((current) => ({
+        ...current,
+        parameterCode: parameter.code,
       }));
       setResult(null);
       setMessage("Parameter ready");
@@ -1287,6 +1314,49 @@ export default function Home() {
                 Compare formulas
               </button>
             </div>
+            <div className="comparisonConstraintBar">
+              <label>
+                <span>Max price EUR/kg</span>
+                <input
+                  inputMode="decimal"
+                  value={comparisonConstraintForm.maxPrice}
+                  onChange={(event) =>
+                    setComparisonConstraintForm((current) => ({
+                      ...current,
+                      maxPrice: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Parameter code</span>
+                <input
+                  value={comparisonConstraintForm.parameterCode}
+                  onChange={(event) =>
+                    setComparisonConstraintForm((current) => ({
+                      ...current,
+                      parameterCode: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Parameter min</span>
+                <input
+                  inputMode="decimal"
+                  value={comparisonConstraintForm.minParameterValue}
+                  onChange={(event) =>
+                    setComparisonConstraintForm((current) => ({
+                      ...current,
+                      minParameterValue: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+            </div>
             <div className="libraryGrid">
               <div className="formulaList">
                 <div className="formulaListHead">
@@ -1394,6 +1464,29 @@ export default function Home() {
                     </code>
                   </div>
                 </div>
+                {comparisonConstraintEvaluations.length ? (
+                  <div className="constraintEvaluationList">
+                    <strong className="comparisonTitle">Constraints</strong>
+                    {comparisonConstraintEvaluations.map((evaluation) => (
+                      <div key={evaluation.key}>
+                        <span>{evaluation.label}</span>
+                        <strong>{evaluation.rule}</strong>
+                        <span>
+                          {formatOptionalValue(evaluation.baselineValue, evaluation.unit)}
+                          <code data-state={evaluation.baselineStatus}>
+                            {evaluation.baselineStatus}
+                          </code>
+                        </span>
+                        <span>
+                          {formatOptionalValue(evaluation.candidateValue, evaluation.unit)}
+                          <code data-state={evaluation.candidateStatus}>
+                            {evaluation.candidateStatus}
+                          </code>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="comparisonColumns">
                   <div className="comparisonList">
                     <div className="comparisonTitle">Parameters</div>

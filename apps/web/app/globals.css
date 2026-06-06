@@ -803,6 +803,14 @@ label span {
   align-items: start;
 }
 
+.comparisonConstraintBar {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(160px, 1fr) minmax(140px, 0.7fr);
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
 .formulaList,
 .historyList {
   display: grid;
@@ -933,6 +941,57 @@ label span {
 .comparisonList div {
   grid-template-columns: minmax(0, 1fr) minmax(120px, auto) 74px;
   align-items: center;
+}
+
+.constraintEvaluationList {
+  display: grid;
+  gap: 4px;
+}
+
+.constraintEvaluationList div {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.7fr) minmax(100px, 0.8fr) minmax(120px, 1fr) minmax(120px, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  min-height: 38px;
+  border-top: 1px solid var(--border);
+}
+
+.constraintEvaluationList span,
+.constraintEvaluationList strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.constraintEvaluationList > div > span:first-child {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.constraintEvaluationList span:not(:first-child) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.constraintEvaluationList code {
+  font-weight: 800;
+}
+
+.constraintEvaluationList code[data-state="passed"] {
+  color: var(--teal-dark);
+}
+
+.constraintEvaluationList code[data-state="failed"] {
+  color: var(--danger);
+}
+
+.constraintEvaluationList code[data-state="missing"] {
+  color: var(--amber);
 }
 
 .importRow [data-state="matched_exact"] {
@@ -1192,6 +1251,7 @@ label span {
   .materialForm,
   .importActions,
   .libraryActions,
+  .comparisonConstraintBar,
   .aiControls {
     grid-template-columns: 1fr;
   }
@@ -1272,6 +1332,7 @@ label span {
   .comparisonStats,
   .comparisonColumns,
   .comparisonList div,
+  .constraintEvaluationList div,
   .draftComparisonStats,
   .draftLineChanges div,
   .agentFormulaStats,

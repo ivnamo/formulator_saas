@@ -51,6 +51,25 @@ export type SavedFormulaComparison = {
   parameterChanges: SavedFormulaParameterComparison[];
 };
 
+export type SavedFormulaComparisonConstraints = {
+  maxPrice: number | null;
+  parameterCode: string;
+  minParameterValue: number | null;
+};
+
+export type ConstraintStatus = "passed" | "failed" | "missing";
+
+export type SavedFormulaConstraintEvaluation = {
+  key: string;
+  label: string;
+  rule: string;
+  unit: string | null;
+  baselineValue: number | null;
+  candidateValue: number | null;
+  baselineStatus: ConstraintStatus;
+  candidateStatus: ConstraintStatus;
+};
+
 function addLineTotal(
   totals: Map<string, { name: string; percentage: number }>,
   rawMaterialId: string,
@@ -214,4 +233,72 @@ export function buildSavedFormulaComparison(
     lineChanges,
     parameterChanges,
   };
+}
+
+function evaluateMaximum(value: number | null, limit: number): ConstraintStatus {
+  if (value === null) {
+    return "missing";
+  }
+  return value <= limit ? "passed" : "failed";
+}
+
+function evaluateMinimum(value: number | null, limit: number): ConstraintStatus {
+  if (value === null) {
+    return "missing";
+  }
+  return value >= limit ? "passed" : "failed";
+}
+
+function getParameterValue(result: CalculationResult, code: string) {
+  return result.parameters.find((parameter) => parameter.code === code) ?? null;
+}
+
+export function buildConstraintEvaluations(
+  comparison: SavedFormulaComparison | null,
+  constraints: SavedFormulaComparisonConstraints,
+): SavedFormulaConstraintEvaluation[] {
+  if (!comparison) {
+    return [];
+  }
+
+  const evaluations: SavedFormulaConstraintEvaluation[] = [];
+  if (constraints.maxPrice !== null) {
+    evaluations.push({
+      key: "price_total",
+      label: "Price",
+      rule: `<= ${constraints.maxPrice.toFixed(2)} ${comparison.candidateResult.currency}/kg`,
+      unit: `${comparison.candidateResult.currency}/kg`,
+      baselineValue: comparison.baselineResult.price_total,
+      candidateValue: comparison.candidateResult.price_total,
+      baselineStatus: evaluateMaximum(comparison.baselineResult.price_total, constraints.maxPrice),
+      candidateStatus: evaluateMaximum(comparison.candidateResult.price_total, constraints.maxPrice),
+    });
+  }
+
+  const parameterCode = constraints.parameterCode.trim();
+  if (parameterCode && constraints.minParameterValue !== null) {
+    const baselineParameter = getParameterValue(comparison.baselineResult, parameterCode);
+    const candidateParameter = getParameterValue(comparison.candidateResult, parameterCode);
+    const parameterUnit = candidateParameter?.unit ?? baselineParameter?.unit ?? null;
+    evaluations.push({
+      key: `parameter:${parameterCode}`,
+      label: parameterCode,
+      rule: `>= ${constraints.minParameterValue.toFixed(2)}${
+        parameterUnit ? ` ${parameterUnit}` : ""
+      }`,
+      unit: parameterUnit,
+      baselineValue: baselineParameter?.value ?? null,
+      candidateValue: candidateParameter?.value ?? null,
+      baselineStatus: evaluateMinimum(
+        baselineParameter?.value ?? null,
+        constraints.minParameterValue,
+      ),
+      candidateStatus: evaluateMinimum(
+        candidateParameter?.value ?? null,
+        constraints.minParameterValue,
+      ),
+    });
+  }
+
+  return evaluations;
 }
