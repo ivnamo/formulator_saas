@@ -34,6 +34,7 @@ import {
   withResolvedImportRow,
   type CalculationResult,
   type AiRun,
+  type AgentCandidate,
   type AgentPlan,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
@@ -654,6 +655,25 @@ export default function Home() {
     return `$${run.cost_estimate_usd.toFixed(6)}`;
   }
 
+  function formatCandidatePrice(candidate: AgentCandidate): string {
+    return candidate.price_eur_per_kg === null
+      ? "-"
+      : `${candidate.price_eur_per_kg.toFixed(2)} EUR/kg`;
+  }
+
+  function formatCandidateParameters(candidate: AgentCandidate): string {
+    const values = Object.entries(candidate.parameters);
+    if (!values.length) {
+      return "-";
+    }
+    return values
+      .map(([code, parameter]) => {
+        const unit = parameter.unit ? ` ${parameter.unit}` : "";
+        return `${code}: ${parameter.value.toFixed(2)}${unit}`;
+      })
+      .join(", ");
+  }
+
   function resetImportState() {
     setImportPreview(null);
     setImportFile(null);
@@ -1249,15 +1269,64 @@ export default function Home() {
                 <span>{agentPlan ? agentPlan.orchestrator : "Pending"}</span>
               </div>
               {agentPlan ? (
-                <div className="agentPlanSteps">
-                  {agentPlan.steps.map((step) => (
-                    <div className="agentPlanStep" key={`${step.tool}-${step.status}`}>
-                      <code>{step.status}</code>
-                      <strong>{step.tool}</strong>
-                      <span>{step.summary}</span>
+                <>
+                  <div className="agentPlanSteps">
+                    {agentPlan.steps.map((step) => (
+                      <div className="agentPlanStep" key={`${step.tool}-${step.status}`}>
+                        <code>{step.status}</code>
+                        <strong>{step.tool}</strong>
+                        <span>{step.summary}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {agentPlan.candidate_research ? (
+                    <div className="agentToolSummary">
+                      <div>
+                        <span>Candidates</span>
+                        <strong>
+                          {agentPlan.candidate_research.candidate_count} /{" "}
+                          {agentPlan.candidate_research.total_available}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>Optimization</span>
+                        <strong>{agentPlan.optimization_plan?.status ?? "-"}</strong>
+                      </div>
+                      <div>
+                        <span>Objective</span>
+                        <strong>
+                          {agentPlan.optimization_plan
+                            ? `${agentPlan.optimization_plan.objective.type} ${agentPlan.optimization_plan.objective.target}`
+                            : "-"}
+                        </strong>
+                      </div>
+                      <div className="wide">
+                        <span>Blocks</span>
+                        <strong>
+                          {agentPlan.optimization_plan?.blocking_reasons.join(", ") || "-"}
+                        </strong>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  ) : null}
+                  {agentPlan.candidate_research?.candidates.length ? (
+                    <div className="agentCandidateList">
+                      <div className="agentCandidateHead">
+                        <span>Score</span>
+                        <span>Material</span>
+                        <span>Price</span>
+                        <span>Parameters</span>
+                      </div>
+                      {agentPlan.candidate_research.candidates.map((candidate) => (
+                        <div className="agentCandidateRow" key={candidate.raw_material_id}>
+                          <code>{Math.round(candidate.score * 100)}%</code>
+                          <strong>{candidate.name}</strong>
+                          <span>{formatCandidatePrice(candidate)}</span>
+                          <span>{formatCandidateParameters(candidate)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <div className="empty">No supervisor plan.</div>
               )}

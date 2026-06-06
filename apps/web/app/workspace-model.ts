@@ -209,11 +209,42 @@ export type AgentPlanStep = {
   summary: string;
 };
 
+export type AgentCandidate = {
+  raw_material_id: string;
+  code: string | null;
+  name: string;
+  price_eur_per_kg: number | null;
+  parameters: Record<string, { name: string; value: number; unit: string | null }>;
+  matched_constraints: string[];
+  warnings: string[];
+  score: number;
+};
+
+export type AgentCandidateResearch = {
+  candidate_count: number;
+  total_available: number;
+  filters: Record<string, unknown>;
+  candidates: AgentCandidate[];
+  warnings: string[];
+};
+
+export type AgentOptimizationPlan = {
+  status: string;
+  objective: { type: string; target: string };
+  candidate_raw_material_ids: string[];
+  constraints: Array<Record<string, unknown>>;
+  blocking_reasons: string[];
+  warnings: string[];
+  solver: string;
+};
+
 export type AgentPlan = {
   run_id: string;
   orchestrator: "deterministic" | "deepagents";
   model: string | null;
   parsed_requirements: Record<string, unknown> | null;
+  candidate_research: AgentCandidateResearch | null;
+  optimization_plan: AgentOptimizationPlan | null;
   steps: AgentPlanStep[];
   human_review_required: boolean;
   notes: string[];
