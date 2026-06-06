@@ -312,6 +312,90 @@ def test_formula_items_keep_saved_order() -> None:
     ]
 
 
+def test_formula_comparison_is_tenant_scoped_and_returns_deltas() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers_a,
+        json={"code": "active_content", "name": "Active Content", "unit": "% p/p"},
+    ).json()
+    active = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    carrier = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Carrier B", "code": "CAR-B"},
+    ).json()
+    for raw_material, price, parameter_value in [
+        (active, 2.0, 40),
+        (carrier, 1.0, 10),
+    ]:
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/prices",
+            headers=headers_a,
+            json={"price": price, "currency": "EUR", "unit": "kg"},
+        )
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/parameter-values",
+            headers=headers_a,
+            json={"parameter_id": parameter["id"], "value": parameter_value},
+        )
+    left = client.post(
+        "/api/v1/formulas",
+        headers=headers_a,
+        json={
+            "name": "Premium Formula",
+            "items": [{"raw_material_id": active["id"], "percentage": 100}],
+        },
+    ).json()
+    right = client.post(
+        "/api/v1/formulas",
+        headers=headers_a,
+        json={
+            "name": "Balanced Formula",
+            "items": [
+                {"raw_material_id": active["id"], "percentage": 50},
+                {"raw_material_id": carrier["id"], "percentage": 50},
+            ],
+        },
+    ).json()
+
+    response = client.post(
+        "/api/v1/formulas/compare",
+        headers=headers_a,
+        json={"left_formula_id": left["id"], "right_formula_id": right["id"]},
+    )
+    forbidden = client.post(
+        "/api/v1/formulas/compare",
+        headers=headers_b,
+        json={"left_formula_id": left["id"], "right_formula_id": right["id"]},
+    )
+
+    assert response.status_code == 200
+    comparison = response.json()
+    assert comparison["left"]["price_total"] == 2.0
+    assert comparison["right"]["price_total"] == 1.5
+    assert comparison["delta"]["price_total"] == -0.5
+    assert comparison["delta"]["total_percentage"] == 0
+    assert comparison["delta"]["parameters"] == [
+        {
+            "code": "active_content",
+            "left_value": 40,
+            "right_value": 25,
+            "delta": -15,
+            "unit": "% p/p",
+        }
+    ]
+    assert forbidden.status_code == 404
+
+
 def test_persisted_formula_requires_active_tenant_parameters() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

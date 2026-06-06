@@ -53,6 +53,8 @@ from .schemas import (
     ExcelImportSheetsRead,
     FormulaCalculationHistoryRead,
     FormulaCalculateRequest,
+    FormulaCompareRequest,
+    FormulaComparisonRead,
     FormulaCreate,
     FormulaRead,
     FormulaUpdate,
@@ -356,6 +358,20 @@ def register_routes(app: FastAPI) -> None:
         session.refresh(formula)
         _replace_formula_items(session, tenant.tenant_id, formula.id, payload.items)
         return _formula_read(session, formula)
+
+    @app.post("/api/v1/formulas/compare", response_model=FormulaComparisonRead)
+    def compare_formulas(
+        payload: FormulaCompareRequest,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        left = _formula_comparison_side(session, tenant.tenant_id, payload.left_formula_id)
+        right = _formula_comparison_side(session, tenant.tenant_id, payload.right_formula_id)
+        return {
+            "left": left,
+            "right": right,
+            "delta": _formula_comparison_delta(left, right),
+        }
 
     @app.get("/api/v1/formulas/{formula_id}", response_model=FormulaRead)
     def get_formula(
@@ -679,6 +695,76 @@ def _active_parameter_codes(session: Session, tenant_id: uuid.UUID) -> set[str]:
             )
         ).all()
     }
+
+
+def _formula_comparison_side(
+    session: Session,
+    tenant_id: uuid.UUID,
+    formula_id: uuid.UUID,
+) -> dict[str, Any]:
+    formula = _get_formula(session, tenant_id, formula_id)
+    items = _formula_items(session, tenant_id, formula.id)
+    calculation = _calculate(
+        session,
+        tenant_id,
+        items,
+        required_parameter_codes=_active_parameter_codes(session, tenant_id),
+    )
+    return {
+        "id": formula.id,
+        "name": formula.name,
+        "total_percentage": calculation["total_percentage"],
+        "price_total": calculation["price_total"],
+        "currency": calculation["currency"],
+        "parameters": calculation["parameters"],
+        "warnings": calculation["warnings"],
+        "line_count": len(items),
+    }
+
+
+def _formula_comparison_delta(
+    left: dict[str, Any],
+    right: dict[str, Any],
+) -> dict[str, Any]:
+    left_price = left["price_total"]
+    right_price = right["price_total"]
+    return {
+        "total_percentage": right["total_percentage"] - left["total_percentage"],
+        "price_total": (
+            None
+            if left_price is None or right_price is None
+            else right_price - left_price
+        ),
+        "parameters": _parameter_deltas(left["parameters"], right["parameters"]),
+    }
+
+
+def _parameter_deltas(
+    left_parameters: list[dict[str, Any]],
+    right_parameters: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    left_by_code = {parameter["code"]: parameter for parameter in left_parameters}
+    right_by_code = {parameter["code"]: parameter for parameter in right_parameters}
+    deltas = []
+    for code in sorted(left_by_code.keys() | right_by_code.keys()):
+        left = left_by_code.get(code)
+        right = right_by_code.get(code)
+        left_value = left["value"] if left else None
+        right_value = right["value"] if right else None
+        deltas.append(
+            {
+                "code": code,
+                "left_value": left_value,
+                "right_value": right_value,
+                "delta": (
+                    None
+                    if left_value is None or right_value is None
+                    else right_value - left_value
+                ),
+                "unit": (right or left or {}).get("unit"),
+            }
+        )
+    return deltas
 
 
 def _formula_export_lines(

@@ -162,12 +162,48 @@ class FormulaCalculateRequest(BaseModel):
     required_parameter_codes: set[str] = Field(default_factory=set)
 
 
+class FormulaCompareRequest(BaseModel):
+    left_formula_id: uuid.UUID
+    right_formula_id: uuid.UUID
+
+
 class CalculationRead(BaseModel):
     total_percentage: float
     price_total: float | None
     currency: str
     parameters: list[dict[str, Any]]
     warnings: list[dict[str, Any]]
+
+
+class FormulaComparisonFormulaRead(BaseModel):
+    id: uuid.UUID
+    name: str
+    total_percentage: float
+    price_total: float | None
+    currency: str
+    parameters: list[dict[str, Any]]
+    warnings: list[dict[str, Any]]
+    line_count: int
+
+
+class FormulaComparisonParameterDeltaRead(BaseModel):
+    code: str
+    left_value: float | None
+    right_value: float | None
+    delta: float | None
+    unit: str | None
+
+
+class FormulaComparisonDeltaRead(BaseModel):
+    total_percentage: float
+    price_total: float | None
+    parameters: list[FormulaComparisonParameterDeltaRead]
+
+
+class FormulaComparisonRead(BaseModel):
+    left: FormulaComparisonFormulaRead
+    right: FormulaComparisonFormulaRead
+    delta: FormulaComparisonDeltaRead
 
 
 class FormulaCalculationHistoryRead(BaseModel):
