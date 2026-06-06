@@ -136,6 +136,17 @@ El comparador MVP permite evaluar limites de uso por materia prima:
 
 Solo se evalua una materia a la vez y no se persisten reglas.
 
+### META-021
+
+El comparador MVP muestra un resumen de cumplimiento cuando hay restricciones evaluadas:
+
+- conteo `passed`, `failed` y `missing` para formula base,
+- conteo `passed`, `failed` y `missing` para formula candidata,
+- indicacion de si lidera base, candidata o si hay empate,
+- el detalle de cada restriccion sigue visible debajo del resumen.
+
+El resumen no es una aprobacion tecnica final ni persiste scoring.
+
 ## ERP settings
 
 - crear conexión,
