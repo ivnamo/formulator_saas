@@ -314,7 +314,7 @@ def register_routes(app: FastAPI) -> None:
             for parameter in session.exec(
                 select(Parameter).where(
                     Parameter.tenant_id == tenant.tenant_id,
-                    Parameter.is_active == True,  # noqa: E712
+                    Parameter.is_active.is_(True),
                 )
             ).all()
         }

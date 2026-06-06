@@ -15,110 +15,22 @@ import {
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-
-type Tenant = {
-  id: string;
-  name: string;
-  slug: string;
-};
-
-type Parameter = {
-  id: string;
-  code: string;
-  name: string;
-  unit: string;
-};
-
-type RawMaterial = {
-  id: string;
-  code: string | null;
-  name: string;
-  price: number | null;
-  parameterValue: number | null;
-};
-
-type FormulaLine = {
-  localId: string;
-  rawMaterialId: string;
-  percentage: number;
-};
-
-type WorkspaceState = {
-  tenant: Tenant | null;
-  parameter: Parameter | null;
-  rawMaterials: RawMaterial[];
-  formulaId: string | null;
-  formulaName: string;
-  formulaLines: FormulaLine[];
-};
-
-type TenantRead = Tenant & {
-  status: string;
-};
-
-type ParameterRead = Parameter & {
-  tenant_id: string;
-  is_active: boolean;
-};
-
-type RawMaterialRead = {
-  id: string;
-  tenant_id: string;
-  code: string | null;
-  name: string;
-  normalized_name: string;
-  is_active: boolean;
-  is_obsolete: boolean;
-};
-
-type FormulaRead = {
-  id: string;
-  tenant_id: string;
-  name: string;
-  version: number;
-  status: string;
-  objective: string | null;
-  total_price: number | null;
-  currency: string;
-  items: Array<{
-    raw_material_id: string;
-    percentage: number;
-    order_index: number;
-  }>;
-};
-
-type CalculationResult = {
-  total_percentage: number;
-  price_total: number | null;
-  currency: string;
-  parameters: Array<{ code: string; value: number; unit: string | null }>;
-  warnings: Array<{
-    code: string;
-    message: string;
-    raw_material_id?: string | null;
-    parameter_code?: string | null;
-  }>;
-};
-
-type Status = "idle" | "working" | "error";
-
-type MaterialForm = {
-  code: string;
-  name: string;
-  price: string;
-  parameterValue: string;
-};
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-const userId = "10000000-0000-0000-0000-000000000001";
-const emptyWorkspace: WorkspaceState = {
-  tenant: null,
-  parameter: null,
-  rawMaterials: [],
-  formulaId: null,
-  formulaName: "Manual Formula",
-  formulaLines: [],
-};
+import { apiUrl, request, userId } from "./workspace-api";
+import {
+  emptyWorkspace,
+  makeLocalId,
+  normalizeCode,
+  parseOptionalNumber,
+  slugify,
+  type CalculationResult,
+  type FormulaRead,
+  type MaterialForm,
+  type ParameterRead,
+  type RawMaterialRead,
+  type Status,
+  type TenantRead,
+  type WorkspaceState,
+} from "./workspace-model";
 
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
@@ -694,35 +606,4 @@ export default function Home() {
       </section>
     </main>
   );
-}
-
-async function request<T>(path: string, init: RequestInit): Promise<T> {
-  const response = await fetch(`${apiUrl}${path}`, init);
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`API ${response.status}: ${detail}`);
-  }
-  return response.json() as Promise<T>;
-}
-
-function parseOptionalNumber(value: string): number | null {
-  if (!value.trim()) {
-    return null;
-  }
-  const normalized = Number(value.replace(",", "."));
-  return Number.isFinite(normalized) ? normalized : null;
-}
-
-function normalizeCode(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, "_");
-}
-
-function slugify(value: string): string {
-  return normalizeCode(value).replace(/_/g, "-").replace(/[^a-z0-9-]/g, "");
-}
-
-function makeLocalId(): string {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random()}`;
 }
