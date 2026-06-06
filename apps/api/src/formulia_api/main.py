@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import uuid
 import os
+import re
+import uuid
 from contextlib import asynccontextmanager
 from datetime import date
 from difflib import SequenceMatcher
@@ -90,6 +91,32 @@ from .schemas import (
 )
 from .tenant import TenantContext, get_current_user, require_tenant_context
 
+
+_AI_LOG_REDACTED = "[REDACTED]"
+_SENSITIVE_LOG_KEY_NAMES = frozenset(
+    {
+        "authorization",
+        "bearer",
+        "token",
+        "accesstoken",
+        "refreshtoken",
+        "idtoken",
+    }
+)
+_SENSITIVE_LOG_KEY_FRAGMENTS = (
+    "apikey",
+    "credential",
+    "password",
+    "passwd",
+    "secret",
+)
+_SECRET_ASSIGNMENT_PATTERN = re.compile(
+    r"\b(api[_ -]?key|authorization|client[_ -]?secret|secret|password|passwd|token|"
+    r"access[_ -]?token|refresh[_ -]?token)\b(\s*[:=]\s*)([^\s,;]+)",
+    re.IGNORECASE,
+)
+_OPENAI_KEY_PATTERN = re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b")
+_BEARER_TOKEN_PATTERN = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{8,}\b", re.IGNORECASE)
 
 FUZZY_SUGGESTION_THRESHOLD = 0.82
 
@@ -1452,6 +1479,39 @@ def _model_dict(model: Any) -> dict[str, Any]:
     return model.model_dump(mode="json")
 
 
+def _redact_ai_log_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: (
+                _AI_LOG_REDACTED
+                if _is_sensitive_ai_log_key(key)
+                else _redact_ai_log_payload(item)
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_ai_log_payload(item) for item in value]
+    if isinstance(value, str):
+        return _redact_ai_log_text(value)
+    return value
+
+
+def _is_sensitive_ai_log_key(key: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9]", "", key.casefold())
+    return normalized in _SENSITIVE_LOG_KEY_NAMES or any(
+        fragment in normalized for fragment in _SENSITIVE_LOG_KEY_FRAGMENTS
+    )
+
+
+def _redact_ai_log_text(value: str) -> str:
+    redacted = _SECRET_ASSIGNMENT_PATTERN.sub(
+        lambda match: f"{match.group(1)}{match.group(2)}{_AI_LOG_REDACTED}",
+        value,
+    )
+    redacted = _BEARER_TOKEN_PATTERN.sub(f"Bearer {_AI_LOG_REDACTED}", redacted)
+    return _OPENAI_KEY_PATTERN.sub(_AI_LOG_REDACTED, redacted)
+
+
 def _persist_ai_run(
     session: Session,
     tenant: TenantContext,
@@ -1464,6 +1524,8 @@ def _persist_ai_run(
     tool_name: str,
 ) -> AiRun:
     finished_at = utc_now()
+    redacted_input_json = _redact_ai_log_payload(input_json)
+    redacted_output_json = _redact_ai_log_payload(output_json)
     ai_run = AiRun(
         tenant_id=tenant.tenant_id,
         user_id=tenant.user_id,
@@ -1471,8 +1533,8 @@ def _persist_ai_run(
         provider=provider,
         model=model,
         status="success",
-        input_json=input_json,
-        output_json=output_json,
+        input_json=redacted_input_json,
+        output_json=redacted_output_json,
         finished_at=finished_at,
     )
     session.add(ai_run)
@@ -1481,8 +1543,8 @@ def _persist_ai_run(
         ai_run_id=ai_run.id,
         tool_name=tool_name,
         status="success",
-        input_json=input_json,
-        output_json=output_json,
+        input_json=redacted_input_json,
+        output_json=redacted_output_json,
         finished_at=finished_at,
     )
     session.add(tool_call)

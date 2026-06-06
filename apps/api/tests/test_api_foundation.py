@@ -1,3 +1,4 @@
+import json
 from io import BytesIO
 import uuid
 
@@ -6,7 +7,7 @@ from openpyxl import load_workbook
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine
 
-from formulia_api.main import create_app
+from formulia_api.main import _redact_ai_log_payload, create_app
 
 
 USER_A = "10000000-0000-0000-0000-000000000001"
@@ -515,6 +516,63 @@ def test_requirement_parser_logs_ai_run_and_tool_call() -> None:
     assert tool_call["tool_name"] == "RequirementParserTool"
     assert tool_call["status"] == "success"
     assert tool_call["output_json"]["parameter_bounds"][0]["min_value"] == 20.0
+
+
+def test_ai_log_redaction_covers_nested_keys_and_secret_patterns() -> None:
+    payload = {
+        "text": "Use token=abc123456 and sk-test123456789",
+        "settings": {
+            "api_key": "plain-secret",
+            "completion_tokens": 42,
+        },
+        "messages": [
+            {
+                "Authorization": "Bearer abcdefghijklmnop",
+                "content": "Keep normal content",
+            }
+        ],
+    }
+
+    redacted = _redact_ai_log_payload(payload)
+
+    assert redacted["text"] == "Use token=[REDACTED] and [REDACTED]"
+    assert redacted["settings"]["api_key"] == "[REDACTED]"
+    assert redacted["settings"]["completion_tokens"] == 42
+    assert redacted["messages"][0]["Authorization"] == "[REDACTED]"
+    assert redacted["messages"][0]["content"] == "Keep normal content"
+
+
+def test_requirement_parser_redacts_persisted_ai_logs() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    sensitive_text = (
+        "Minimiza coste con active content entre 20 y 40 "
+        "password=ultraSecret123 sk-test123456789"
+    )
+
+    parsed = client.post(
+        "/api/v1/requirements/parse",
+        headers=headers,
+        json={"text": sensitive_text},
+    )
+    runs = client.get("/api/v1/ai/runs", headers=headers)
+
+    assert parsed.status_code == 200
+    assert parsed.json()["text"] == sensitive_text
+    assert runs.status_code == 200
+    run = runs.json()[0]
+    assert run["input_json"]["text"] != sensitive_text
+    assert "[REDACTED]" in run["input_json"]["text"]
+    assert "[REDACTED]" in run["output_json"]["text"]
+
+    detail = client.get(f"/api/v1/ai/runs/{run['id']}", headers=headers)
+
+    assert detail.status_code == 200
+    persisted_payload = json.dumps(detail.json())
+    assert "ultraSecret123" not in persisted_payload
+    assert "sk-test123456789" not in persisted_payload
+    assert "password=[REDACTED]" in persisted_payload
 
 
 def test_ai_runs_are_tenant_scoped() -> None:
