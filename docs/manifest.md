@@ -36,6 +36,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_023_optimizer_save_result.md`](00-meta/meta_023_optimizer_save_result.md)
 - [`00-meta/meta_024_optimized_formula_objective.md`](00-meta/meta_024_optimized_formula_objective.md)
 - [`00-meta/meta_025_optimizer_docs_sync.md`](00-meta/meta_025_optimizer_docs_sync.md)
+- [`00-meta/meta_026_optimization_run_history.md`](00-meta/meta_026_optimization_run_history.md)
 
 ## Producto
 
