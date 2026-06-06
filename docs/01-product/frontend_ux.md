@@ -113,6 +113,17 @@ El primer comparador MVP vive en la biblioteca de formulas:
 - no usa IA,
 - no persiste comparaciones.
 
+### META-019
+
+El comparador MVP permite evaluar restricciones editables:
+
+- precio maximo,
+- codigo de parametro tecnico,
+- minimo de parametro,
+- estado `passed`, `failed` o `missing` para formula base y candidata.
+
+La evaluacion usa los calculos backend de la comparacion y no persiste reglas.
+
 ## ERP settings
 
 - crear conexión,
