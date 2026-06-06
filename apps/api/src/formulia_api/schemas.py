@@ -192,6 +192,16 @@ class ExcelImportSheetsRead(BaseModel):
     default_sheet: str
 
 
+class ExcelImportColumnsRead(BaseModel):
+    sheet_name: str
+    available_sheets: list[str]
+    header_row: int
+    columns: list[str]
+    detected_material_name: str | None = None
+    detected_material_code: str | None = None
+    detected_percentage: str | None = None
+
+
 class ExcelImportSaveRow(BaseModel):
     raw_material_id: uuid.UUID
     percentage: float = Field(ge=0)

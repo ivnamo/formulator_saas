@@ -21,9 +21,11 @@ from formulia_core import (
 
 from .database import create_db_engine, get_session, init_db
 from .excel_import import (
+    ColumnMapping,
     ExcelImportError,
     ParsedFormulaImport,
     ParsedFormulaRow,
+    list_formula_xlsx_columns,
     list_formula_xlsx_sheets,
     parse_formula_xlsx,
 )
@@ -43,6 +45,7 @@ from .models import (
 )
 from .schemas import (
     CalculationRead,
+    ExcelImportColumnsRead,
     ExcelImportPreviewRead,
     ExcelImportSaveRequest,
     ExcelImportSheetsRead,
@@ -462,18 +465,53 @@ def register_routes(app: FastAPI) -> None:
         return {"sheets": sheets, "default_sheet": sheets[0]}
 
     @app.post(
+        "/api/v1/imports/formulas/excel/columns",
+        response_model=ExcelImportColumnsRead,
+    )
+    async def list_formula_excel_import_columns(
+        file: UploadFile = File(...),
+        sheet_name: str | None = Form(None),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        _ensure_xlsx_file(file)
+        try:
+            columns = list_formula_xlsx_columns(await file.read(), sheet_name=sheet_name)
+        except ExcelImportError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            "sheet_name": columns.sheet_name,
+            "available_sheets": columns.available_sheets,
+            "header_row": columns.header_row,
+            "columns": columns.columns,
+            "detected_material_name": columns.detected_material_name,
+            "detected_material_code": columns.detected_material_code,
+            "detected_percentage": columns.detected_percentage,
+        }
+
+    @app.post(
         "/api/v1/imports/formulas/excel/preview",
         response_model=ExcelImportPreviewRead,
     )
     async def preview_formula_excel_import(
         file: UploadFile = File(...),
         sheet_name: str | None = Form(None),
+        material_name_column: str | None = Form(None),
+        material_code_column: str | None = Form(None),
+        percentage_column: str | None = Form(None),
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         _ensure_xlsx_file(file)
         try:
-            parsed = parse_formula_xlsx(await file.read(), sheet_name=sheet_name)
+            parsed = parse_formula_xlsx(
+                await file.read(),
+                sheet_name=sheet_name,
+                column_mapping=ColumnMapping(
+                    material_name=material_name_column,
+                    material_code=material_code_column,
+                    percentage=percentage_column,
+                ),
+            )
         except ExcelImportError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return _excel_preview(session, tenant.tenant_id, parsed)

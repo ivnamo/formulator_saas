@@ -5,7 +5,7 @@ from openpyxl import Workbook
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine
 
-from formulia_api.excel_import import list_formula_xlsx_sheets, parse_formula_xlsx
+from formulia_api.excel_import import ColumnMapping, list_formula_xlsx_sheets, parse_formula_xlsx
 from formulia_api.main import create_app
 
 
@@ -88,6 +88,25 @@ def test_parser_lists_and_selects_worksheets() -> None:
     assert parsed.sheet_name == "Formula"
     assert parsed.available_sheets == ["Notes", "Formula"]
     assert parsed.rows[0].material_code == "ACT-A"
+
+
+def test_parser_uses_manual_column_mapping() -> None:
+    content = workbook_bytes(
+        [
+            ["Component Label", "Dose"],
+            ["Active A", 100],
+        ]
+    )
+
+    parsed = parse_formula_xlsx(
+        content,
+        column_mapping=ColumnMapping(material_name="Component Label", percentage="Dose"),
+    )
+
+    assert parsed.columns.material_name == "component label"
+    assert parsed.columns.percentage == "dose"
+    assert parsed.rows[0].material_name == "Active A"
+    assert parsed.rows[0].percentage == 100
 
 
 def test_preview_matches_by_code_and_normalized_name() -> None:
@@ -267,6 +286,47 @@ def test_preview_selected_sheet_in_multi_sheet_workbook() -> None:
     assert preview["sheet_name"] == "Formula"
     assert preview["available_sheets"] == ["Notes", "Formula"]
     assert preview["rows"][0]["raw_material_id"] == material["id"]
+
+
+def test_preview_with_manual_column_mapping() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    content = workbook_bytes(
+        [
+            ["Component Label", "Dose"],
+            ["Active A", 100],
+        ]
+    )
+
+    columns = client.post(
+        "/api/v1/imports/formulas/excel/columns",
+        headers=headers,
+        files={"file": ("formula.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    response = client.post(
+        "/api/v1/imports/formulas/excel/preview",
+        headers=headers,
+        files={"file": ("formula.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={
+            "material_name_column": "Component Label",
+            "percentage_column": "Dose",
+        },
+    )
+
+    assert columns.status_code == 200
+    assert columns.json()["columns"] == ["Component Label", "Dose"]
+    assert response.status_code == 200
+    preview = response.json()
+    assert preview["resolved_rows"] == 1
+    assert preview["pending_rows"] == 0
+    assert preview["rows"][0]["raw_material_id"] == material["id"]
+    assert preview["rows"][0]["matched_by"] == "name"
 
 
 def test_preview_rejects_missing_sheet_name() -> None:
