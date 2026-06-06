@@ -158,6 +158,17 @@ El comparador MVP explica restricciones fallidas o sin dato:
 
 Las explicaciones son deterministas y no sustituyen validacion tecnica.
 
+### META-023
+
+El comparador MVP permite enfocar la lista de restricciones:
+
+- modo normal con todas las restricciones evaluadas,
+- modo `Needs attention` para ver solo reglas `failed` o `missing`,
+- estado vacio cuando no hay restricciones con problemas,
+- el resumen de cumplimiento no cambia al activar el filtro.
+
+El filtro es local y no persiste preferencias.
+
 ## ERP settings
 
 - crear conexión,
