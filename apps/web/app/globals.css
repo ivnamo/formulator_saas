@@ -303,6 +303,10 @@ label span {
   grid-column: 1;
 }
 
+.libraryPanel {
+  grid-column: 1 / -1;
+}
+
 .importPanel {
   grid-column: 1;
 }
@@ -409,6 +413,77 @@ label span {
 .importRow code {
   color: var(--teal-dark);
   font-weight: 800;
+}
+
+.libraryActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(280px, 0.65fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.formulaList,
+.historyList {
+  display: grid;
+}
+
+.formulaListHead,
+.formulaListRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 120px 58px 48px;
+  gap: 10px;
+  align-items: center;
+}
+
+.formulaListHead {
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.formulaListRow {
+  min-height: 44px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.formulaListRow > span:first-child {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.historyTitle {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.historyRow {
+  min-height: 58px;
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.historyRow span {
+  color: var(--muted);
+}
+
+.historyRow strong {
+  font-size: 14px;
 }
 
 .importRow [data-state="matched_exact"] {
@@ -561,8 +636,10 @@ label span {
   }
 
   .materialPanel,
+  .libraryGrid,
   .importPanel {
     grid-column: auto;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -577,7 +654,7 @@ label span {
   }
 
   .nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   }
 
   .navItem {
@@ -620,6 +697,8 @@ label span {
   }
 
   .formGrid,
+  .formulaListHead,
+  .formulaListRow,
   .materialHead,
   .materialRow,
   .formulaLine,

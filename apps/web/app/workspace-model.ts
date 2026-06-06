@@ -82,6 +82,14 @@ export type CalculationResult = {
   }>;
 };
 
+export type FormulaCalculationHistory = {
+  id: string;
+  formula_id: string;
+  price_total: number | null;
+  result_json: CalculationResult;
+  calculated_at: string;
+};
+
 export type ExcelImportPreviewRow = {
   row_number: number;
   material_code: string | null;
@@ -144,4 +152,11 @@ export function makeLocalId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random()}`;
+}
+
+export function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
 }

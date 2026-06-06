@@ -6,6 +6,8 @@ import {
   Calculator,
   Database,
   FlaskConical,
+  FolderOpen,
+  History,
   ListChecks,
   Loader2,
   Plus,
@@ -19,12 +21,14 @@ import { useMemo, useState } from "react";
 import { apiUrl, request, userId } from "./workspace-api";
 import {
   emptyWorkspace,
+  formatDateTime,
   makeLocalId,
   normalizeCode,
   parseOptionalNumber,
   slugify,
   type CalculationResult,
   type ExcelImportPreview,
+  type FormulaCalculationHistory,
   type FormulaRead,
   type MaterialForm,
   type ParameterRead,
@@ -49,6 +53,8 @@ export default function Home() {
     parameterValue: "",
   });
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const [formulas, setFormulas] = useState<FormulaRead[]>([]);
+  const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
   const [importFileName, setImportFileName] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -104,6 +110,8 @@ export default function Home() {
         formulaName: `${name} Formula`,
       });
       setResult(null);
+      setFormulas([]);
+      setCalculationHistory([]);
       setImportPreview(null);
       setImportFileName("");
       setMessage("Workspace ready");
@@ -272,8 +280,61 @@ export default function Home() {
         formulaName: formula.name,
       }));
       setResult(calculation);
+      await refreshFormulaLibrary({ silent: true });
+      await loadCalculationHistory(formula.id);
       setMessage("Calculation complete");
     });
+  }
+
+  async function refreshFormulaLibrary(options: { silent?: boolean } = {}) {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (options.silent) {
+      const nextFormulas = await request<FormulaRead[]>("/api/v1/formulas", {
+        method: "GET",
+        headers,
+      });
+      setFormulas(nextFormulas);
+      return;
+    }
+    await runAction("Refreshing formula library", async () => {
+      const nextFormulas = await request<FormulaRead[]>("/api/v1/formulas", {
+        method: "GET",
+        headers,
+      });
+      setFormulas(nextFormulas);
+      setMessage("Formula library refreshed");
+    });
+  }
+
+  async function openFormula(formula: FormulaRead) {
+    await runAction("Opening formula", async () => {
+      setWorkspace((current) => ({
+        ...current,
+        formulaId: formula.id,
+        formulaName: formula.name,
+        formulaLines: formula.items.map((item) => ({
+          localId: makeLocalId(),
+          rawMaterialId: item.raw_material_id,
+          percentage: item.percentage,
+        })),
+      }));
+      setResult(null);
+      setImportPreview(null);
+      setImportFileName("");
+      await loadCalculationHistory(formula.id);
+      setMessage("Formula opened");
+    });
+  }
+
+  async function loadCalculationHistory(formulaId: string) {
+    const history = await request<FormulaCalculationHistory[]>(
+      `/api/v1/formulas/${formulaId}/calculations`,
+      { method: "GET", headers },
+    );
+    setCalculationHistory(history);
   }
 
   async function previewExcelImport(file: File | null) {
@@ -333,6 +394,8 @@ export default function Home() {
           percentage: item.percentage,
         })),
       }));
+      await refreshFormulaLibrary({ silent: true });
+      await loadCalculationHistory(formula.id);
       setResult(null);
       setMessage("Imported formula saved");
     });
@@ -370,6 +433,9 @@ export default function Home() {
           </a>
           <a className="navItem" href="#materials">
             <Database size={18} /> Materials
+          </a>
+          <a className="navItem" href="#library">
+            <FolderOpen size={18} /> Library
           </a>
           <a className="navItem" href="#parameters">
             <Settings2 size={18} /> Parameters
@@ -558,6 +624,83 @@ export default function Home() {
                   </div>
                 ))
               )}
+            </div>
+          </section>
+
+          <section id="library" className="panel libraryPanel">
+            <div className="panelHeader">
+              <h2>Formula library</h2>
+              <span>{formulas.length} formulas</span>
+            </div>
+            <div className="libraryActions">
+              <button
+                className="secondaryButton"
+                type="button"
+                onClick={() => refreshFormulaLibrary()}
+                disabled={!canEditTenantData}
+              >
+                <RefreshCw size={17} />
+                Refresh library
+              </button>
+            </div>
+            <div className="libraryGrid">
+              <div className="formulaList">
+                <div className="formulaListHead">
+                  <span>Name</span>
+                  <span>Price</span>
+                  <span>Lines</span>
+                  <span>Open</span>
+                </div>
+                {formulas.length === 0 ? (
+                  <div className="empty">No saved formulas yet.</div>
+                ) : (
+                  formulas.map((formula) => (
+                    <div className="formulaListRow" key={formula.id}>
+                      <span>{formula.name}</span>
+                      <span>
+                        {formula.total_price === null
+                          ? "-"
+                          : `${formula.total_price.toFixed(2)} ${formula.currency}/kg`}
+                      </span>
+                      <span>{formula.items.length}</span>
+                      <button
+                        className="iconButton"
+                        type="button"
+                        onClick={() => openFormula(formula)}
+                        disabled={isBusy}
+                        title="Open formula"
+                        aria-label={`Open ${formula.name}`}
+                      >
+                        <FolderOpen size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="historyList">
+                <div className="historyTitle">
+                  <History size={17} />
+                  <strong>Calculation history</strong>
+                </div>
+                {calculationHistory.length === 0 ? (
+                  <div className="empty">No calculations yet.</div>
+                ) : (
+                  calculationHistory.map((entry) => (
+                    <div className="historyRow" key={entry.id}>
+                      <span>{formatDateTime(entry.calculated_at)}</span>
+                      <strong>
+                        {entry.price_total === null
+                          ? "-"
+                          : `${entry.price_total.toFixed(2)} ${entry.result_json.currency}/kg`}
+                      </strong>
+                      <span>
+                        {entry.result_json.total_percentage.toFixed(1)}% ·{" "}
+                        {entry.result_json.warnings.length} warnings
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </section>
 
