@@ -234,9 +234,17 @@ export type AgentOptimizationPlan = {
   candidate_raw_material_ids: string[];
   constraints: Array<Record<string, unknown>>;
   blocking_reasons: string[];
+  infeasibility_explanations?: AgentInfeasibilityExplanation[];
   warnings: string[];
   solver: string;
   formula_candidates: AgentFormulaCandidate[];
+};
+
+export type AgentInfeasibilityExplanation = {
+  code: string;
+  severity: string;
+  message: string;
+  action: string;
 };
 
 export type AgentFormulaCandidate = {

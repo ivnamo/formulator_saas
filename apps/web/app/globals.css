@@ -651,6 +651,50 @@ label span {
   overflow-wrap: anywhere;
 }
 
+.agentInfeasibilityList {
+  display: grid;
+  gap: 6px;
+}
+
+.agentInfeasibilityList > strong {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.agentInfeasibilityList div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-height: 44px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.agentInfeasibilityList code {
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.agentInfeasibilityList code[data-severity="warning"] {
+  color: var(--amber);
+}
+
+.agentInfeasibilityList span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.agentInfeasibilityList span strong {
+  color: var(--text);
+}
+
 .agentCandidateList {
   display: grid;
 }
@@ -1402,6 +1446,7 @@ label span {
   .agentFormulaStats,
   .agentFormulaItems div,
   .agentToolSummary,
+  .agentInfeasibilityList div,
   .agentPlanStep,
   .formulaListHead,
   .formulaListRow,

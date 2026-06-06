@@ -2004,6 +2004,26 @@ export default function Home() {
                       </div>
                     </div>
                   ) : null}
+                  {agentPlan.optimization_plan &&
+                  (agentPlan.optimization_plan.infeasibility_explanations?.length ?? 0) > 0 &&
+                  agentPlan.optimization_plan.formula_candidates.length === 0 ? (
+                    <div className="agentInfeasibilityList">
+                      <strong>Infeasibility explanations</strong>
+                      {(agentPlan.optimization_plan.infeasibility_explanations ?? []).map(
+                        (explanation) => (
+                          <div key={`${explanation.code}-${explanation.message}`}>
+                            <code data-severity={explanation.severity}>
+                              {explanation.severity}
+                            </code>
+                            <span>
+                              <strong>{explanation.message}</strong>
+                              {explanation.action}
+                            </span>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  ) : null}
                   {agentPlan.candidate_research?.candidates.length ? (
                     <div className="agentCandidateList">
                       <div className="agentCandidateHead">
