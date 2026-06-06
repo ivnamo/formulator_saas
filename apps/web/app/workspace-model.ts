@@ -16,6 +16,7 @@ export type RawMaterial = {
   code: string | null;
   name: string;
   price: number | null;
+  priceHistory: RawMaterialPriceRead[];
   parameterValue: number | null;
   aliases: string[];
 };
@@ -56,13 +57,19 @@ export type RawMaterialRead = {
 
 export function toWorkspaceRawMaterial(
   material: RawMaterialRead,
-  values: { price?: number | null; parameterValue?: number | null } = {},
+  values: {
+    price?: number | null;
+    priceHistory?: RawMaterialPriceRead[];
+    parameterValue?: number | null;
+  } = {},
 ): RawMaterial {
+  const priceHistory = values.priceHistory ?? [];
   return {
     id: material.id,
     code: material.code,
     name: material.name,
-    price: values.price ?? null,
+    price: values.price ?? priceHistory[0]?.price ?? null,
+    priceHistory,
     parameterValue: values.parameterValue ?? null,
     aliases: [],
   };
@@ -88,6 +95,45 @@ export type RawMaterialAliasRead = {
   normalized_alias: string;
   source: string;
 };
+
+export type RawMaterialPriceRead = {
+  id: string;
+  tenant_id: string;
+  raw_material_id: string;
+  price: number;
+  currency: string;
+  unit: string;
+  supplier: string | null;
+  source: string;
+  valid_from: string;
+  created_at: string;
+};
+
+export function withRawMaterialPrice(
+  rawMaterials: RawMaterial[],
+  rawMaterialId: string,
+  price: RawMaterialPriceRead,
+): RawMaterial[] {
+  return rawMaterials.map((material) => {
+    if (material.id !== rawMaterialId) {
+      return material;
+    }
+    const priceHistory = [price, ...material.priceHistory.filter((item) => item.id !== price.id)]
+      .sort(comparePriceHistory);
+    return {
+      ...material,
+      price: priceHistory[0]?.price ?? null,
+      priceHistory,
+    };
+  });
+}
+
+function comparePriceHistory(left: RawMaterialPriceRead, right: RawMaterialPriceRead): number {
+  return (
+    right.valid_from.localeCompare(left.valid_from) ||
+    right.created_at.localeCompare(left.created_at)
+  );
+}
 
 export type FormulaRead = {
   id: string;

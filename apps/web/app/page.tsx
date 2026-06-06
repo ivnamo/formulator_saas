@@ -32,6 +32,7 @@ import {
   slugify,
   toWorkspaceRawMaterial,
   withRawMaterialAlias,
+  withRawMaterialPrice,
   withResolvedImportRow,
   type CalculationResult,
   type ExcelColumnMapping,
@@ -43,6 +44,7 @@ import {
   type FormulaRead,
   type MaterialForm,
   type RawMaterialAliasRead,
+  type RawMaterialPriceRead,
   type ParameterRead,
   type RawMaterialRead,
   type Status,
@@ -66,6 +68,7 @@ export default function Home() {
   });
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
   const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
@@ -193,9 +196,10 @@ export default function Home() {
       });
       const price = parseOptionalNumber(materialForm.price);
       const parameterValue = parseOptionalNumber(materialForm.parameterValue);
+      let createdPrice: RawMaterialPriceRead | null = null;
 
       if (price !== null) {
-        await request<Record<string, unknown>>(`/api/v1/raw-materials/${material.id}/prices`, {
+        createdPrice = await request<RawMaterialPriceRead>(`/api/v1/raw-materials/${material.id}/prices`, {
           method: "POST",
           headers,
           body: JSON.stringify({ price, currency: "EUR", unit: "kg" }),
@@ -220,7 +224,8 @@ export default function Home() {
         rawMaterials: [
           ...current.rawMaterials,
           toWorkspaceRawMaterial(material, {
-            price,
+            price: createdPrice?.price ?? price,
+            priceHistory: createdPrice ? [createdPrice] : [],
             parameterValue: workspace.parameter ? parameterValue : null,
           }),
         ],
@@ -229,6 +234,32 @@ export default function Home() {
       setResult(null);
       resetImportState();
       setMessage("Raw material ready");
+    });
+  }
+
+  async function createPrice(rawMaterialId: string) {
+    const price = parseOptionalNumber(priceInputs[rawMaterialId] ?? "");
+    if (price === null) {
+      setError("Price is required");
+      return;
+    }
+
+    await runAction("Adding raw material price", async () => {
+      const created = await request<RawMaterialPriceRead>(
+        `/api/v1/raw-materials/${rawMaterialId}/prices`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ price, currency: "EUR", unit: "kg" }),
+        },
+      );
+      setWorkspace((current) => ({
+        ...current,
+        rawMaterials: withRawMaterialPrice(current.rawMaterials, rawMaterialId, created),
+      }));
+      setPriceInputs((current) => ({ ...current, [rawMaterialId]: "" }));
+      setResult(null);
+      setMessage("Price ready");
     });
   }
 
@@ -704,6 +735,10 @@ export default function Home() {
     return value?.match(/filename="?([^"]+)"?/i)?.[1] ?? null;
   }
 
+  function formatPriceEntry(price: RawMaterialPriceRead): string {
+    return `${price.price.toFixed(2)} ${price.currency}/${price.unit} - ${price.valid_from}`;
+  }
+
   async function runAction(label: string, action: () => Promise<void>) {
     setStatus("working");
     setMessage(label);
@@ -955,6 +990,40 @@ export default function Home() {
                         aria-label={`Add alias for ${material.name}`}
                       >
                         <Save size={16} />
+                      </button>
+                    </div>
+                    <div className="priceEditor">
+                      <span>Prices</span>
+                      <div className="priceTags">
+                        {material.priceHistory.length ? (
+                          material.priceHistory.slice(0, 3).map((price) => (
+                            <code key={price.id}>{formatPriceEntry(price)}</code>
+                          ))
+                        ) : (
+                          <em>None</em>
+                        )}
+                      </div>
+                      <input
+                        aria-label={`${material.name} price`}
+                        inputMode="decimal"
+                        value={priceInputs[material.id] ?? ""}
+                        onChange={(event) =>
+                          setPriceInputs((current) => ({
+                            ...current,
+                            [material.id]: event.target.value,
+                          }))
+                        }
+                        disabled={isBusy}
+                      />
+                      <button
+                        className="iconButton"
+                        type="button"
+                        onClick={() => createPrice(material.id)}
+                        disabled={isBusy}
+                        title="Add price"
+                        aria-label={`Add price for ${material.name}`}
+                      >
+                        <Plus size={16} />
                       </button>
                     </div>
                   </div>

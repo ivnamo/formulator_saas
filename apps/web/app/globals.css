@@ -356,7 +356,8 @@ label span {
   font-weight: 800;
 }
 
-.aliasEditor {
+.aliasEditor,
+.priceEditor {
   display: grid;
   grid-template-columns: 58px minmax(120px, 1fr) minmax(140px, 220px) 34px;
   gap: 8px;
@@ -367,14 +368,16 @@ label span {
   font-size: 12px;
 }
 
-.aliasTags {
+.aliasTags,
+.priceTags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
 }
 
-.aliasTags code {
+.aliasTags code,
+.priceTags code {
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px 7px;
@@ -384,7 +387,8 @@ label span {
   font-weight: 800;
 }
 
-.aliasTags em {
+.aliasTags em,
+.priceTags em {
   font-style: normal;
   color: var(--muted);
 }
@@ -801,6 +805,7 @@ label span {
 
   .formGrid,
   .aliasEditor,
+  .priceEditor,
   .formulaListHead,
   .formulaListRow,
   .materialHead,
