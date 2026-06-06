@@ -311,7 +311,7 @@ label span {
 }
 
 .importPanel {
-  grid-column: 1;
+  grid-column: 1 / -1;
 }
 
 .materialForm {
@@ -452,6 +452,13 @@ label span {
 .importRow code {
   color: var(--teal-dark);
   font-weight: 800;
+}
+
+.resolveControls {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 34px;
+  gap: 8px;
+  align-items: center;
 }
 
 .libraryActions {

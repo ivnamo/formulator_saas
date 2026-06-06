@@ -54,6 +54,20 @@ export type RawMaterialRead = {
   is_obsolete: boolean;
 };
 
+export function toWorkspaceRawMaterial(
+  material: RawMaterialRead,
+  values: { price?: number | null; parameterValue?: number | null } = {},
+): RawMaterial {
+  return {
+    id: material.id,
+    code: material.code,
+    name: material.name,
+    price: values.price ?? null,
+    parameterValue: values.parameterValue ?? null,
+    aliases: [],
+  };
+}
+
 export type RawMaterialAliasRead = {
   id: string;
   tenant_id: string;

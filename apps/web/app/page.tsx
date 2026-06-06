@@ -26,9 +26,11 @@ import {
   normalizeCode,
   parseOptionalNumber,
   slugify,
+  toWorkspaceRawMaterial,
   withResolvedImportRow,
   type CalculationResult,
   type ExcelImportPreview,
+  type ExcelImportPreviewRow,
   type FormulaCalculationHistory,
   type FormulaRead,
   type MaterialForm,
@@ -197,20 +199,51 @@ export default function Home() {
         ...current,
         rawMaterials: [
           ...current.rawMaterials,
-          {
-            id: material.id,
-            code: material.code,
-            name: material.name,
+          toWorkspaceRawMaterial(material, {
             price,
             parameterValue: workspace.parameter ? parameterValue : null,
-            aliases: [],
-          },
+          }),
         ],
       }));
       setMaterialForm({ code: "", name: "", price: "", parameterValue: "" });
       setResult(null);
       setImportPreview(null);
       setMessage("Raw material ready");
+    });
+  }
+
+  async function createMaterialFromImportRow(row: ExcelImportPreviewRow) {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    const materialCode = row.material_code?.trim() ?? "";
+    const materialName = row.material_name?.trim() ?? "";
+    const name = materialName || materialCode;
+
+    if (!name) {
+      setError("Import row needs a material name or code");
+      return;
+    }
+
+    await runAction("Creating material from import row", async () => {
+      const material = await request<RawMaterialRead>("/api/v1/raw-materials", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          code: materialCode || null,
+          name,
+        }),
+      });
+      setWorkspace((current) => ({
+        ...current,
+        rawMaterials: [...current.rawMaterials, toWorkspaceRawMaterial(material)],
+      }));
+      setImportPreview((current) =>
+        current ? withResolvedImportRow(current, row.row_number, material.id) : current,
+      );
+      setResult(null);
+      setMessage("Import material created");
     });
   }
 
@@ -835,21 +868,33 @@ export default function Home() {
                     <span>{row.percentage === null ? "-" : `${row.percentage.toFixed(2)}%`}</span>
                     <span data-state={row.status}>{row.status}</span>
                     {row.status === "needs_review" ? (
-                      <select
-                        aria-label={`Resolve row ${row.row_number}`}
-                        defaultValue=""
-                        onChange={(event) => resolveImportRow(row.row_number, event.target.value)}
-                        disabled={isBusy}
-                      >
-                        <option value="" disabled>
-                          Select material
-                        </option>
-                        {workspace.rawMaterials.map((material) => (
-                          <option key={material.id} value={material.id}>
-                            {material.code ? `${material.code} - ${material.name}` : material.name}
+                      <div className="resolveControls">
+                        <select
+                          aria-label={`Resolve row ${row.row_number}`}
+                          defaultValue=""
+                          onChange={(event) => resolveImportRow(row.row_number, event.target.value)}
+                          disabled={isBusy}
+                        >
+                          <option value="" disabled>
+                            Select material
                           </option>
-                        ))}
-                      </select>
+                          {workspace.rawMaterials.map((material) => (
+                            <option key={material.id} value={material.id}>
+                              {material.code ? `${material.code} - ${material.name}` : material.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          aria-label={`Create material for row ${row.row_number}`}
+                          className="iconButton"
+                          disabled={isBusy}
+                          onClick={() => createMaterialFromImportRow(row)}
+                          title="Create material"
+                          type="button"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
                     ) : (
                       <span>{row.matched_by ?? "-"}</span>
                     )}
