@@ -236,6 +236,26 @@ class RequirementParseRead(BaseModel):
     uncertainties: list[str] = Field(default_factory=list)
 
 
+class AgentPlanRequest(BaseModel):
+    text: str = Field(min_length=3, max_length=4000)
+
+
+class AgentPlanStepRead(BaseModel):
+    tool: str
+    status: str
+    summary: str
+
+
+class AgentPlanRead(BaseModel):
+    run_id: uuid.UUID
+    orchestrator: str
+    model: str | None = None
+    parsed_requirements: dict[str, Any] | None = None
+    steps: list[AgentPlanStepRead]
+    human_review_required: bool
+    notes: list[str] = Field(default_factory=list)
+
+
 class AiRunRead(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
@@ -250,3 +270,22 @@ class AiRunRead(BaseModel):
     created_at: datetime
     completed_at: datetime | None
     error: str | None
+
+
+class AiToolCallRead(BaseModel):
+    id: uuid.UUID
+    ai_run_id: uuid.UUID
+    tenant_id: uuid.UUID
+    tool_name: str
+    status: str
+    input_json: dict[str, Any]
+    output_json: dict[str, Any] | None
+    error: str | None
+    started_at: datetime
+    completed_at: datetime | None
+
+
+class AiRunDetailRead(AiRunRead):
+    input_json: dict[str, Any]
+    output_json: dict[str, Any] | None
+    tool_calls: list[AiToolCallRead]

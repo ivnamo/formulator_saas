@@ -28,6 +28,13 @@ from .ai_requirement_parser import (
     requirement_parser_model,
     requirement_parser_provider,
 )
+from .agents.deepagents_adapter import DeepAgentsUnavailableError
+from .agents.supervisor import (
+    AgentOrchestrationError,
+    agent_orchestrator_model,
+    agent_orchestrator_provider,
+    plan_formulation_request,
+)
 from .database import create_db_engine, get_session, init_db
 from .excel_import import (
     ExcelImportError,
@@ -39,6 +46,7 @@ from .excel_import import (
 from .local_env import load_local_env
 from .models import (
     AiRun,
+    AiToolCall,
     Formula,
     FormulaCalculationResult,
     FormulaItem,
@@ -71,6 +79,9 @@ from .schemas import (
     RawMaterialPriceCreate,
     RawMaterialRead,
     RawMaterialUpdate,
+    AgentPlanRead,
+    AgentPlanRequest,
+    AiRunDetailRead,
     AiRunRead,
     RequirementParseRead,
     RequirementParseRequest,
@@ -529,6 +540,65 @@ def register_routes(app: FastAPI) -> None:
             .limit(20)
         ).all()
         return [_model_dict(run) for run in runs]
+
+    @app.get("/api/v1/ai/runs/{run_id}", response_model=AiRunDetailRead)
+    def get_ai_run(
+        run_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        run = session.exec(
+            select(AiRun).where(AiRun.id == run_id, AiRun.tenant_id == tenant.tenant_id)
+        ).first()
+        if run is None:
+            raise HTTPException(status_code=404, detail="AI run not found.")
+        tool_calls = session.exec(
+            select(AiToolCall)
+            .where(AiToolCall.ai_run_id == run.id, AiToolCall.tenant_id == tenant.tenant_id)
+            .order_by(AiToolCall.started_at)
+        ).all()
+        return {**_model_dict(run), "tool_calls": [_model_dict(call) for call in tool_calls]}
+
+    @app.post("/api/v1/ai/supervisor/plan", response_model=AgentPlanRead)
+    def plan_with_supervisor(
+        payload: AgentPlanRequest,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        active_parameters = _active_parameter_context(session, tenant.tenant_id)
+        orchestrator = agent_orchestrator_provider()
+        model = agent_orchestrator_model() if orchestrator == "deepagents" else None
+        run = start_ai_run(
+            session,
+            tenant,
+            run_type="formulation_supervisor",
+            provider=orchestrator,
+            model=model,
+            input_json={
+                "text": payload.text,
+                "active_parameters": active_parameters,
+            },
+        )
+        try:
+            plan = plan_formulation_request(
+                session=session,
+                run=run,
+                text=payload.text,
+                active_parameters=active_parameters,
+            )
+        except MissingOpenAIKeyError as exc:
+            finish_ai_run(session, run, status="error", error=str(exc))
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except DeepAgentsUnavailableError as exc:
+            finish_ai_run(session, run, status="error", error=str(exc))
+            raise HTTPException(status_code=501, detail=str(exc)) from exc
+        except (AgentOrchestrationError, OpenAIRequirementParserError) as exc:
+            finish_ai_run(session, run, status="error", error=str(exc))
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        result = {**plan, "run_id": run.id}
+        finish_ai_run(session, run, status="success", output_json=result)
+        return result
 
     @app.post(
         "/api/v1/imports/formulas/excel/sheets",

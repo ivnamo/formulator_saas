@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlmodel import Session
 
-from .models import AiRun, utc_now
+from .models import AiRun, AiToolCall, utc_now
 from .tenant import TenantContext
 
 
@@ -58,6 +58,42 @@ def finish_ai_run(
     )
     run.completed_at = utc_now()
     session.add(run)
+    session.commit()
+
+
+def start_ai_tool_call(
+    session: Session,
+    run: AiRun,
+    *,
+    tool_name: str,
+    input_json: dict[str, Any],
+) -> AiToolCall:
+    tool_call = AiToolCall(
+        ai_run_id=run.id,
+        tenant_id=run.tenant_id,
+        tool_name=tool_name,
+        status="running",
+        input_json=redact_ai_payload(input_json),
+    )
+    session.add(tool_call)
+    session.commit()
+    session.refresh(tool_call)
+    return tool_call
+
+
+def finish_ai_tool_call(
+    session: Session,
+    tool_call: AiToolCall,
+    *,
+    status: str,
+    output_json: dict[str, Any] | None = None,
+    error: str | None = None,
+) -> None:
+    tool_call.status = status
+    tool_call.output_json = redact_ai_payload(output_json) if output_json is not None else None
+    tool_call.error = error
+    tool_call.completed_at = utc_now()
+    session.add(tool_call)
     session.commit()
 
 
