@@ -149,6 +149,7 @@ def test_supervisor_researches_tenant_candidates_and_optimizer_inputs(monkeypatc
         name="Carrier B",
         code="CAR-B",
         price=0.5,
+        active_content=10,
     )
     create_raw_material(
         client,
@@ -204,7 +205,8 @@ def test_supervisor_researches_tenant_candidates_and_optimizer_inputs(monkeypatc
     assert "Banned Material" not in candidate_names
     assert "Inactive Active" not in candidate_names
     assert "Other Tenant Active" not in candidate_names
-    assert plan["optimization_plan"]["status"] == "ready"
+    assert plan["optimization_plan"]["status"] == "solved"
+    assert plan["optimization_plan"]["solver"] == "grid_v1"
     assert plan["optimization_plan"]["objective"] == {
         "type": "minimize",
         "target": "price_total",
@@ -213,10 +215,24 @@ def test_supervisor_researches_tenant_candidates_and_optimizer_inputs(monkeypatc
         active["id"],
         carrier["id"],
     ]
+    formula = plan["optimization_plan"]["formula_candidates"][0]
+    assert formula["status"] == "draft"
+    assert formula["total_percentage"] == 100
+    assert round(formula["price_total"], 6) == 0.6
+    assert formula["items"] == [
+        {"raw_material_id": active["id"], "name": "Active A 40", "percentage": 10.0},
+        {"raw_material_id": carrier["id"], "name": "Carrier B", "percentage": 90.0},
+    ]
+    assert formula["parameters"] == [
+        {"code": "active_content", "value": 13.0, "unit": "% p/p"}
+    ]
+    assert {constraint["status"] for constraint in formula["constraints_status"]} == {
+        "satisfied"
+    }
     assert [step["status"] for step in plan["steps"]] == [
         "completed",
-        "ready",
-        "blocked",
+        "completed",
+        "completed",
         "required",
     ]
 
@@ -248,6 +264,39 @@ def test_optimization_blocks_price_constraints_without_prices(monkeypatch) -> No
     assert plan["candidate_research"]["candidate_count"] == 1
     assert plan["optimization_plan"]["status"] == "blocked"
     assert "No priced candidate can satisfy price constraints." in plan["optimization_plan"][
+        "blocking_reasons"
+    ]
+
+
+def test_optimization_marks_infeasible_when_grid_has_no_solution(monkeypatch) -> None:
+    monkeypatch.delenv("AGENT_ORCHESTRATOR_PROVIDER", raising=False)
+    monkeypatch.delenv("REQUIREMENT_PARSER_PROVIDER", raising=False)
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = create_parameter(client, headers)
+    create_raw_material(
+        client,
+        headers,
+        parameter["id"],
+        name="Active Expensive",
+        code="ACT-EXP",
+        price=3.0,
+        active_content=45,
+    )
+
+    response = client.post(
+        "/api/v1/ai/supervisor/plan",
+        headers=headers,
+        json={"text": "Liquido con contenido activo minimo 12% y precio maximo 1 EUR/kg."},
+    )
+
+    assert response.status_code == 200
+    plan = response.json()
+    assert plan["optimization_plan"]["status"] == "infeasible"
+    assert plan["optimization_plan"]["solver"] == "grid_v1"
+    assert plan["optimization_plan"]["formula_candidates"] == []
+    assert "No grid solution satisfies supported constraints." in plan["optimization_plan"][
         "blocking_reasons"
     ]
 

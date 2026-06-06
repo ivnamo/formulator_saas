@@ -297,6 +297,14 @@ def _next_steps_from_requirements(
 ) -> list[dict[str, str]]:
     candidate_count = candidate_research.get("candidate_count", 0)
     optimization_status = optimization_plan.get("status", "blocked")
+    formula_count = len(optimization_plan.get("formula_candidates", []))
+    optimization_step_status = {
+        "solved": "completed",
+        "ready": "ready",
+        "blocked": "blocked",
+        "infeasible": "blocked",
+    }.get(optimization_status, "blocked")
+    calculation_step_status = "completed" if formula_count else "blocked"
     steps = [
         {
             "tool": "RawMaterialResearchAgent",
@@ -305,13 +313,21 @@ def _next_steps_from_requirements(
         },
         {
             "tool": "OptimizationAgent",
-            "status": "ready" if optimization_status == "ready" else "blocked",
-            "summary": "Prepared optimizer inputs without generating formula percentages.",
+            "status": optimization_step_status,
+            "summary": (
+                f"Generated {formula_count} draft formula candidate."
+                if formula_count == 1
+                else f"Optimizer status is {optimization_status}."
+            ),
         },
         {
             "tool": "FormulaCalculationAgent",
-            "status": "blocked",
-            "summary": "Wait for optimizer-generated formula lines before calculating cost and technical parameters.",
+            "status": calculation_step_status,
+            "summary": (
+                "Validated optimizer candidate with deterministic formula calculation."
+                if formula_count
+                else "Wait for optimizer-generated formula lines before calculating cost and technical parameters."
+            ),
         },
         {
             "tool": "HumanReviewAgent",
