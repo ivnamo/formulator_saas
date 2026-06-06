@@ -161,6 +161,28 @@ def test_save_imported_rows_as_formula_and_calculate() -> None:
     assert calculation.json()["parameters"][0]["value"] == 17.5
 
 
+def test_save_import_rejects_negative_percentage() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+
+    response = client.post(
+        "/api/v1/imports/formulas/excel/save",
+        headers=headers,
+        json={
+            "name": "Invalid Import",
+            "rows": [{"raw_material_id": raw_material["id"], "percentage": -1}],
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_import_preview_requires_tenant_membership() -> None:
     client = make_client()
     tenant_a = create_tenant(client, USER_A, "tenant-a")

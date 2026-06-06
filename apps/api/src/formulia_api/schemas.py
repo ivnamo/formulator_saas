@@ -161,7 +161,7 @@ class ExcelImportPreviewRead(BaseModel):
 
 class ExcelImportSaveRow(BaseModel):
     raw_material_id: uuid.UUID
-    percentage: float
+    percentage: float = Field(ge=0)
 
 
 class ExcelImportSaveRequest(BaseModel):
