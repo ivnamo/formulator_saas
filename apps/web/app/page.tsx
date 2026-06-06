@@ -823,6 +823,25 @@ export default function Home() {
     });
   }
 
+  function reuseInfeasibilityAction(action: string) {
+    const suggestedAction = action.trim();
+    if (!suggestedAction) {
+      return;
+    }
+
+    setRequirementText((current) => {
+      const currentText = current.trim();
+      if (!currentText) {
+        return suggestedAction;
+      }
+      if (currentText.includes(suggestedAction)) {
+        return current;
+      }
+      return `${currentText}\n${suggestedAction}`;
+    });
+    setMessage("Action added to requirement");
+  }
+
   async function refreshAiRuns(options: { silent?: boolean } = {}) {
     if (!workspace.tenant) {
       setError("Create a workspace first");
@@ -2011,15 +2030,25 @@ export default function Home() {
                       <strong>Infeasibility explanations</strong>
                       {(agentPlan.optimization_plan.infeasibility_explanations ?? []).map(
                         (explanation) => (
-                          <div key={`${explanation.code}-${explanation.message}`}>
+                          <article key={`${explanation.code}-${explanation.message}`}>
                             <code data-severity={explanation.severity}>
                               {explanation.severity}
                             </code>
-                            <span>
+                            <span className="agentInfeasibilityText">
                               <strong>{explanation.message}</strong>
                               {explanation.action}
                             </span>
-                          </div>
+                            <button
+                              className="iconButton"
+                              type="button"
+                              onClick={() => reuseInfeasibilityAction(explanation.action)}
+                              title="Add action to requirement"
+                              aria-label="Add action to requirement"
+                              disabled={!workspace.tenant || isBusy}
+                            >
+                              <Plus size={15} />
+                            </button>
+                          </article>
                         ),
                       )}
                     </div>

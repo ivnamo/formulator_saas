@@ -663,9 +663,9 @@ label span {
   text-transform: uppercase;
 }
 
-.agentInfeasibilityList div {
+.agentInfeasibilityList article {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr);
+  grid-template-columns: 86px minmax(0, 1fr) 32px;
   gap: 10px;
   align-items: start;
   min-height: 44px;
@@ -683,7 +683,7 @@ label span {
   color: var(--amber);
 }
 
-.agentInfeasibilityList span {
+.agentInfeasibilityText {
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -691,7 +691,7 @@ label span {
   overflow-wrap: anywhere;
 }
 
-.agentInfeasibilityList span strong {
+.agentInfeasibilityText strong {
   color: var(--text);
 }
 
@@ -1446,7 +1446,7 @@ label span {
   .agentFormulaStats,
   .agentFormulaItems div,
   .agentToolSummary,
-  .agentInfeasibilityList div,
+  .agentInfeasibilityList article,
   .agentPlanStep,
   .formulaListHead,
   .formulaListRow,
