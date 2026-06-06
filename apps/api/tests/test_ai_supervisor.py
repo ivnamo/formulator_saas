@@ -31,18 +31,67 @@ def create_tenant(client: TestClient, user_id: str, slug: str) -> str:
     return response.json()["id"]
 
 
+def create_parameter(client: TestClient, headers: dict[str, str]) -> dict:
+    response = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "active_content", "name": "Active Content", "unit": "% p/p"},
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def create_raw_material(
+    client: TestClient,
+    headers: dict[str, str],
+    parameter_id: str,
+    *,
+    name: str,
+    code: str,
+    price: float | None = None,
+    active_content: float | None = None,
+    is_active: bool = True,
+    is_obsolete: bool = False,
+) -> dict:
+    response = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": name, "code": code},
+    )
+    assert response.status_code == 201
+    material = response.json()
+    if not is_active or is_obsolete:
+        update = client.patch(
+            f"/api/v1/raw-materials/{material['id']}",
+            headers=headers,
+            json={"is_active": is_active, "is_obsolete": is_obsolete},
+        )
+        assert update.status_code == 200
+        material = update.json()
+    if price is not None:
+        price_response = client.post(
+            f"/api/v1/raw-materials/{material['id']}/prices",
+            headers=headers,
+            json={"price": price, "currency": "EUR", "unit": "kg"},
+        )
+        assert price_response.status_code == 201
+    if active_content is not None:
+        value_response = client.post(
+            f"/api/v1/raw-materials/{material['id']}/parameter-values",
+            headers=headers,
+            json={"parameter_id": parameter_id, "value": active_content},
+        )
+        assert value_response.status_code == 201
+    return material
+
+
 def test_supervisor_plan_uses_requirement_parser_tool(monkeypatch) -> None:
     monkeypatch.delenv("AGENT_ORCHESTRATOR_PROVIDER", raising=False)
     monkeypatch.delenv("REQUIREMENT_PARSER_PROVIDER", raising=False)
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
     headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
-    parameter = client.post(
-        "/api/v1/parameters",
-        headers=headers,
-        json={"code": "active_content", "name": "Active Content", "unit": "% p/p"},
-    )
-    assert parameter.status_code == 201
+    create_parameter(client, headers)
 
     response = client.post(
         "/api/v1/ai/supervisor/plan",
@@ -60,12 +109,147 @@ def test_supervisor_plan_uses_requirement_parser_tool(monkeypatch) -> None:
         "FormulaCalculationAgent",
         "HumanReviewAgent",
     ]
+    assert plan["candidate_research"]["candidate_count"] == 0
+    assert plan["optimization_plan"]["status"] == "blocked"
     detail = client.get(f"/api/v1/ai/runs/{plan['run_id']}", headers=headers)
     assert detail.status_code == 200
     run = detail.json()
     assert run["run_type"] == "formulation_supervisor"
-    assert run["tool_calls"][0]["tool_name"] == "RequirementParserAgent"
-    assert run["tool_calls"][0]["status"] == "success"
+    assert [call["tool_name"] for call in run["tool_calls"]] == [
+        "RequirementParserAgent",
+        "RawMaterialResearchAgent",
+        "OptimizationAgent",
+    ]
+    assert all(call["status"] == "success" for call in run["tool_calls"])
+
+
+def test_supervisor_researches_tenant_candidates_and_optimizer_inputs(monkeypatch) -> None:
+    monkeypatch.delenv("AGENT_ORCHESTRATOR_PROVIDER", raising=False)
+    monkeypatch.delenv("REQUIREMENT_PARSER_PROVIDER", raising=False)
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+    parameter_a = create_parameter(client, headers_a)
+    parameter_b = create_parameter(client, headers_b)
+    active = create_raw_material(
+        client,
+        headers_a,
+        parameter_a["id"],
+        name="Active A 40",
+        code="ACT-A",
+        price=1.5,
+        active_content=40,
+    )
+    carrier = create_raw_material(
+        client,
+        headers_a,
+        parameter_a["id"],
+        name="Carrier B",
+        code="CAR-B",
+        price=0.5,
+    )
+    create_raw_material(
+        client,
+        headers_a,
+        parameter_a["id"],
+        name="Banned Material",
+        code="BAN",
+        price=0.2,
+        active_content=80,
+    )
+    create_raw_material(
+        client,
+        headers_a,
+        parameter_a["id"],
+        name="Inactive Active",
+        code="INA",
+        price=0.8,
+        active_content=60,
+        is_active=False,
+    )
+    create_raw_material(
+        client,
+        headers_b,
+        parameter_b["id"],
+        name="Other Tenant Active",
+        code="OTH",
+        price=0.1,
+        active_content=90,
+    )
+
+    response = client.post(
+        "/api/v1/ai/supervisor/plan",
+        headers=headers_a,
+        json={
+            "text": (
+                "Liquido barato con contenido activo minimo 12% "
+                "y precio maximo 2 EUR/kg sin banned."
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    plan = response.json()
+    candidate_ids = [
+        candidate["raw_material_id"]
+        for candidate in plan["candidate_research"]["candidates"]
+    ]
+    candidate_names = {
+        candidate["name"]
+        for candidate in plan["candidate_research"]["candidates"]
+    }
+    assert candidate_ids == [active["id"], carrier["id"]]
+    assert "Banned Material" not in candidate_names
+    assert "Inactive Active" not in candidate_names
+    assert "Other Tenant Active" not in candidate_names
+    assert plan["optimization_plan"]["status"] == "ready"
+    assert plan["optimization_plan"]["objective"] == {
+        "type": "minimize",
+        "target": "price_total",
+    }
+    assert plan["optimization_plan"]["candidate_raw_material_ids"] == [
+        active["id"],
+        carrier["id"],
+    ]
+    assert [step["status"] for step in plan["steps"]] == [
+        "completed",
+        "ready",
+        "blocked",
+        "required",
+    ]
+
+
+def test_optimization_blocks_price_constraints_without_prices(monkeypatch) -> None:
+    monkeypatch.delenv("AGENT_ORCHESTRATOR_PROVIDER", raising=False)
+    monkeypatch.delenv("REQUIREMENT_PARSER_PROVIDER", raising=False)
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = create_parameter(client, headers)
+    create_raw_material(
+        client,
+        headers,
+        parameter["id"],
+        name="Active No Price",
+        code="ACT-NP",
+        active_content=45,
+    )
+
+    response = client.post(
+        "/api/v1/ai/supervisor/plan",
+        headers=headers,
+        json={"text": "Liquido con contenido activo minimo 12% y precio maximo 2 EUR/kg."},
+    )
+
+    assert response.status_code == 200
+    plan = response.json()
+    assert plan["candidate_research"]["candidate_count"] == 1
+    assert plan["optimization_plan"]["status"] == "blocked"
+    assert "No priced candidate can satisfy price constraints." in plan["optimization_plan"][
+        "blocking_reasons"
+    ]
 
 
 def test_supervisor_deepagents_provider_invokes_harness(monkeypatch) -> None:
@@ -75,6 +259,8 @@ def test_supervisor_deepagents_provider_invokes_harness(monkeypatch) -> None:
         def invoke(self, payload):
             captured["payload"] = payload
             captured["tool_result"] = captured["tools"][0](payload["messages"][0]["content"])
+            captured["research_result"] = captured["tools"][1](payload["messages"][0]["content"])
+            captured["optimization_result"] = captured["tools"][2](payload["messages"][0]["content"])
             return {"messages": [{"content": "Plan with gated deterministic tools."}]}
 
     def fake_build_deepagents_supervisor(*, model, tools, system_prompt):
@@ -102,14 +288,20 @@ def test_supervisor_deepagents_provider_invokes_harness(monkeypatch) -> None:
     assert response.status_code == 200
     plan = response.json()
     assert captured["model"] == "gpt-5-nano"
-    assert len(captured["tools"]) == 1
+    assert len(captured["tools"]) == 3
     assert "FormulationSupervisorAgent" in captured["system_prompt"]
     assert captured["payload"]["messages"][0]["content"] == "Planifica una formula liquida economica."
     assert captured["tool_result"]["source"] == "deterministic"
+    assert captured["research_result"]["candidate_count"] == 0
+    assert captured["optimization_result"]["status"] == "blocked"
     assert plan["orchestrator"] == "deepagents"
     assert plan["steps"][0]["tool"] == "deepagents_supervisor"
     detail = client.get(f"/api/v1/ai/runs/{plan['run_id']}", headers=headers)
-    assert detail.json()["tool_calls"][0]["tool_name"] == "RequirementParserAgent"
+    assert [call["tool_name"] for call in detail.json()["tool_calls"]] == [
+        "RequirementParserAgent",
+        "RawMaterialResearchAgent",
+        "OptimizationAgent",
+    ]
 
 
 def test_supervisor_deepagents_provider_reports_missing_harness(monkeypatch) -> None:

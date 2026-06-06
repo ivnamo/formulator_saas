@@ -251,6 +251,8 @@ class AgentPlanRead(BaseModel):
     orchestrator: str
     model: str | None = None
     parsed_requirements: dict[str, Any] | None = None
+    candidate_research: dict[str, Any] | None = None
+    optimization_plan: dict[str, Any] | None = None
     steps: list[AgentPlanStepRead]
     human_review_required: bool
     notes: list[str] = Field(default_factory=list)

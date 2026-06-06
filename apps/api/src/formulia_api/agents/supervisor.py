@@ -21,6 +21,7 @@ from .deepagents_adapter import (
     build_deepagents_supervisor,
     extract_final_message_content,
 )
+from .tools import build_optimization_plan, research_raw_material_candidates
 
 
 DEFAULT_AGENT_MODEL = "gpt-5-nano"
@@ -84,11 +85,28 @@ def _plan_deterministic(
         text=text,
         active_parameters=active_parameters,
     )
-    steps = _next_steps_from_requirements(parsed)
+    candidate_research = _call_raw_material_research_tool(
+        session=session,
+        run=run,
+        parsed_requirements=parsed,
+    )
+    optimization_plan = _call_optimization_tool(
+        session=session,
+        run=run,
+        parsed_requirements=parsed,
+        candidate_research=candidate_research,
+    )
+    steps = _next_steps_from_requirements(
+        parsed,
+        candidate_research=candidate_research,
+        optimization_plan=optimization_plan,
+    )
     return {
         "orchestrator": "deterministic",
         "model": None,
         "parsed_requirements": parsed,
+        "candidate_research": candidate_research,
+        "optimization_plan": optimization_plan,
         "steps": steps,
         "human_review_required": True,
         "notes": [
@@ -105,19 +123,54 @@ def _plan_with_deepagents(
     active_parameters: list[dict[str, str]],
 ) -> dict[str, Any]:
     model = agent_orchestrator_model()
+    parsed_cache: dict[str, Any] | None = None
+    research_cache: dict[str, Any] | None = None
+    optimization_cache: dict[str, Any] | None = None
 
     def parse_requirements(requirement_text: str) -> dict[str, Any]:
         """Parse a formulation request into structured requirements."""
-        return _call_requirement_parser_tool(
+        nonlocal parsed_cache
+        if parsed_cache is not None:
+            return parsed_cache
+        parsed_cache = _call_requirement_parser_tool(
             session=session,
             run=run,
             text=requirement_text,
             active_parameters=active_parameters,
         )
+        return parsed_cache
+
+    def find_raw_material_candidates(requirement_text: str) -> dict[str, Any]:
+        """Find tenant raw material candidates for parsed formulation requirements."""
+        nonlocal research_cache
+        parsed = parse_requirements(requirement_text)
+        if research_cache is not None:
+            return research_cache
+        research_cache = _call_raw_material_research_tool(
+            session=session,
+            run=run,
+            parsed_requirements=parsed,
+        )
+        return research_cache
+
+    def plan_optimization(requirement_text: str) -> dict[str, Any]:
+        """Build an optimization problem plan from parsed requirements and candidates."""
+        nonlocal optimization_cache
+        parsed = parse_requirements(requirement_text)
+        research = find_raw_material_candidates(requirement_text)
+        if optimization_cache is not None:
+            return optimization_cache
+        optimization_cache = _call_optimization_tool(
+            session=session,
+            run=run,
+            parsed_requirements=parsed,
+            candidate_research=research,
+        )
+        return optimization_cache
 
     agent = build_deepagents_supervisor(
         model=model,
-        tools=[parse_requirements],
+        tools=[parse_requirements, find_raw_material_candidates, plan_optimization],
         system_prompt=SUPERVISOR_SYSTEM_PROMPT,
     )
     try:
@@ -128,7 +181,9 @@ def _plan_with_deepagents(
     return {
         "orchestrator": "deepagents",
         "model": model,
-        "parsed_requirements": None,
+        "parsed_requirements": parsed_cache,
+        "candidate_research": research_cache,
+        "optimization_plan": optimization_cache,
         "steps": [
             {
                 "tool": "deepagents_supervisor",
@@ -181,17 +236,82 @@ def _call_requirement_parser_tool(
     return parsed
 
 
-def _next_steps_from_requirements(parsed: dict[str, Any]) -> list[dict[str, str]]:
+def _call_raw_material_research_tool(
+    *,
+    session: Session,
+    run: AiRun,
+    parsed_requirements: dict[str, Any],
+) -> dict[str, Any]:
+    tool_call = start_ai_tool_call(
+        session,
+        run,
+        tool_name="RawMaterialResearchAgent",
+        input_json={"parsed_requirements": parsed_requirements},
+    )
+    try:
+        research = research_raw_material_candidates(
+            session=session,
+            tenant_id=run.tenant_id,
+            parsed_requirements=parsed_requirements,
+        )
+    except Exception as exc:
+        finish_ai_tool_call(session, tool_call, status="error", error=str(exc))
+        raise AgentOrchestrationError("Raw material research failed.") from exc
+    finish_ai_tool_call(session, tool_call, status="success", output_json=research)
+    return research
+
+
+def _call_optimization_tool(
+    *,
+    session: Session,
+    run: AiRun,
+    parsed_requirements: dict[str, Any],
+    candidate_research: dict[str, Any],
+) -> dict[str, Any]:
+    tool_call = start_ai_tool_call(
+        session,
+        run,
+        tool_name="OptimizationAgent",
+        input_json={
+            "parsed_requirements": parsed_requirements,
+            "candidate_research": candidate_research,
+        },
+    )
+    try:
+        plan = build_optimization_plan(
+            parsed_requirements=parsed_requirements,
+            candidate_research=candidate_research,
+        )
+    except Exception as exc:
+        finish_ai_tool_call(session, tool_call, status="error", error=str(exc))
+        raise AgentOrchestrationError("Optimization planning failed.") from exc
+    finish_ai_tool_call(session, tool_call, status="success", output_json=plan)
+    return plan
+
+
+def _next_steps_from_requirements(
+    parsed: dict[str, Any],
+    *,
+    candidate_research: dict[str, Any],
+    optimization_plan: dict[str, Any],
+) -> list[dict[str, str]]:
+    candidate_count = candidate_research.get("candidate_count", 0)
+    optimization_status = optimization_plan.get("status", "blocked")
     steps = [
         {
             "tool": "RawMaterialResearchAgent",
-            "status": "pending",
-            "summary": "Find tenant raw materials that satisfy mandatory and excluded material constraints.",
+            "status": "completed" if candidate_count else "blocked",
+            "summary": f"Found {candidate_count} tenant raw material candidates.",
+        },
+        {
+            "tool": "OptimizationAgent",
+            "status": "ready" if optimization_status == "ready" else "blocked",
+            "summary": "Prepared optimizer inputs without generating formula percentages.",
         },
         {
             "tool": "FormulaCalculationAgent",
             "status": "blocked",
-            "summary": "Wait for candidate formula lines before calculating cost and technical parameters.",
+            "summary": "Wait for optimizer-generated formula lines before calculating cost and technical parameters.",
         },
         {
             "tool": "HumanReviewAgent",
@@ -199,13 +319,6 @@ def _next_steps_from_requirements(parsed: dict[str, Any]) -> list[dict[str, str]
             "summary": "Review uncertainties before any formula proposal leaves draft state.",
         },
     ]
-    if parsed.get("economic_constraints"):
-        steps.insert(
-            1,
-            {
-                "tool": "OptimizationAgent",
-                "status": "pending",
-                "summary": "Translate economic constraints into optimizer bounds once candidate materials exist.",
-            },
-        )
+    if not parsed.get("technical_constraints") and not parsed.get("economic_constraints"):
+        steps[1]["summary"] = "No numeric constraints were detected for optimizer inputs."
     return steps
