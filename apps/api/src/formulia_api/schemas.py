@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -153,6 +153,30 @@ class CalculationRead(BaseModel):
     currency: str
     parameters: list[dict[str, Any]]
     warnings: list[dict[str, Any]]
+
+
+class CompatibilityRuleCreate(BaseModel):
+    rule_type: Literal["material_pair"] = "material_pair"
+    severity: Literal["blocker", "warning", "info"] = "warning"
+    material_a_id: uuid.UUID
+    material_b_id: uuid.UUID
+    message: str = Field(min_length=1)
+    recommended_action: str | None = None
+    source_type: Literal["manual"] = "manual"
+
+
+class CompatibilityRuleRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    rule_type: str
+    severity: str
+    condition_json: dict[str, Any]
+    message: str
+    source_type: str
+    active: bool
+    created_at: datetime
 
 
 class FormulaCalculationHistoryRead(BaseModel):

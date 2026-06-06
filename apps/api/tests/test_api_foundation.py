@@ -122,6 +122,135 @@ def test_raw_material_aliases_are_tenant_scoped() -> None:
     assert forbidden.status_code == 404
 
 
+def test_compatibility_rules_are_tenant_scoped() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+    rm_1 = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Material A", "code": "MAT-A"},
+    ).json()
+    rm_2 = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_a,
+        json={"name": "Material B", "code": "MAT-B"},
+    ).json()
+
+    created = client.post(
+        "/api/v1/compatibility-rules",
+        headers=headers_a,
+        json={
+            "severity": "blocker",
+            "material_a_id": rm_1["id"],
+            "material_b_id": rm_2["id"],
+            "message": "Material A and Material B are incompatible.",
+            "recommended_action": "Replace one of the two materials.",
+        },
+    )
+    listed_a = client.get("/api/v1/compatibility-rules", headers=headers_a)
+    listed_b = client.get("/api/v1/compatibility-rules", headers=headers_b)
+    cross_tenant = client.post(
+        "/api/v1/compatibility-rules",
+        headers=headers_b,
+        json={
+            "severity": "warning",
+            "material_a_id": rm_1["id"],
+            "material_b_id": rm_2["id"],
+            "message": "Should not be allowed.",
+        },
+    )
+
+    assert created.status_code == 201
+    rule = created.json()
+    assert rule["tenant_id"] == tenant_a
+    assert rule["rule_type"] == "material_pair"
+    assert rule["condition_json"]["raw_material_ids"] == sorted([rm_1["id"], rm_2["id"]])
+    assert rule["condition_json"]["recommended_action"] == "Replace one of the two materials."
+    assert listed_a.status_code == 200
+    assert [item["id"] for item in listed_a.json()] == [rule["id"]]
+    assert listed_b.status_code == 200
+    assert listed_b.json() == []
+    assert cross_tenant.status_code == 404
+
+
+def test_formula_calculation_reports_manual_compatibility_rule() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    rm_1 = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Material A", "code": "MAT-A"},
+    ).json()
+    rm_2 = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Material B", "code": "MAT-B"},
+    ).json()
+    rm_3 = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Material C", "code": "MAT-C"},
+    ).json()
+    for raw_material in [rm_1, rm_2, rm_3]:
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/prices",
+            headers=headers,
+            json={"price": 1.0, "currency": "EUR", "unit": "kg"},
+        )
+    created_rule = client.post(
+        "/api/v1/compatibility-rules",
+        headers=headers,
+        json={
+            "severity": "blocker",
+            "material_a_id": rm_1["id"],
+            "material_b_id": rm_2["id"],
+            "message": "Material A and Material B should not be combined.",
+            "recommended_action": "Use Material C instead of Material B.",
+        },
+    ).json()
+
+    compatible = client.post(
+        "/api/v1/formulas/calculate",
+        headers=headers,
+        json={
+            "items": [
+                {"raw_material_id": rm_1["id"], "percentage": 50},
+                {"raw_material_id": rm_3["id"], "percentage": 50},
+            ]
+        },
+    )
+    incompatible = client.post(
+        "/api/v1/formulas/calculate",
+        headers=headers,
+        json={
+            "items": [
+                {"raw_material_id": rm_1["id"], "percentage": 50},
+                {"raw_material_id": rm_2["id"], "percentage": 50},
+            ]
+        },
+    )
+
+    assert compatible.status_code == 200
+    assert compatible.json()["warnings"] == []
+    assert incompatible.status_code == 200
+    warnings = incompatible.json()["warnings"]
+    assert warnings == [
+        {
+            "code": "compatibility_blocker",
+            "severity": "blocker",
+            "rule_id": created_rule["id"],
+            "message": "Material A and Material B should not be combined.",
+            "recommended_action": "Use Material C instead of Material B.",
+            "raw_material_id": None,
+            "parameter_code": None,
+        }
+    ]
+
+
 def test_persisted_formula_calculation_uses_backend_core() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

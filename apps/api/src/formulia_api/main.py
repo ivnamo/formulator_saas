@@ -47,6 +47,7 @@ from .local_env import load_local_env
 from .models import (
     AiRun,
     AiToolCall,
+    CompatibilityRule,
     Formula,
     FormulaCalculationResult,
     FormulaItem,
@@ -62,6 +63,8 @@ from .models import (
 )
 from .schemas import (
     CalculationRead,
+    CompatibilityRuleCreate,
+    CompatibilityRuleRead,
     ExcelImportPreviewRead,
     ExcelImportSaveRequest,
     ExcelImportSheetsRead,
@@ -330,6 +333,57 @@ def register_routes(app: FastAPI) -> None:
         session.commit()
         session.refresh(value)
         return _model_dict(value)
+
+    @app.get("/api/v1/compatibility-rules", response_model=list[CompatibilityRuleRead])
+    def list_compatibility_rules(
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[CompatibilityRule]:
+        return session.exec(
+            select(CompatibilityRule)
+            .where(CompatibilityRule.tenant_id == tenant.tenant_id)
+            .order_by(CompatibilityRule.created_at.desc())
+        ).all()
+
+    @app.post(
+        "/api/v1/compatibility-rules",
+        response_model=CompatibilityRuleRead,
+        status_code=201,
+    )
+    def create_compatibility_rule(
+        payload: CompatibilityRuleCreate,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> CompatibilityRule:
+        if payload.material_a_id == payload.material_b_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Compatibility rule needs two different raw materials.",
+            )
+        _get_raw_material(session, tenant.tenant_id, payload.material_a_id)
+        _get_raw_material(session, tenant.tenant_id, payload.material_b_id)
+        message = payload.message.strip()
+        if not message:
+            raise HTTPException(status_code=400, detail="Compatibility rule message is required.")
+        rule = CompatibilityRule(
+            tenant_id=tenant.tenant_id,
+            rule_type=payload.rule_type,
+            severity=payload.severity,
+            condition_json={
+                "raw_material_ids": sorted(
+                    [str(payload.material_a_id), str(payload.material_b_id)]
+                ),
+                "recommended_action": payload.recommended_action,
+            },
+            message=message,
+            source_type=payload.source_type,
+            validated_by=tenant.user_id,
+            validated_at=utc_now(),
+        )
+        session.add(rule)
+        session.commit()
+        session.refresh(rule)
+        return rule
 
     @app.get("/api/v1/formulas", response_model=list[FormulaRead])
     def list_formulas(
@@ -774,6 +828,7 @@ def _calculate(
         raw_materials=core_materials,
         required_parameter_codes=required_parameter_codes,
     )
+    compatibility_warnings = _compatibility_warnings(session, tenant_id, items)
     return {
         "total_percentage": calculation.total_percentage,
         "price_total": calculation.price_total,
@@ -790,8 +845,44 @@ def _calculate(
                 "parameter_code": warning.parameter_code,
             }
             for warning in calculation.warnings
-        ],
+        ]
+        + compatibility_warnings,
     }
+
+
+def _compatibility_warnings(
+    session: Session,
+    tenant_id: uuid.UUID,
+    items: list[FormulaItem],
+) -> list[dict[str, Any]]:
+    selected_ids = {str(item.raw_material_id) for item in items}
+    if len(selected_ids) < 2:
+        return []
+
+    rules = session.exec(
+        select(CompatibilityRule).where(
+            CompatibilityRule.tenant_id == tenant_id,
+            CompatibilityRule.active.is_(True),
+            CompatibilityRule.rule_type == "material_pair",
+        )
+    ).all()
+    warnings: list[dict[str, Any]] = []
+    for rule in rules:
+        rule_material_ids = set(rule.condition_json.get("raw_material_ids", []))
+        if rule_material_ids and rule_material_ids.issubset(selected_ids):
+            recommended_action = rule.condition_json.get("recommended_action")
+            warnings.append(
+                {
+                    "code": f"compatibility_{rule.severity}",
+                    "severity": rule.severity,
+                    "rule_id": str(rule.id),
+                    "message": rule.message,
+                    "recommended_action": recommended_action,
+                    "raw_material_id": None,
+                    "parameter_code": None,
+                }
+            )
+    return warnings
 
 
 def _excel_preview(

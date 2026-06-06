@@ -159,6 +159,22 @@ class FormulaCalculationResult(SQLModel, table=True):
     calculated_at: datetime = Field(default_factory=utc_now)
 
 
+class CompatibilityRule(SQLModel, table=True):
+    __tablename__ = "compatibility_rules"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    rule_type: str = Field(index=True)
+    severity: str = Field(index=True)
+    condition_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    message: str
+    source_type: str = "manual"
+    validated_by: uuid.UUID | None = None
+    validated_at: datetime | None = None
+    active: bool = True
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class AiRun(SQLModel, table=True):
     __tablename__ = "ai_runs"
 
