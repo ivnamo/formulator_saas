@@ -171,3 +171,38 @@ class OptimizationRun(SQLModel, table=True):
     request_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     result_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class AiRun(SQLModel, table=True):
+    __tablename__ = "ai_runs"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    user_id: uuid.UUID | None = Field(default=None, index=True, foreign_key="users.id")
+    run_type: str = Field(index=True)
+    provider: str | None = Field(default=None, index=True)
+    model: str | None = None
+    status: str = Field(index=True)
+    input_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    output_json: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    error: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    cost_estimate: float | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    finished_at: datetime | None = None
+
+
+class AiToolCall(SQLModel, table=True):
+    __tablename__ = "ai_tool_calls"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    ai_run_id: uuid.UUID = Field(index=True, foreign_key="ai_runs.id")
+    tool_name: str = Field(index=True)
+    status: str = Field(index=True)
+    input_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    output_json: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    error: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    finished_at: datetime | None = None

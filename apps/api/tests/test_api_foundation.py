@@ -477,6 +477,68 @@ def test_requirement_parser_rejects_cross_tenant_access() -> None:
     assert response.status_code == 403
 
 
+def test_requirement_parser_logs_ai_run_and_tool_call() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    parsed = client.post(
+        "/api/v1/requirements/parse",
+        headers=headers,
+        json={"text": "Minimiza coste con active content entre 20 y 40"},
+    )
+    runs = client.get("/api/v1/ai/runs", headers=headers)
+
+    assert parsed.status_code == 200
+    assert runs.status_code == 200
+    listed_runs = runs.json()
+    assert len(listed_runs) == 1
+    run = listed_runs[0]
+    assert run["tenant_id"] == tenant_id
+    assert run["user_id"] == USER_A
+    assert run["run_type"] == "requirement_parser"
+    assert run["provider"] == "deterministic"
+    assert run["model"] == "rules:v1"
+    assert run["status"] == "success"
+    assert run["input_json"]["text"] == "Minimiza coste con active content entre 20 y 40"
+    assert run["output_json"]["source"] == "deterministic"
+    assert run["finished_at"] is not None
+
+    detail = client.get(f"/api/v1/ai/runs/{run['id']}", headers=headers)
+
+    assert detail.status_code == 200
+    detailed_run = detail.json()
+    assert len(detailed_run["tool_calls"]) == 1
+    tool_call = detailed_run["tool_calls"][0]
+    assert tool_call["tenant_id"] == tenant_id
+    assert tool_call["ai_run_id"] == run["id"]
+    assert tool_call["tool_name"] == "RequirementParserTool"
+    assert tool_call["status"] == "success"
+    assert tool_call["output_json"]["parameter_bounds"][0]["min_value"] == 20.0
+
+
+def test_ai_runs_are_tenant_scoped() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+
+    client.post(
+        "/api/v1/requirements/parse",
+        headers=headers_a,
+        json={"text": "Minimiza coste con active content minimo 20"},
+    )
+    runs_a = client.get("/api/v1/ai/runs", headers=headers_a).json()
+    runs_b = client.get("/api/v1/ai/runs", headers=headers_b)
+    forbidden_detail = client.get(f"/api/v1/ai/runs/{runs_a[0]['id']}", headers=headers_b)
+
+    assert len(runs_a) == 1
+    assert runs_b.status_code == 200
+    assert runs_b.json() == []
+    assert forbidden_detail.status_code == 404
+
+
 def test_optimization_validation_accepts_minimize_price_contract() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

@@ -38,6 +38,8 @@ from .excel_import import (
 )
 from .formula_export import FormulaExportLine, FormulaExportSummary, build_formula_xlsx
 from .models import (
+    AiRun,
+    AiToolCall,
     Formula,
     FormulaCalculationResult,
     FormulaItem,
@@ -53,6 +55,8 @@ from .models import (
     utc_now,
 )
 from .schemas import (
+    AiRunDetailRead,
+    AiRunRead,
     CalculationRead,
     ExcelImportColumnsRead,
     ExcelImportPreviewRead,
@@ -395,6 +399,7 @@ def register_routes(app: FastAPI) -> None:
     @app.post("/api/v1/requirements/parse", response_model=RequirementParseRead)
     def parse_requirement(
         payload: RequirementParseRequest,
+        session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> RequirementParseRead:
         parsed = parse_requirements(
@@ -402,7 +407,7 @@ def register_routes(app: FastAPI) -> None:
             active_parameter_code=payload.active_parameter_code,
             active_parameter_name=payload.active_parameter_name,
         )
-        return RequirementParseRead(
+        response = RequirementParseRead(
             tenant_id=tenant.tenant_id,
             user_id=tenant.user_id,
             source=parsed.source,
@@ -435,6 +440,50 @@ def register_routes(app: FastAPI) -> None:
             excluded_raw_materials=list(parsed.excluded_raw_materials),
             uncertainties=list(parsed.uncertainties),
         )
+        _persist_ai_run(
+            session,
+            tenant,
+            run_type="requirement_parser",
+            provider="deterministic",
+            model="rules:v1",
+            input_json=payload.model_dump(mode="json"),
+            output_json=response.model_dump(mode="json"),
+            tool_name="RequirementParserTool",
+        )
+        return response
+
+    @app.get("/api/v1/ai/runs", response_model=list[AiRunRead])
+    def list_ai_runs(
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        runs = session.exec(
+            select(AiRun)
+            .where(AiRun.tenant_id == tenant.tenant_id)
+            .order_by(AiRun.created_at.desc())
+        ).all()
+        return [_model_dict(run) for run in runs]
+
+    @app.get("/api/v1/ai/runs/{run_id}", response_model=AiRunDetailRead)
+    def get_ai_run(
+        run_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        run = session.exec(
+            select(AiRun).where(AiRun.id == run_id, AiRun.tenant_id == tenant.tenant_id)
+        ).first()
+        if run is None:
+            raise HTTPException(status_code=404, detail="AI run not found.")
+        tool_calls = session.exec(
+            select(AiToolCall)
+            .where(AiToolCall.ai_run_id == run.id, AiToolCall.tenant_id == tenant.tenant_id)
+            .order_by(AiToolCall.created_at.asc())
+        ).all()
+        return {
+            **_model_dict(run),
+            "tool_calls": [_model_dict(tool_call) for tool_call in tool_calls],
+        }
 
     @app.post("/api/v1/optimizations/validate", response_model=OptimizationValidationRead)
     def validate_optimization(
@@ -1401,6 +1450,45 @@ def _core_raw_material(
 
 def _model_dict(model: Any) -> dict[str, Any]:
     return model.model_dump(mode="json")
+
+
+def _persist_ai_run(
+    session: Session,
+    tenant: TenantContext,
+    *,
+    run_type: str,
+    provider: str,
+    model: str,
+    input_json: dict[str, Any],
+    output_json: dict[str, Any],
+    tool_name: str,
+) -> AiRun:
+    finished_at = utc_now()
+    ai_run = AiRun(
+        tenant_id=tenant.tenant_id,
+        user_id=tenant.user_id,
+        run_type=run_type,
+        provider=provider,
+        model=model,
+        status="success",
+        input_json=input_json,
+        output_json=output_json,
+        finished_at=finished_at,
+    )
+    session.add(ai_run)
+    tool_call = AiToolCall(
+        tenant_id=tenant.tenant_id,
+        ai_run_id=ai_run.id,
+        tool_name=tool_name,
+        status="success",
+        input_json=input_json,
+        output_json=output_json,
+        finished_at=finished_at,
+    )
+    session.add(tool_call)
+    session.commit()
+    session.refresh(ai_run)
+    return ai_run
 
 
 def _normalize(value: str) -> str:

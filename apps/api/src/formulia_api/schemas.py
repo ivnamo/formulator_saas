@@ -314,6 +314,41 @@ class RequirementParseRead(BaseModel):
     uncertainties: list[str]
 
 
+class AiToolCallRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    ai_run_id: uuid.UUID
+    tool_name: str
+    status: str
+    input_json: dict[str, Any]
+    output_json: dict[str, Any] | None
+    error: str | None
+    created_at: datetime
+    finished_at: datetime | None
+
+
+class AiRunRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID | None
+    run_type: str
+    provider: str | None
+    model: str | None
+    status: str
+    input_json: dict[str, Any]
+    output_json: dict[str, Any] | None
+    error: str | None
+    prompt_tokens: int | None
+    completion_tokens: int | None
+    cost_estimate: float | None
+    created_at: datetime
+    finished_at: datetime | None
+
+
+class AiRunDetailRead(AiRunRead):
+    tool_calls: list[AiToolCallRead]
+
+
 class FormulaCalculationHistoryRead(BaseModel):
     id: uuid.UUID
     formula_id: uuid.UUID
