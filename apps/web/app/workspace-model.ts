@@ -124,6 +124,30 @@ export type ExcelImportPreview = {
   pending_rows: number;
 };
 
+export function withResolvedImportRow(
+  preview: ExcelImportPreview,
+  rowNumber: number,
+  rawMaterialId: string,
+): ExcelImportPreview {
+  const rows = preview.rows.map((row) =>
+    row.row_number === rowNumber
+      ? {
+          ...row,
+          raw_material_id: rawMaterialId,
+          matched_by: "manual",
+          status: "matched_exact",
+          message: null,
+        }
+      : row,
+  );
+  return {
+    ...preview,
+    rows,
+    resolved_rows: rows.filter((row) => row.raw_material_id !== null).length,
+    pending_rows: rows.filter((row) => row.status !== "matched_exact").length,
+  };
+}
+
 export type Status = "idle" | "working" | "error";
 
 export type MaterialForm = {

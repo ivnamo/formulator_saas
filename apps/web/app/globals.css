@@ -27,7 +27,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -35,7 +36,8 @@ button {
   white-space: nowrap;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-width: 0;
   height: 34px;
@@ -46,7 +48,8 @@ input {
   color: var(--text);
 }
 
-input:disabled {
+input:disabled,
+select:disabled {
   background: #f6f8f6;
   color: var(--muted);
 }
@@ -427,7 +430,7 @@ label span {
 .importHead,
 .importRow {
   display: grid;
-  grid-template-columns: 48px minmax(150px, 1fr) 82px 130px;
+  grid-template-columns: 48px minmax(150px, 1fr) 82px 130px minmax(150px, 0.7fr);
   gap: 10px;
   align-items: center;
 }

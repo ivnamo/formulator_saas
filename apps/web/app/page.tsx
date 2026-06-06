@@ -26,6 +26,7 @@ import {
   normalizeCode,
   parseOptionalNumber,
   slugify,
+  withResolvedImportRow,
   type CalculationResult,
   type ExcelImportPreview,
   type FormulaCalculationHistory,
@@ -434,6 +435,16 @@ export default function Home() {
     });
   }
 
+  function resolveImportRow(rowNumber: number, rawMaterialId: string) {
+    if (!rawMaterialId) {
+      return;
+    }
+    setImportPreview((current) =>
+      current ? withResolvedImportRow(current, rowNumber, rawMaterialId) : current,
+    );
+    setMessage("Import row resolved");
+  }
+
   async function runAction(label: string, action: () => Promise<void>) {
     setStatus("working");
     setMessage(label);
@@ -814,6 +825,7 @@ export default function Home() {
                 <span>Material</span>
                 <span>Share</span>
                 <span>Status</span>
+                <span>Resolve</span>
               </div>
               {importPreview ? (
                 importPreview.rows.map((row) => (
@@ -822,6 +834,25 @@ export default function Home() {
                     <span>{row.material_code || row.material_name || "-"}</span>
                     <span>{row.percentage === null ? "-" : `${row.percentage.toFixed(2)}%`}</span>
                     <span data-state={row.status}>{row.status}</span>
+                    {row.status === "needs_review" ? (
+                      <select
+                        aria-label={`Resolve row ${row.row_number}`}
+                        defaultValue=""
+                        onChange={(event) => resolveImportRow(row.row_number, event.target.value)}
+                        disabled={isBusy}
+                      >
+                        <option value="" disabled>
+                          Select material
+                        </option>
+                        {workspace.rawMaterials.map((material) => (
+                          <option key={material.id} value={material.id}>
+                            {material.code ? `${material.code} - ${material.name}` : material.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span>{row.matched_by ?? "-"}</span>
+                    )}
                   </div>
                 ))
               ) : (
