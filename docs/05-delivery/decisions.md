@@ -84,3 +84,17 @@ Consecuencias:
 - Cada commit debe tener un proposito unico.
 - Cambios de dominio, API, tenant isolation o calculo requieren tests automatizados.
 - Cambios documentales requieren al menos checks de coherencia, busqueda de naming anterior y estado Git limpio.
+
+## ADR-012: Quality/refactor gate despues de tests verdes
+
+Decision: cada rama con cambios de codigo debe pasar un quality/refactor gate despues de tener tests/checks verdes y antes de cerrarse, subirse al remoto como completa o proponerse para merge.
+
+Motivo: evitar auditorias finales donde el comportamiento funciona pero el codigo no cumple SOLID, KISS, YAGNI, separacion de responsabilidades o mantiene deuda evitable.
+
+Consecuencias:
+
+- Tests verdes son condicion necesaria, no condicion suficiente.
+- El gate revisa SOLID, KISS, YAGNI, DRY razonable, naming, boundaries, complejidad, acoplamiento, tenant isolation y gaps de tests.
+- Los refactors detectados dentro del alcance de la rama deben hacerse en commits atomicos.
+- Si el refactor toca codigo, se reejecutan los tests/checks afectados.
+- Si la deuda detectada excede el alcance de la rama, se registra como backlog o nueva rama en vez de mezclarla.

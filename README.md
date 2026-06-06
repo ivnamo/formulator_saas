@@ -28,6 +28,7 @@ docs/       product, architecture, and delivery documentation
 - Work on descriptive branches, not directly on `main`.
 - Keep commits atomic.
 - Add proportional tests for code changes.
+- After tests/checks pass, run a quality/refactor gate before closing a branch.
 - Keep tenant isolation and deterministic calculation ahead of AI features.
 
 ## Local Development

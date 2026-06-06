@@ -52,6 +52,15 @@ Tampoco añadas módulos de usuario final, landing comercial o rediseños visual
 - Toda llamada a IA debe quedar registrada en `ai_runs` y `ai_tool_calls`.
 - Toda respuesta IA que proponga fórmula debe incluir evidencia, supuestos y validaciones.
 
+## Workflow obligatorio por rama
+
+1. Crear rama descriptiva.
+2. Hacer commits atomicos.
+3. Ejecutar tests/checks proporcionales.
+4. Con tests/checks verdes, ejecutar quality/refactor gate contra SOLID, KISS, YAGNI, DRY razonable, boundaries, naming, complejidad y tenant isolation.
+5. Si el gate produce cambios, reejecutar los tests/checks afectados.
+6. Cerrar con worktree limpio y push.
+
 ## Stack recomendado
 
 ```text

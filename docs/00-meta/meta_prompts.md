@@ -32,6 +32,8 @@ El modo meta no es documentacion infinita. Termina cuando produce:
 - El trabajo se hace en ramas descriptivas, no directamente en `main`.
 - Los commits deben ser atomicos y dejar el repo en un estado coherente.
 - Cada cambio debe tener verificacion proporcional: tests automatizados para codigo y checks documentales para docs.
+- Tests verdes no cierran una rama por si solos: despues debe hacerse un pase de calidad/refactor.
+- El pase de calidad/refactor revisa SOLID, KISS, YAGNI, DRY razonable, separacion de responsabilidades, naming, acoplamiento, complejidad y deuda introducida.
 
 ## Stack congelado para el primer corte
 
@@ -92,9 +94,19 @@ La definicion operativa de esta slice esta en `docs/00-meta/meta_001_foundation_
 - Hacer commits pequenos y atomicos.
 - No mezclar cambios documentales, backend y frontend en el mismo commit salvo que sean inseparables.
 - Ejecutar tests o checks antes de cada cierre de tarea.
+- Tras tests/checks verdes, hacer un pase de refactor/calidad antes de cerrar la rama.
+- Si el pase de refactor cambia codigo, reejecutar los tests/checks afectados.
 - Si no existe aun el test runner, documentar el check ejecutado y anadir el test runner como parte del scaffold.
 - Mantener `main` publicable.
 - No dejar worktree sucio al cerrar una tarea salvo que el usuario pida explicitamente pausar en medio.
+
+Secuencia obligatoria por rama:
+
+1. Implementar el corte minimo de la meta.
+2. Ejecutar tests/checks proporcionales.
+3. Hacer pase de calidad/refactor.
+4. Reejecutar tests/checks afectados si hubo cambios.
+5. Commit y push con worktree limpio.
 
 ## Cosas adaptables
 
@@ -224,12 +236,15 @@ Reglas:
 - No romper decisiones congeladas.
 - Añadir tests si el cambio toca dominio, API o aislamiento multi-tenant.
 - Verificar con comandos locales.
+- Despues de tests/checks verdes, ejecutar un pase de calidad/refactor contra SOLID, KISS, YAGNI y deuda introducida.
+- Si refactorizas, reejecuta los tests/checks afectados antes de cerrar.
 
 Al final informa:
 1. Archivos modificados.
 2. Comportamiento logrado.
 3. Verificacion ejecutada.
-4. Riesgo restante.
+4. Refactor/calidad aplicado o justificacion de no aplicar.
+5. Riesgo restante.
 ```
 
 ## Prompt 6 - Revision de coherencia
@@ -252,6 +267,8 @@ Busca:
 3. Riesgos multi-tenant.
 4. IA usada antes del core determinista.
 5. Trabajo que deba moverse a backlog futuro.
+6. Incumplimientos de SOLID, KISS, YAGNI o separacion de responsabilidades.
+7. Duplicacion, acoplamiento, naming confuso o complejidad innecesaria.
 
 Devuelve findings concretos con archivo y recomendacion.
 ```
@@ -298,6 +315,35 @@ Incluye:
 No repitas documentacion completa. Deja una nota operativa breve.
 ```
 
+## Prompt 9 - Quality/refactor gate
+
+Usar despues de que una rama tenga tests/checks verdes y antes de cerrarla.
+
+```text
+Actua como revisor senior de calidad de FormulIA Cloud.
+
+Contexto:
+- La rama ya tiene tests/checks verdes.
+- No busques nuevas features.
+- Tu objetivo es detectar deuda introducida antes de cerrar la rama.
+
+Revisa los cambios recientes contra:
+1. SOLID y separacion de responsabilidades.
+2. KISS y YAGNI.
+3. DRY razonable, sin abstraer antes de tiempo.
+4. Naming de dominio, API y UI.
+5. Aislamiento multi-tenant.
+6. Complejidad, acoplamiento y boundaries entre `apps/` y `packages/`.
+7. Gaps de tests que sean proporcionales al riesgo.
+
+Clasifica cada finding como:
+- Refactor obligatorio antes de merge.
+- Aceptar con nota.
+- Mover a backlog.
+
+Si haces cambios de refactor, mantenlos atomicos y reejecuta los tests/checks afectados.
+```
+
 ## Base de trabajo inmediata
 
 El siguiente bloque de trabajo recomendado es:
@@ -317,3 +363,4 @@ El siguiente bloque de trabajo recomendado es:
 - Si contradice decisiones congeladas, crea ADR antes de implementarla.
 - Si afecta a formulas, primero dominio determinista; despues API; despues UI; IA al final.
 - Si toca datos de tenant, prueba aislamiento.
+- Despues de tests/checks verdes, ejecuta quality/refactor gate antes de cerrar rama.
