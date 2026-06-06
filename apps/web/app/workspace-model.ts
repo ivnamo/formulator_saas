@@ -237,6 +237,33 @@ export type OptimizationRunHistory = {
   created_at: string;
 };
 
+export type RequirementParseResult = {
+  tenant_id: string;
+  user_id: string;
+  source: "deterministic";
+  text: string;
+  objectives: Array<{
+    type: string;
+    target: string;
+  }>;
+  parameter_bounds: Array<{
+    code: string;
+    min_value: number | null;
+    max_value: number | null;
+    source_text: string;
+  }>;
+  price_constraint: {
+    max_price: number;
+    currency: string;
+    unit: string;
+    source_text: string;
+  } | null;
+  alternatives: number | null;
+  mandatory_raw_materials: string[];
+  excluded_raw_materials: string[];
+  uncertainties: string[];
+};
+
 export type OptimizerCandidateConfig = {
   enabled: boolean;
   minPercentage: string;

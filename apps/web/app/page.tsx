@@ -53,6 +53,7 @@ import {
   type RawMaterialPriceRead,
   type ParameterRead,
   type RawMaterialRead,
+  type RequirementParseResult,
   type Status,
   type TenantRead,
   type WorkspaceState,
@@ -121,6 +122,10 @@ export default function Home() {
   const [optimizerCandidates, setOptimizerCandidates] = useState<
     Record<string, OptimizerCandidateConfig>
   >({});
+  const [requirementText, setRequirementText] = useState(
+    "Minimiza coste con active content entre 20 y 40.",
+  );
+  const [parsedRequirements, setParsedRequirements] = useState<RequirementParseResult | null>(null);
   const [optimizationRun, setOptimizationRun] = useState<OptimizationRun | null>(null);
   const [optimizationHistory, setOptimizationHistory] = useState<OptimizationRunHistory[]>([]);
   const [selectedOptimizationRunId, setSelectedOptimizationRunId] = useState<string | null>(null);
@@ -202,6 +207,10 @@ export default function Home() {
       rawMaterialsById,
     ],
   );
+  const activeRequirementParameterBound =
+    parsedRequirements?.parameter_bounds.find(
+      (bound) => bound.code === (workspace.parameter?.code ?? parameterForm.code),
+    ) ?? null;
   const selectedOptimizerMaterials = workspace.rawMaterials.filter(
     (material) => optimizerCandidateConfig(material.id).enabled,
   );
@@ -214,6 +223,10 @@ export default function Home() {
   const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
   const canRunOptimizer =
     Boolean(workspace.tenant) && selectedOptimizerMaterials.length > 0 && !isBusy;
+  const canParseRequirements =
+    Boolean(workspace.tenant) && requirementText.trim().length > 0 && !isBusy;
+  const canApplyRequirementBounds =
+    Boolean(workspace.parameter) && activeRequirementParameterBound !== null && !isBusy;
   const canSaveOptimizedFormula =
     Boolean(workspace.tenant) &&
     optimizationRun?.status === "success" &&
@@ -263,6 +276,7 @@ export default function Home() {
       setOptimizationComparisonBaselineId("");
       setOptimizationComparisonCandidateId("");
       setOptimizerCandidates({});
+      setParsedRequirements(null);
       setOptimizationRun(null);
       resetImportState();
       setMessage("Workspace ready");
@@ -671,6 +685,41 @@ export default function Home() {
         optimization.status === "infeasible" ? "Optimization infeasible" : "Optimization invalid",
       );
     });
+  }
+
+  async function parseRequirementText() {
+    if (!canParseRequirements) {
+      setError("Create a workspace and enter a requirement first");
+      return;
+    }
+    await runAction("Parsing requirement", async () => {
+      const parsed = await request<RequirementParseResult>("/api/v1/requirements/parse", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          text: requirementText,
+          active_parameter_code: workspace.parameter?.code ?? parameterForm.code,
+          active_parameter_name: workspace.parameter?.name ?? parameterForm.name,
+        }),
+      });
+      setParsedRequirements(parsed);
+      setMessage("Requirement parsed");
+    });
+  }
+
+  function applyRequirementParameterBounds() {
+    if (!activeRequirementParameterBound) {
+      setError("No active parameter bounds to apply");
+      return;
+    }
+    setOptimizerParameterMinValue(
+      formatRequirementInputValue(activeRequirementParameterBound.min_value),
+    );
+    setOptimizerParameterMaxValue(
+      formatRequirementInputValue(activeRequirementParameterBound.max_value),
+    );
+    setOptimizationRun(null);
+    setMessage("Requirement bounds applied");
   }
 
   async function refreshFormulaLibrary(options: { silent?: boolean } = {}) {
@@ -1408,6 +1457,10 @@ export default function Home() {
 
   function formatNameList(items: string[]): string {
     return items.length ? items.join(", ") : "-";
+  }
+
+  function formatRequirementInputValue(value: number | null): string {
+    return value === null ? "" : formatBoundValue(value);
   }
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -2476,6 +2529,119 @@ export default function Home() {
                 <span>Calculation source</span>
                 <strong>Backend</strong>
               </div>
+            </div>
+            <div className="requirementParser">
+              <div className="historyTitle">
+                <ListChecks size={17} />
+                <strong>Requirement parser</strong>
+              </div>
+              <label className="fullWidthLabel">
+                <span>Request</span>
+                <textarea
+                  value={requirementText}
+                  onChange={(event) => {
+                    setRequirementText(event.target.value);
+                    setParsedRequirements(null);
+                  }}
+                  disabled={!canEditTenantData}
+                  rows={4}
+                />
+              </label>
+              <div className="requirementActions">
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={parseRequirementText}
+                  disabled={!canParseRequirements}
+                >
+                  <ListChecks size={17} />
+                  Parse
+                </button>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={applyRequirementParameterBounds}
+                  disabled={!canApplyRequirementBounds}
+                >
+                  <Check size={17} />
+                  Apply bounds
+                </button>
+              </div>
+              {parsedRequirements ? (
+                <div className="requirementResult">
+                  <div className="detailStats">
+                    <div>
+                      <span>Source</span>
+                      <strong>{parsedRequirements.source}</strong>
+                    </div>
+                    <div>
+                      <span>Objective</span>
+                      <strong>
+                        {parsedRequirements.objectives.length
+                          ? parsedRequirements.objectives
+                              .map((objective) => `${objective.type} ${objective.target}`)
+                              .join(", ")
+                          : "-"}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Price max</span>
+                      <strong>
+                        {parsedRequirements.price_constraint
+                          ? `${parsedRequirements.price_constraint.max_price.toFixed(2)} ${
+                              parsedRequirements.price_constraint.currency
+                            }/${parsedRequirements.price_constraint.unit}`
+                          : "-"}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Alternatives</span>
+                      <strong>{parsedRequirements.alternatives ?? "-"}</strong>
+                    </div>
+                  </div>
+                  <div className="detailGroup">
+                    <span>Parameter bounds</span>
+                    {parsedRequirements.parameter_bounds.length ? (
+                      parsedRequirements.parameter_bounds.map((bound) => (
+                        <div className="detailLine" key={bound.code}>
+                          <strong>{bound.code}</strong>
+                          <span>{formatBoundRange(bound.min_value, bound.max_value, "")}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="detailMuted">No parameter bounds</div>
+                    )}
+                  </div>
+                  <div className="detailGroup">
+                    <span>Raw materials</span>
+                    <div className="comparisonRows">
+                      <div className="comparisonRow">
+                        <strong>Mandatory</strong>
+                        <span>{formatNameList(parsedRequirements.mandatory_raw_materials)}</span>
+                      </div>
+                      <div className="comparisonRow">
+                        <strong>Excluded</strong>
+                        <span>{formatNameList(parsedRequirements.excluded_raw_materials)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="detailGroup">
+                    <span>Uncertainties</span>
+                    {parsedRequirements.uncertainties.length ? (
+                      parsedRequirements.uncertainties.map((item, index) => (
+                        <div className="detailMessage" key={`${item}-${index}`}>
+                          <AlertTriangle size={15} />
+                          <span>{item}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="detailMuted">No uncertainties</div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="empty">No parsed requirement.</div>
+              )}
             </div>
             <div className="optimizerPanel">
               <div className="optimizerControls">
