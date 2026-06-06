@@ -46,6 +46,7 @@ import {
   type FormulaComparison,
   type FormulaRead,
   type MaterialForm,
+  type OptimizerCandidateConfig,
   type OptimizationRun,
   type RawMaterialAliasRead,
   type RawMaterialPriceRead,
@@ -55,6 +56,17 @@ import {
   type TenantRead,
   type WorkspaceState,
 } from "./workspace-model";
+
+type OptimizerPayload = {
+  candidate_raw_material_ids: string[];
+  raw_material_bounds: Array<{
+    raw_material_id: string;
+    min_percentage?: number;
+    max_percentage?: number;
+  }>;
+};
+
+type OptimizerPayloadResult = { payload: OptimizerPayload } | { error: string };
 
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
@@ -72,6 +84,9 @@ export default function Home() {
   });
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [optimizerMinValue, setOptimizerMinValue] = useState("20");
+  const [optimizerCandidates, setOptimizerCandidates] = useState<
+    Record<string, OptimizerCandidateConfig>
+  >({});
   const [optimizationRun, setOptimizationRun] = useState<OptimizationRun | null>(null);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
@@ -111,6 +126,9 @@ export default function Home() {
     () => new Map(workspace.rawMaterials.map((material) => [material.id, material])),
     [workspace.rawMaterials],
   );
+  const selectedOptimizerMaterials = workspace.rawMaterials.filter(
+    (material) => optimizerCandidateConfig(material.id).enabled,
+  );
   const totalPercentage = workspace.formulaLines.reduce(
     (sum, line) => sum + line.percentage,
     0,
@@ -119,7 +137,7 @@ export default function Home() {
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
   const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
   const canRunOptimizer =
-    Boolean(workspace.tenant) && workspace.rawMaterials.length > 0 && !isBusy;
+    Boolean(workspace.tenant) && selectedOptimizerMaterials.length > 0 && !isBusy;
   const canCompareFormulas =
     Boolean(workspace.tenant) &&
     Boolean(comparisonLeftId) &&
@@ -159,6 +177,8 @@ export default function Home() {
       setResult(null);
       setFormulas([]);
       setCalculationHistory([]);
+      setOptimizerCandidates({});
+      setOptimizationRun(null);
       resetImportState();
       setMessage("Workspace ready");
     });
@@ -189,6 +209,7 @@ export default function Home() {
         parameter,
       }));
       setResult(null);
+      setOptimizationRun(null);
       setMessage("Parameter ready");
     });
   }
@@ -248,8 +269,13 @@ export default function Home() {
           }),
         ],
       }));
+      setOptimizerCandidates((current) => ({
+        ...current,
+        [material.id]: defaultOptimizerCandidateConfig(),
+      }));
       setMaterialForm({ code: "", name: "", price: "", parameterValue: "" });
       setResult(null);
+      setOptimizationRun(null);
       resetImportState();
       setMessage("Raw material ready");
     });
@@ -277,6 +303,7 @@ export default function Home() {
       }));
       setPriceInputs((current) => ({ ...current, [rawMaterialId]: "" }));
       setResult(null);
+      setOptimizationRun(null);
       setMessage("Price ready");
     });
   }
@@ -308,10 +335,15 @@ export default function Home() {
         ...current,
         rawMaterials: [...current.rawMaterials, toWorkspaceRawMaterial(material)],
       }));
+      setOptimizerCandidates((current) => ({
+        ...current,
+        [material.id]: defaultOptimizerCandidateConfig(),
+      }));
       setImportPreview((current) =>
         current ? withResolvedImportRow(current, row.row_number, material.id) : current,
       );
       setResult(null);
+      setOptimizationRun(null);
       setMessage("Import material created");
     });
   }
@@ -380,6 +412,7 @@ export default function Home() {
       ],
     }));
     setResult(null);
+    setOptimizationRun(null);
   }
 
   function removeFormulaLine(localId: string) {
@@ -388,6 +421,7 @@ export default function Home() {
       formulaLines: current.formulaLines.filter((line) => line.localId !== localId),
     }));
     setResult(null);
+    setOptimizationRun(null);
   }
 
   function updateFormulaLine(localId: string, percentage: number) {
@@ -398,6 +432,7 @@ export default function Home() {
       ),
     }));
     setResult(null);
+    setOptimizationRun(null);
   }
 
   function moveFormulaLine(localId: string, offset: -1 | 1) {
@@ -415,6 +450,7 @@ export default function Home() {
       return { ...current, formulaLines };
     });
     setResult(null);
+    setOptimizationRun(null);
   }
 
   async function calculateFormula() {
@@ -478,6 +514,11 @@ export default function Home() {
       setError("Enter a valid parameter minimum");
       return;
     }
+    const optimizerPayload = buildOptimizerPayload();
+    if ("error" in optimizerPayload) {
+      setError(optimizerPayload.error);
+      return;
+    }
 
     await runAction("Running optimizer", async () => {
       const optimization = await request<OptimizationRun>("/api/v1/optimizations/run", {
@@ -485,7 +526,7 @@ export default function Home() {
         headers,
         body: JSON.stringify({
           objective: "minimize_price",
-          candidate_raw_material_ids: workspace.rawMaterials.map((material) => material.id),
+          ...optimizerPayload.payload,
           parameter_bounds:
             workspace.parameter && minValue !== null
               ? [{ code: workspace.parameter.code, min_value: minValue }]
@@ -858,6 +899,97 @@ export default function Home() {
     setComparisonLeftId(nextLeftId);
     setComparisonRightId(nextRightId);
     setFormulaComparison(null);
+  }
+
+  function buildOptimizerPayload(): OptimizerPayloadResult {
+    const candidateIds: string[] = [];
+    const rawMaterialBounds: OptimizerPayload["raw_material_bounds"] = [];
+
+    for (const material of workspace.rawMaterials) {
+      const config = optimizerCandidateConfig(material.id);
+      if (!config.enabled) {
+        continue;
+      }
+      candidateIds.push(material.id);
+      const minPercentage = parseOptionalNumber(config.minPercentage);
+      const maxPercentage = parseOptionalNumber(config.maxPercentage);
+      const boundError = optimizerBoundError(
+        material.name,
+        config.minPercentage,
+        minPercentage,
+        config.maxPercentage,
+        maxPercentage,
+      );
+      if (boundError) {
+        return { error: boundError };
+      }
+      if (minPercentage !== null || maxPercentage !== null) {
+        rawMaterialBounds.push({
+          raw_material_id: material.id,
+          ...(minPercentage !== null ? { min_percentage: minPercentage } : {}),
+          ...(maxPercentage !== null ? { max_percentage: maxPercentage } : {}),
+        });
+      }
+    }
+
+    if (!candidateIds.length) {
+      return { error: "Select at least one optimizer candidate" };
+    }
+
+    return {
+      payload: {
+        candidate_raw_material_ids: candidateIds,
+        raw_material_bounds: rawMaterialBounds,
+      },
+    };
+  }
+
+  function optimizerBoundError(
+    materialName: string,
+    minInput: string,
+    minPercentage: number | null,
+    maxInput: string,
+    maxPercentage: number | null,
+  ): string | null {
+    if (minInput.trim() && minPercentage === null) {
+      return `Enter a valid minimum for ${materialName}`;
+    }
+    if (maxInput.trim() && maxPercentage === null) {
+      return `Enter a valid maximum for ${materialName}`;
+    }
+    if (
+      (minPercentage !== null && (minPercentage < 0 || minPercentage > 100)) ||
+      (maxPercentage !== null && (maxPercentage < 0 || maxPercentage > 100))
+    ) {
+      return `Bounds for ${materialName} must be between 0 and 100`;
+    }
+    if (minPercentage !== null && maxPercentage !== null && minPercentage > maxPercentage) {
+      return `Minimum cannot exceed maximum for ${materialName}`;
+    }
+    return null;
+  }
+
+  function optimizerCandidateConfig(rawMaterialId: string): OptimizerCandidateConfig {
+    return optimizerCandidates[rawMaterialId] ?? defaultOptimizerCandidateConfig();
+  }
+
+  function defaultOptimizerCandidateConfig(): OptimizerCandidateConfig {
+    return { enabled: true, minPercentage: "", maxPercentage: "" };
+  }
+
+  function updateOptimizerCandidate(
+    rawMaterialId: string,
+    patch: Partial<OptimizerCandidateConfig>,
+  ) {
+    setOptimizerCandidates((current) => ({
+      ...current,
+      [rawMaterialId]: {
+        ...defaultOptimizerCandidateConfig(),
+        ...(current[rawMaterialId] ?? {}),
+        ...patch,
+      },
+    }));
+    setOptimizationRun(null);
   }
 
   function formatSignedNumber(value: number | null, digits = 2): string {
@@ -1638,6 +1770,57 @@ export default function Home() {
                   <Settings2 size={17} />
                   Optimize
                 </button>
+              </div>
+              <div className="optimizerCandidates">
+                {workspace.rawMaterials.length ? (
+                  workspace.rawMaterials.map((material) => {
+                    const config = optimizerCandidateConfig(material.id);
+                    return (
+                      <div className="optimizerCandidate" key={material.id}>
+                        <label className="candidateToggle">
+                          <input
+                            aria-label={`${material.name} optimizer candidate`}
+                            type="checkbox"
+                            checked={config.enabled}
+                            onChange={(event) =>
+                              updateOptimizerCandidate(material.id, {
+                                enabled: event.target.checked,
+                              })
+                            }
+                            disabled={isBusy}
+                          />
+                          <span>{material.name}</span>
+                        </label>
+                        <input
+                          aria-label={`${material.name} optimizer minimum`}
+                          inputMode="decimal"
+                          value={config.minPercentage}
+                          onChange={(event) =>
+                            updateOptimizerCandidate(material.id, {
+                              minPercentage: event.target.value,
+                            })
+                          }
+                          disabled={isBusy || !config.enabled}
+                          placeholder="Min %"
+                        />
+                        <input
+                          aria-label={`${material.name} optimizer maximum`}
+                          inputMode="decimal"
+                          value={config.maxPercentage}
+                          onChange={(event) =>
+                            updateOptimizerCandidate(material.id, {
+                              maxPercentage: event.target.value,
+                            })
+                          }
+                          disabled={isBusy || !config.enabled}
+                          placeholder="Max %"
+                        />
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="empty">Create raw materials to optimize.</div>
+                )}
               </div>
               {optimizationRun ? (
                 <>

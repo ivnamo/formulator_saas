@@ -207,6 +207,12 @@ export type OptimizationRun = {
   }>;
 };
 
+export type OptimizerCandidateConfig = {
+  enabled: boolean;
+  minPercentage: string;
+  maxPercentage: string;
+};
+
 export type FormulaCalculationHistory = {
   id: string;
   formula_id: string;

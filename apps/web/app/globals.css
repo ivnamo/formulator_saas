@@ -723,6 +723,42 @@ label span {
   align-items: end;
 }
 
+.optimizerCandidates {
+  display: grid;
+  gap: 8px;
+}
+
+.optimizerCandidate {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 82px 82px;
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  border-top: 1px solid var(--border);
+}
+
+.candidateToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.candidateToggle input {
+  width: auto;
+}
+
+.candidateToggle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optimizerCandidate > input {
+  min-width: 0;
+}
+
 .optimizerMessages {
   display: grid;
   gap: 8px;
@@ -894,6 +930,7 @@ label span {
   .comparisonControls,
   .comparisonStats,
   .optimizerControls,
+  .optimizerCandidate,
   .optimizerStats,
   .priceEditor,
   .formulaListHead,
