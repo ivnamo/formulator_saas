@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "formulia-core"
+version = "0.1.0"
+description = "Deterministic formulation logic for FormulIA Cloud"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
