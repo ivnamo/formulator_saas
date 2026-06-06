@@ -124,6 +124,18 @@ El comparador MVP permite evaluar restricciones editables:
 
 La evaluacion usa los calculos backend de la comparacion y no persiste reglas.
 
+### META-020
+
+El comparador MVP permite evaluar limites de uso por materia prima:
+
+- selector de materia prima,
+- porcentaje minimo,
+- porcentaje maximo,
+- la ausencia de la materia en una formula cuenta como 0%,
+- los resultados se muestran como `passed`, `failed` o `missing` junto al resto de restricciones.
+
+Solo se evalua una materia a la vez y no se persisten reglas.
+
 ## ERP settings
 
 - crear conexión,
