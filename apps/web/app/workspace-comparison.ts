@@ -72,6 +72,8 @@ export type SavedFormulaConstraintEvaluation = {
   candidateValue: number | null;
   baselineStatus: ConstraintStatus;
   candidateStatus: ConstraintStatus;
+  baselineExplanation: string | null;
+  candidateExplanation: string | null;
 };
 
 export type ConstraintComplianceCounts = {
@@ -267,6 +269,33 @@ function evaluateMinimum(value: number | null, limit: number): ConstraintStatus 
   return value >= limit ? "passed" : "failed";
 }
 
+function formatConstraintAmount(value: number, unit: string | null) {
+  if (unit === "%") {
+    return `${value.toFixed(2)}%`;
+  }
+  return `${value.toFixed(2)}${unit ? ` ${unit}` : ""}`;
+}
+
+function maximumExplanation(value: number | null, limit: number, unit: string | null) {
+  if (value === null) {
+    return "Missing calculated value for this limit.";
+  }
+  if (value <= limit) {
+    return null;
+  }
+  return `Reduce by ${formatConstraintAmount(value - limit, unit)} to meet the maximum.`;
+}
+
+function minimumExplanation(value: number | null, limit: number, unit: string | null) {
+  if (value === null) {
+    return "Missing calculated value for this limit.";
+  }
+  if (value >= limit) {
+    return null;
+  }
+  return `Increase by ${formatConstraintAmount(limit - value, unit)} to meet the minimum.`;
+}
+
 function getParameterValue(result: CalculationResult, code: string) {
   return result.parameters.find((parameter) => parameter.code === code) ?? null;
 }
@@ -287,15 +316,26 @@ export function buildConstraintEvaluations(
 
   const evaluations: SavedFormulaConstraintEvaluation[] = [];
   if (constraints.maxPrice !== null) {
+    const unit = `${comparison.candidateResult.currency}/kg`;
     evaluations.push({
       key: "price_total",
       label: "Price",
       rule: `<= ${constraints.maxPrice.toFixed(2)} ${comparison.candidateResult.currency}/kg`,
-      unit: `${comparison.candidateResult.currency}/kg`,
+      unit,
       baselineValue: comparison.baselineResult.price_total,
       candidateValue: comparison.candidateResult.price_total,
       baselineStatus: evaluateMaximum(comparison.baselineResult.price_total, constraints.maxPrice),
       candidateStatus: evaluateMaximum(comparison.candidateResult.price_total, constraints.maxPrice),
+      baselineExplanation: maximumExplanation(
+        comparison.baselineResult.price_total,
+        constraints.maxPrice,
+        unit,
+      ),
+      candidateExplanation: maximumExplanation(
+        comparison.candidateResult.price_total,
+        constraints.maxPrice,
+        unit,
+      ),
     });
   }
 
@@ -321,6 +361,16 @@ export function buildConstraintEvaluations(
         candidateParameter?.value ?? null,
         constraints.minParameterValue,
       ),
+      baselineExplanation: minimumExplanation(
+        baselineParameter?.value ?? null,
+        constraints.minParameterValue,
+        parameterUnit,
+      ),
+      candidateExplanation: minimumExplanation(
+        candidateParameter?.value ?? null,
+        constraints.minParameterValue,
+        parameterUnit,
+      ),
     });
   }
 
@@ -336,6 +386,16 @@ export function buildConstraintEvaluations(
       candidateValue,
       baselineStatus: evaluateMinimum(baselineValue, constraints.minMaterialPercentage),
       candidateStatus: evaluateMinimum(candidateValue, constraints.minMaterialPercentage),
+      baselineExplanation: minimumExplanation(
+        baselineValue,
+        constraints.minMaterialPercentage,
+        "%",
+      ),
+      candidateExplanation: minimumExplanation(
+        candidateValue,
+        constraints.minMaterialPercentage,
+        "%",
+      ),
     });
   }
 
@@ -351,6 +411,16 @@ export function buildConstraintEvaluations(
       candidateValue,
       baselineStatus: evaluateMaximum(baselineValue, constraints.maxMaterialPercentage),
       candidateStatus: evaluateMaximum(candidateValue, constraints.maxMaterialPercentage),
+      baselineExplanation: maximumExplanation(
+        baselineValue,
+        constraints.maxMaterialPercentage,
+        "%",
+      ),
+      candidateExplanation: maximumExplanation(
+        candidateValue,
+        constraints.maxMaterialPercentage,
+        "%",
+      ),
     });
   }
 

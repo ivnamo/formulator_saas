@@ -1615,12 +1615,18 @@ export default function Home() {
                           <code data-state={evaluation.baselineStatus}>
                             {evaluation.baselineStatus}
                           </code>
+                          {evaluation.baselineExplanation ? (
+                            <small>{evaluation.baselineExplanation}</small>
+                          ) : null}
                         </span>
                         <span>
                           {formatOptionalValue(evaluation.candidateValue, evaluation.unit)}
                           <code data-state={evaluation.candidateStatus}>
                             {evaluation.candidateStatus}
                           </code>
+                          {evaluation.candidateExplanation ? (
+                            <small>{evaluation.candidateExplanation}</small>
+                          ) : null}
                         </span>
                       </div>
                     ))}

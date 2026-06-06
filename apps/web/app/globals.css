@@ -996,6 +996,13 @@ label span {
   align-items: center;
 }
 
+.constraintEvaluationList small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .constraintEvaluationList code {
   font-weight: 800;
 }
