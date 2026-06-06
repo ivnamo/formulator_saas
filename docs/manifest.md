@@ -32,6 +32,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_019_optimizer_candidate_bounds.md`](00-meta/meta_019_optimizer_candidate_bounds.md)
 - [`00-meta/meta_020_optimizer_parameter_bounds.md`](00-meta/meta_020_optimizer_parameter_bounds.md)
 - [`00-meta/meta_021_optimizer_infeasible_explanations.md`](00-meta/meta_021_optimizer_infeasible_explanations.md)
+- [`00-meta/meta_022_optimizer_infeasible_ui.md`](00-meta/meta_022_optimizer_infeasible_ui.md)
 
 ## Producto
 
