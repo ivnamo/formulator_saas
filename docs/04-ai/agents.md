@@ -4,6 +4,8 @@
 
 La IA debe actuar como orquestador y asistente experto, no como calculadora final. Toda propuesta de fórmula debe pasar por tools deterministas.
 
+El parser de requisitos usa `REQUIREMENT_PARSER_PROVIDER=deterministic` por defecto. El modo `llm` queda reservado hasta validar proveedor, modelo, coste y credenciales; si se activa antes de tiempo, debe fallar de forma auditada en `ai_runs` y no hacer fallback silencioso.
+
 ## Agent graph propuesto
 
 ```text

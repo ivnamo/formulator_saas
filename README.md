@@ -62,4 +62,11 @@ npm run check
 npm audit --audit-level=moderate
 ```
 
+AI configuration:
+
+```powershell
+$env:REQUIREMENT_PARSER_PROVIDER="deterministic"
+# llm is reserved for the next provider-integration meta and currently fails closed.
+```
+
 The first web screen can seed a demo tenant, raw materials, parameter values, a formula, and then calculate the formula through the FastAPI backend.

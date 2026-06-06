@@ -164,6 +164,13 @@ Alcance actual: objetivo de coste, bounds del parametro activo, precio maximo, n
 
 Cada parseo crea un registro `ai_runs` con `run_type=requirement_parser`, `provider=deterministic`, `model=rules:v1` y una `ai_tool_call` `RequirementParserTool`.
 
+Configuracion actual:
+
+- `REQUIREMENT_PARSER_PROVIDER` por defecto es `deterministic`.
+- `REQUIREMENT_PARSER_PROVIDER=llm` esta reservado para la siguiente meta con proveedor real; mientras no exista adapter habilitado, responde error controlado y deja un `ai_run` en estado `error`.
+- `REQUIREMENT_PARSER_MODEL` solo se registra cuando el provider configurado lo necesita.
+- Provider desconocido no hace fallback silencioso: responde error controlado y queda auditado en `ai_runs`.
+
 ## Logging IA
 
 ```http
