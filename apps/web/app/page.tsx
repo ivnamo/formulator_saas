@@ -1044,6 +1044,16 @@ export default function Home() {
     ];
   }
 
+  function optimizationStatusLabel(statusValue: OptimizationRun["status"]): string {
+    if (statusValue === "success") {
+      return "Ready";
+    }
+    if (statusValue === "infeasible") {
+      return "No solution";
+    }
+    return "Review needed";
+  }
+
   async function runAction(label: string, action: () => Promise<void>) {
     setStatus("working");
     setMessage(label);
@@ -1880,10 +1890,10 @@ export default function Home() {
               </div>
               {optimizationRun ? (
                 <>
-                  <div className="optimizerStats">
+                  <div className="optimizerStats" data-state={optimizationRun.status}>
                     <div>
                       <span>Status</span>
-                      <strong>{optimizationRun.status}</strong>
+                      <strong>{optimizationStatusLabel(optimizationRun.status)}</strong>
                     </div>
                     <div>
                       <span>Price</span>

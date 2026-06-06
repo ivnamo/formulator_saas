@@ -709,6 +709,11 @@ label span {
   text-align: right;
 }
 
+.optimizerStats[data-state="infeasible"] div:first-child strong,
+.optimizerStats[data-state="invalid"] div:first-child strong {
+  color: var(--danger);
+}
+
 .optimizerPanel {
   display: grid;
   gap: 12px;
