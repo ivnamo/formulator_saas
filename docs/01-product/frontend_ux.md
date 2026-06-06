@@ -68,6 +68,31 @@ Debe permitir:
 - comparación con versión anterior,
 - guardado como draft/final.
 
+## Optimizador actual
+
+El workspace actual incluye un panel de optimizacion dentro del editor de formula:
+
+- seleccionar materias candidatas,
+- definir bounds minimos/maximos por materia,
+- definir minimo/maximo del parametro activo,
+- ejecutar objetivo `minimize_price`,
+- ver estado `success`, `invalid` o `infeasible`,
+- cargar el resultado exitoso como borrador editable,
+- guardar explicitamente el resultado optimizado.
+
+## Historial de optimizaciones
+
+La biblioteca muestra el historial de `optimization_runs` del tenant activo:
+
+- fecha de ejecucion,
+- estado legible,
+- precio calculado si existe,
+- numero de lineas,
+- formula vinculada si el resultado ya fue guardado,
+- accion `Load` solo para runs exitosos.
+
+Los runs `invalid` e `infeasible` deben ser visibles pero no cargables como formula.
+
 ## Importador Excel
 
 Pantalla tipo wizard:
