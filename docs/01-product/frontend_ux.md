@@ -189,6 +189,18 @@ Cada explicacion de inviabilidad puede reutilizarse manualmente como ajuste del 
 - no ejecuta `Plan` automaticamente,
 - mantiene visible el plan original hasta que el usuario decida replantear.
 
+### META-026
+
+La UI incluye una primera pantalla de incompatibilidades manuales:
+
+- crear regla por par de materias primas,
+- elegir severidad `blocker`, `warning` o `info`,
+- escribir mensaje y accion recomendada,
+- listar reglas del tenant activo,
+- mostrar severidad y accion recomendada en warnings de calculo.
+
+Un `blocker` todavia no bloquea el guardado. Se presenta como warning severo hasta que exista workflow de aprobacion/override.
+
 ## ERP settings
 
 - crear conexión,
