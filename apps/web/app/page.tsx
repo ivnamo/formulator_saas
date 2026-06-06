@@ -20,6 +20,7 @@ import {
 import { useMemo, useState } from "react";
 import { apiUrl, request, userId } from "./workspace-api";
 import {
+  aliasFromImportRow,
   emptyWorkspace,
   formatDateTime,
   makeLocalId,
@@ -27,6 +28,7 @@ import {
   parseOptionalNumber,
   slugify,
   toWorkspaceRawMaterial,
+  withRawMaterialAlias,
   withResolvedImportRow,
   type CalculationResult,
   type ExcelImportPreview,
@@ -265,15 +267,40 @@ export default function Home() {
       );
       setWorkspace((current) => ({
         ...current,
-        rawMaterials: current.rawMaterials.map((material) =>
-          material.id === rawMaterialId
-            ? { ...material, aliases: [...material.aliases, created.alias] }
-            : material,
-        ),
+        rawMaterials: withRawMaterialAlias(current.rawMaterials, rawMaterialId, created.alias),
       }));
       setAliasInputs((current) => ({ ...current, [rawMaterialId]: "" }));
       setImportPreview(null);
       setMessage("Alias ready");
+    });
+  }
+
+  async function createAliasFromImportRow(row: ExcelImportPreviewRow) {
+    if (!row.raw_material_id) {
+      setError("Resolve import row before saving alias");
+      return;
+    }
+    const rawMaterialId = row.raw_material_id;
+    const alias = aliasFromImportRow(row);
+    if (!alias) {
+      setError("Import row needs a material name or code");
+      return;
+    }
+
+    await runAction("Creating import alias", async () => {
+      const created = await request<RawMaterialAliasRead>(
+        `/api/v1/raw-materials/${rawMaterialId}/aliases`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ alias, source: "excel_import" }),
+        },
+      );
+      setWorkspace((current) => ({
+        ...current,
+        rawMaterials: withRawMaterialAlias(current.rawMaterials, rawMaterialId, created.alias),
+      }));
+      setMessage("Import alias ready");
     });
   }
 
@@ -893,6 +920,20 @@ export default function Home() {
                           type="button"
                         >
                           <Plus size={16} />
+                        </button>
+                      </div>
+                    ) : row.matched_by === "manual" && row.raw_material_id ? (
+                      <div className="aliasResolveControls">
+                        <span>manual</span>
+                        <button
+                          aria-label={`Save alias for row ${row.row_number}`}
+                          className="iconButton"
+                          disabled={isBusy || !aliasFromImportRow(row)}
+                          onClick={() => createAliasFromImportRow(row)}
+                          title="Save alias"
+                          type="button"
+                        >
+                          <Save size={16} />
                         </button>
                       </div>
                     ) : (

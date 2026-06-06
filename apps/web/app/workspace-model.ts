@@ -68,6 +68,18 @@ export function toWorkspaceRawMaterial(
   };
 }
 
+export function withRawMaterialAlias(
+  rawMaterials: RawMaterial[],
+  rawMaterialId: string,
+  alias: string,
+): RawMaterial[] {
+  return rawMaterials.map((material) =>
+    material.id === rawMaterialId && !material.aliases.includes(alias)
+      ? { ...material, aliases: [...material.aliases, alias] }
+      : material,
+  );
+}
+
 export type RawMaterialAliasRead = {
   id: string;
   tenant_id: string;
@@ -160,6 +172,10 @@ export function withResolvedImportRow(
     resolved_rows: rows.filter((row) => row.raw_material_id !== null).length,
     pending_rows: rows.filter((row) => row.status !== "matched_exact").length,
   };
+}
+
+export function aliasFromImportRow(row: ExcelImportPreviewRow): string | null {
+  return row.material_name?.trim() || row.material_code?.trim() || null;
 }
 
 export type Status = "idle" | "working" | "error";

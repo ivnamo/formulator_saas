@@ -461,6 +461,18 @@ label span {
   align-items: center;
 }
 
+.aliasResolveControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 8px;
+  align-items: center;
+}
+
+.aliasResolveControls span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .libraryActions {
   display: flex;
   justify-content: flex-end;
