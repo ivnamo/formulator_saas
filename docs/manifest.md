@@ -44,6 +44,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_031_ai_run_logging_foundation.md`](00-meta/meta_031_ai_run_logging_foundation.md)
 - [`00-meta/meta_032_ai_run_history_ui.md`](00-meta/meta_032_ai_run_history_ui.md)
 - [`00-meta/meta_033_ai_log_redaction_guardrails.md`](00-meta/meta_033_ai_log_redaction_guardrails.md)
+- [`00-meta/meta_034_requirement_parser_provider_switch.md`](00-meta/meta_034_requirement_parser_provider_switch.md)
 
 ## Producto
 
