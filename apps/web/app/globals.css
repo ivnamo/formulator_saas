@@ -391,10 +391,14 @@ label span {
 
 .importActions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px) auto;
   gap: 10px;
   align-items: end;
   margin-bottom: 14px;
+}
+
+.sheetSelector {
+  min-width: 0;
 }
 
 .importSummary {

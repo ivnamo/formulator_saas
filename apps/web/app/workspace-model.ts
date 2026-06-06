@@ -142,6 +142,7 @@ export type ExcelImportPreviewRow = {
 
 export type ExcelImportPreview = {
   sheet_name: string;
+  available_sheets: string[];
   columns: {
     material_name: string | null;
     material_code: string | null;
@@ -151,6 +152,11 @@ export type ExcelImportPreview = {
   total_percentage: number;
   resolved_rows: number;
   pending_rows: number;
+};
+
+export type ExcelImportSheets = {
+  sheets: string[];
+  default_sheet: string;
 };
 
 export function withResolvedImportRow(

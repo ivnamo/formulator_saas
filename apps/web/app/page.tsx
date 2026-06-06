@@ -34,6 +34,7 @@ import {
   type CalculationResult,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
+  type ExcelImportSheets,
   type FormulaCalculationHistory,
   type FormulaRead,
   type MaterialForm,
@@ -64,7 +65,10 @@ export default function Home() {
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
   const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
   const [importFileName, setImportFileName] = useState("");
+  const [availableImportSheets, setAvailableImportSheets] = useState<string[]>([]);
+  const [selectedImportSheet, setSelectedImportSheet] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("Ready");
 
@@ -95,6 +99,7 @@ export default function Home() {
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
   const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
+  const canSelectImportSheet = availableImportSheets.length > 1 && Boolean(importFile) && !isBusy;
   const canSaveImport =
     Boolean(importPreview) &&
     importPreview?.rows.length !== 0 &&
@@ -120,8 +125,7 @@ export default function Home() {
       setResult(null);
       setFormulas([]);
       setCalculationHistory([]);
-      setImportPreview(null);
-      setImportFileName("");
+      resetImportState();
       setMessage("Workspace ready");
     });
   }
@@ -210,7 +214,7 @@ export default function Home() {
       }));
       setMaterialForm({ code: "", name: "", price: "", parameterValue: "" });
       setResult(null);
-      setImportPreview(null);
+      resetImportState();
       setMessage("Raw material ready");
     });
   }
@@ -271,7 +275,7 @@ export default function Home() {
         rawMaterials: withRawMaterialAlias(current.rawMaterials, rawMaterialId, created.alias),
       }));
       setAliasInputs((current) => ({ ...current, [rawMaterialId]: "" }));
-      setImportPreview(null);
+      resetImportState();
       setMessage("Alias ready");
     });
   }
@@ -417,8 +421,7 @@ export default function Home() {
         })),
       }));
       setResult(null);
-      setImportPreview(null);
-      setImportFileName("");
+      resetImportState();
       await loadCalculationHistory(formula.id);
       setMessage("Formula opened");
     });
@@ -432,7 +435,7 @@ export default function Home() {
     setCalculationHistory(history);
   }
 
-  async function previewExcelImport(file: File | null) {
+  async function selectExcelImportFile(file: File | null) {
     if (!workspace.tenant) {
       setError("Create a workspace first");
       return;
@@ -441,19 +444,63 @@ export default function Home() {
       return;
     }
     await runAction("Reading Excel file", async () => {
-      const formData = new FormData();
-      formData.append("file", file);
-      const preview = await request<ExcelImportPreview>(
-        "/api/v1/imports/formulas/excel/preview",
-        {
-          method: "POST",
-          headers: uploadHeaders,
-          body: formData,
-        },
-      );
-      setImportPreview(preview);
+      const sheets = await listExcelImportSheets(file);
+      const selectedSheet = sheets.sheets.length === 1 ? sheets.default_sheet : "";
+      setImportFile(file);
       setImportFileName(file.name);
+      setAvailableImportSheets(sheets.sheets);
+      setSelectedImportSheet(selectedSheet);
+      setImportPreview(null);
+      if (!selectedSheet) {
+        setMessage("Select Excel sheet");
+        return;
+      }
+      const preview = await requestExcelImportPreview(file, selectedSheet);
+      setImportPreview(preview);
+      setAvailableImportSheets(preview.available_sheets);
+      setSelectedImportSheet(preview.sheet_name);
       setMessage("Import preview ready");
+    });
+  }
+
+  async function previewSelectedImportSheet(sheetName: string) {
+    if (!importFile) {
+      setError("Upload an Excel file first");
+      return;
+    }
+    setSelectedImportSheet(sheetName);
+    await runAction("Reading Excel sheet", async () => {
+      const preview = await requestExcelImportPreview(importFile, sheetName);
+      setImportPreview(preview);
+      setAvailableImportSheets(preview.available_sheets);
+      setSelectedImportSheet(preview.sheet_name);
+      setMessage("Import preview ready");
+    });
+  }
+
+  async function listExcelImportSheets(file: File): Promise<ExcelImportSheets> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<ExcelImportSheets>("/api/v1/imports/formulas/excel/sheets", {
+      method: "POST",
+      headers: uploadHeaders,
+      body: formData,
+    });
+  }
+
+  async function requestExcelImportPreview(
+    file: File,
+    sheetName: string,
+  ): Promise<ExcelImportPreview> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (sheetName) {
+      formData.append("sheet_name", sheetName);
+    }
+    return request<ExcelImportPreview>("/api/v1/imports/formulas/excel/preview", {
+      method: "POST",
+      headers: uploadHeaders,
+      body: formData,
     });
   }
 
@@ -512,6 +559,14 @@ export default function Home() {
       return;
     }
     resolveImportRow(row.row_number, row.suggested_raw_material_id);
+  }
+
+  function resetImportState() {
+    setImportPreview(null);
+    setImportFile(null);
+    setImportFileName("");
+    setAvailableImportSheets([]);
+    setSelectedImportSheet("");
   }
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -861,9 +916,35 @@ export default function Home() {
                 <input
                   type="file"
                   accept=".xlsx"
-                  onChange={(event) => previewExcelImport(event.target.files?.[0] ?? null)}
+                  onChange={(event) => selectExcelImportFile(event.target.files?.[0] ?? null)}
                   disabled={!canEditTenantData}
                 />
+              </label>
+              <label className="sheetSelector">
+                <span>Sheet</span>
+                <select
+                  aria-label="Excel sheet"
+                  value={selectedImportSheet}
+                  onChange={(event) => previewSelectedImportSheet(event.target.value)}
+                  disabled={!canSelectImportSheet}
+                >
+                  {availableImportSheets.length === 0 ? (
+                    <option value="">No sheets</option>
+                  ) : (
+                    <>
+                      {availableImportSheets.length > 1 ? (
+                        <option value="" disabled>
+                          Select sheet
+                        </option>
+                      ) : null}
+                      {availableImportSheets.map((sheet) => (
+                        <option key={sheet} value={sheet}>
+                          {sheet}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
               </label>
               <button className="secondaryButton" type="button" onClick={saveExcelImport} disabled={!canSaveImport}>
                 <Save size={17} />
