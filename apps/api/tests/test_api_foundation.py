@@ -154,6 +154,48 @@ def test_persisted_formula_calculation_uses_backend_core() -> None:
     assert result["warnings"] == []
 
 
+def test_persisted_formula_requires_active_tenant_parameters() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "viscosity", "name": "Viscosity", "unit": "cP"},
+    )
+    assert parameter.status_code == 201
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Base A", "code": "BASE-A"},
+    ).json()
+    price_response = client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers,
+        json={"price": 1.5, "currency": "EUR", "unit": "kg"},
+    )
+    assert price_response.status_code == 201
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={
+            "name": "Missing Parameter Formula",
+            "items": [{"raw_material_id": raw_material["id"], "percentage": 100}],
+        },
+    ).json()
+
+    response = client.post(
+        f"/api/v1/formulas/{formula['id']}/calculate",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    warnings = response.json()["warnings"]
+    assert warnings[0]["code"] == "missing_parameter"
+    assert warnings[0]["parameter_code"] == "viscosity"
+
+
 def test_unknown_raw_material_in_ad_hoc_calculation_returns_warning() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

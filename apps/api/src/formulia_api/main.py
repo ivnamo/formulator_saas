@@ -309,7 +309,21 @@ def register_routes(app: FastAPI) -> None:
                 FormulaItem.formula_id == formula.id,
             )
         ).all()
-        result = _calculate(session, tenant.tenant_id, items)
+        required_parameter_codes = {
+            parameter.code
+            for parameter in session.exec(
+                select(Parameter).where(
+                    Parameter.tenant_id == tenant.tenant_id,
+                    Parameter.is_active == True,  # noqa: E712
+                )
+            ).all()
+        }
+        result = _calculate(
+            session,
+            tenant.tenant_id,
+            items,
+            required_parameter_codes=required_parameter_codes,
+        )
         formula.total_price = result["price_total"]
         formula.currency = result["currency"]
         formula.updated_at = utc_now()
