@@ -35,6 +35,7 @@ class ParsedFormulaRow:
 @dataclass(frozen=True)
 class ParsedFormulaImport:
     sheet_name: str
+    available_sheets: list[str]
     columns: DetectedColumns
     rows: list[ParsedFormulaRow]
 
@@ -73,13 +74,14 @@ PERCENTAGE_HEADERS = {
 }
 
 
-def parse_formula_xlsx(content: bytes) -> ParsedFormulaImport:
-    try:
-        workbook = load_workbook(BytesIO(content), read_only=True, data_only=True)
-    except Exception as exc:  # pragma: no cover - openpyxl error types vary
-        raise ExcelImportError("Could not read XLSX file.") from exc
+def list_formula_xlsx_sheets(content: bytes) -> list[str]:
+    workbook = _load_formula_workbook(content)
+    return list(workbook.sheetnames)
 
-    worksheet = workbook.active
+
+def parse_formula_xlsx(content: bytes, sheet_name: str | None = None) -> ParsedFormulaImport:
+    workbook = _load_formula_workbook(content)
+    worksheet = _select_worksheet(workbook, sheet_name)
     rows = list(worksheet.iter_rows())
     if not rows:
         raise ExcelImportError("XLSX file is empty.")
@@ -96,9 +98,28 @@ def parse_formula_xlsx(content: bytes) -> ParsedFormulaImport:
 
     return ParsedFormulaImport(
         sheet_name=worksheet.title,
+        available_sheets=list(workbook.sheetnames),
         columns=columns,
         rows=parsed_rows,
     )
+
+
+def _load_formula_workbook(content: bytes):
+    try:
+        return load_workbook(BytesIO(content), read_only=True, data_only=True)
+    except Exception as exc:  # pragma: no cover - openpyxl error types vary
+        raise ExcelImportError("Could not read XLSX file.") from exc
+
+
+def _select_worksheet(workbook, sheet_name: str | None):
+    if sheet_name is None:
+        return workbook.active
+    selected = sheet_name.strip()
+    if not selected:
+        return workbook.active
+    if selected not in workbook.sheetnames:
+        raise ExcelImportError(f"Worksheet '{selected}' was not found.")
+    return workbook[selected]
 
 
 def _find_header_row(rows: list[tuple[Cell, ...]]) -> tuple[int, dict[int, str]]:

@@ -7,7 +7,7 @@ from datetime import date
 from difflib import SequenceMatcher
 from typing import Any
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine
 from sqlmodel import Session, select
@@ -20,7 +20,13 @@ from formulia_core import (
 )
 
 from .database import create_db_engine, get_session, init_db
-from .excel_import import ExcelImportError, ParsedFormulaImport, ParsedFormulaRow, parse_formula_xlsx
+from .excel_import import (
+    ExcelImportError,
+    ParsedFormulaImport,
+    ParsedFormulaRow,
+    list_formula_xlsx_sheets,
+    parse_formula_xlsx,
+)
 from .models import (
     Formula,
     FormulaCalculationResult,
@@ -39,6 +45,7 @@ from .schemas import (
     CalculationRead,
     ExcelImportPreviewRead,
     ExcelImportSaveRequest,
+    ExcelImportSheetsRead,
     FormulaCalculationHistoryRead,
     FormulaCalculateRequest,
     FormulaCreate,
@@ -438,18 +445,35 @@ def register_routes(app: FastAPI) -> None:
         )
 
     @app.post(
+        "/api/v1/imports/formulas/excel/sheets",
+        response_model=ExcelImportSheetsRead,
+    )
+    async def list_formula_excel_import_sheets(
+        file: UploadFile = File(...),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        _ensure_xlsx_file(file)
+        try:
+            sheets = list_formula_xlsx_sheets(await file.read())
+        except ExcelImportError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if not sheets:
+            raise HTTPException(status_code=400, detail="XLSX file has no worksheets.")
+        return {"sheets": sheets, "default_sheet": sheets[0]}
+
+    @app.post(
         "/api/v1/imports/formulas/excel/preview",
         response_model=ExcelImportPreviewRead,
     )
     async def preview_formula_excel_import(
         file: UploadFile = File(...),
+        sheet_name: str | None = Form(None),
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
-        if not file.filename or not file.filename.lower().endswith(".xlsx"):
-            raise HTTPException(status_code=400, detail="Only .xlsx files are supported.")
+        _ensure_xlsx_file(file)
         try:
-            parsed = parse_formula_xlsx(await file.read())
+            parsed = parse_formula_xlsx(await file.read(), sheet_name=sheet_name)
         except ExcelImportError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return _excel_preview(session, tenant.tenant_id, parsed)
@@ -472,6 +496,11 @@ def register_routes(app: FastAPI) -> None:
         session.refresh(formula)
         _replace_formula_items(session, tenant.tenant_id, formula.id, payload.rows)
         return _formula_read(session, formula)
+
+
+def _ensure_xlsx_file(file: UploadFile) -> None:
+    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="Only .xlsx files are supported.")
 
 
 def _get_raw_material(
@@ -623,6 +652,7 @@ def _excel_preview(
     pending_rows = sum(1 for row in rows if row["status"] != "matched_exact")
     return {
         "sheet_name": parsed.sheet_name,
+        "available_sheets": parsed.available_sheets,
         "columns": {
             "material_name": parsed.columns.material_name,
             "material_code": parsed.columns.material_code,

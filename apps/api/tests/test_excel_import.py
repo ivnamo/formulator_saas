@@ -5,7 +5,7 @@ from openpyxl import Workbook
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine
 
-from formulia_api.excel_import import parse_formula_xlsx
+from formulia_api.excel_import import list_formula_xlsx_sheets, parse_formula_xlsx
 from formulia_api.main import create_app
 
 
@@ -44,6 +44,18 @@ def workbook_bytes(rows: list[list[object]]) -> bytes:
     return stream.getvalue()
 
 
+def workbook_with_sheets(sheets: dict[str, list[list[object]]]) -> bytes:
+    workbook = Workbook()
+    workbook.remove(workbook.active)
+    for title, rows in sheets.items():
+        worksheet = workbook.create_sheet(title=title)
+        for row in rows:
+            worksheet.append(row)
+    stream = BytesIO()
+    workbook.save(stream)
+    return stream.getvalue()
+
+
 def test_parser_detects_columns_and_percent_rows() -> None:
     content = workbook_bytes(
         [
@@ -60,6 +72,22 @@ def test_parser_detects_columns_and_percent_rows() -> None:
     assert parsed.columns.percentage == "percentage"
     assert parsed.total_percentage == 100
     assert [row.material_code for row in parsed.rows] == ["ACT-A", "CAR-B"]
+
+
+def test_parser_lists_and_selects_worksheets() -> None:
+    content = workbook_with_sheets(
+        {
+            "Notes": [["Comment"], ["Not a formula"]],
+            "Formula": [["Code", "Percentage"], ["ACT-A", 100]],
+        }
+    )
+
+    parsed = parse_formula_xlsx(content, sheet_name="Formula")
+
+    assert list_formula_xlsx_sheets(content) == ["Notes", "Formula"]
+    assert parsed.sheet_name == "Formula"
+    assert parsed.available_sheets == ["Notes", "Formula"]
+    assert parsed.rows[0].material_code == "ACT-A"
 
 
 def test_preview_matches_by_code_and_normalized_name() -> None:
@@ -202,6 +230,60 @@ def test_preview_suggests_fuzzy_match_without_resolving() -> None:
     assert row["suggested_raw_material_id"] == material["id"]
     assert row["suggested_material_name"] == "Carrier Meta 009"
     assert row["suggested_match_score"] >= 0.82
+
+
+def test_preview_selected_sheet_in_multi_sheet_workbook() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    content = workbook_with_sheets(
+        {
+            "Notes": [["Comment"], ["Not a formula"]],
+            "Formula": [["Code", "Percentage"], ["ACT-A", 100]],
+        }
+    )
+
+    sheets = client.post(
+        "/api/v1/imports/formulas/excel/sheets",
+        headers=headers,
+        files={"file": ("formula.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    response = client.post(
+        "/api/v1/imports/formulas/excel/preview",
+        headers=headers,
+        files={"file": ("formula.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"sheet_name": "Formula"},
+    )
+
+    assert sheets.status_code == 200
+    assert sheets.json() == {"sheets": ["Notes", "Formula"], "default_sheet": "Notes"}
+    assert response.status_code == 200
+    preview = response.json()
+    assert preview["sheet_name"] == "Formula"
+    assert preview["available_sheets"] == ["Notes", "Formula"]
+    assert preview["rows"][0]["raw_material_id"] == material["id"]
+
+
+def test_preview_rejects_missing_sheet_name() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    content = workbook_with_sheets({"Formula": [["Code", "Percentage"], ["ACT-A", 100]]})
+
+    response = client.post(
+        "/api/v1/imports/formulas/excel/preview",
+        headers=headers,
+        files={"file": ("formula.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"sheet_name": "Missing"},
+    )
+
+    assert response.status_code == 400
+    assert "Worksheet 'Missing' was not found" in response.json()["detail"]
 
 
 def test_preview_flags_unmatched_and_invalid_rows() -> None:

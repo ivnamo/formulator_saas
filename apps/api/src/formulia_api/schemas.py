@@ -179,11 +179,17 @@ class ExcelImportPreviewRowRead(BaseModel):
 
 class ExcelImportPreviewRead(BaseModel):
     sheet_name: str
+    available_sheets: list[str]
     columns: dict[str, str | None]
     rows: list[ExcelImportPreviewRowRead]
     total_percentage: float
     resolved_rows: int
     pending_rows: int
+
+
+class ExcelImportSheetsRead(BaseModel):
+    sheets: list[str]
+    default_sheet: str
 
 
 class ExcelImportSaveRow(BaseModel):
