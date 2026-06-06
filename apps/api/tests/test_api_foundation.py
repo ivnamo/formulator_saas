@@ -262,6 +262,56 @@ def test_persisted_formula_calculation_uses_latest_price_history() -> None:
     assert response.json()["price_total"] == 2.5
 
 
+def test_formula_items_keep_saved_order() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    active = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    carrier = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Carrier B", "code": "CAR-B"},
+    ).json()
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={
+            "name": "Ordered Formula",
+            "items": [
+                {"raw_material_id": carrier["id"], "percentage": 75, "order_index": 0},
+                {"raw_material_id": active["id"], "percentage": 25, "order_index": 1},
+            ],
+        },
+    ).json()
+
+    patched = client.patch(
+        f"/api/v1/formulas/{formula['id']}",
+        headers=headers,
+        json={
+            "items": [
+                {"raw_material_id": active["id"], "percentage": 25, "order_index": 0},
+                {"raw_material_id": carrier["id"], "percentage": 75, "order_index": 1},
+            ],
+        },
+    )
+    reopened = client.get(f"/api/v1/formulas/{formula['id']}", headers=headers)
+
+    assert patched.status_code == 200
+    assert [item["raw_material_id"] for item in patched.json()["items"]] == [
+        active["id"],
+        carrier["id"],
+    ]
+    assert reopened.status_code == 200
+    assert [item["raw_material_id"] for item in reopened.json()["items"]] == [
+        active["id"],
+        carrier["id"],
+    ]
+
+
 def test_persisted_formula_requires_active_tenant_parameters() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
