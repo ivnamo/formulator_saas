@@ -26,6 +26,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_013_raw_material_price_history.md`](00-meta/meta_013_raw_material_price_history.md)
 - [`00-meta/meta_014_formula_line_ordering.md`](00-meta/meta_014_formula_line_ordering.md)
 - [`00-meta/meta_015_formula_comparison.md`](00-meta/meta_015_formula_comparison.md)
+- [`00-meta/meta_016_optimization_constraints.md`](00-meta/meta_016_optimization_constraints.md)
 
 ## Producto
 
