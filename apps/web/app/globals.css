@@ -703,10 +703,21 @@ label span {
   gap: 10px;
 }
 
+.agentFormulaHeader div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .agentFormulaHeader code,
 .agentFormulaItems code {
   color: var(--teal-dark);
   font-weight: 800;
+}
+
+.agentFormulaApply {
+  min-height: 32px;
+  width: auto;
 }
 
 .agentFormulaStats {
@@ -1037,6 +1048,10 @@ label span {
   .secondaryButton {
     width: 100%;
   }
+
+  .agentFormulaApply {
+    width: auto;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1082,6 +1097,15 @@ label span {
 
   .aiActions {
     display: grid;
+  }
+
+  .agentFormulaHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .agentFormulaApply {
+    width: auto;
   }
 
   .materialHead,

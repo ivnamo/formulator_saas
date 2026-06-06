@@ -37,6 +37,7 @@ import {
   type AgentCandidate,
   type AgentFormulaCandidate,
   type AgentPlan,
+  type FormulaLine,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
   type ExcelImportSheets,
@@ -355,6 +356,83 @@ export default function Home() {
       ),
     }));
     setResult(null);
+  }
+
+  async function calculateAdHocFormula(
+    lines: FormulaLine[],
+    requiredParameterCodes: string[] = [],
+  ): Promise<CalculationResult> {
+    return request<CalculationResult>("/api/v1/formulas/calculate", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        items: lines.map((line, index) => ({
+          raw_material_id: line.rawMaterialId,
+          percentage: line.percentage,
+          order_index: index,
+        })),
+        required_parameter_codes: requiredParameterCodes,
+      }),
+    });
+  }
+
+  async function applyOptimizerDraft(candidate: AgentFormulaCandidate) {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (!candidate.items.length) {
+      setError("Draft candidate has no formula lines");
+      return;
+    }
+
+    const candidateMaterials = new Map(
+      agentPlan?.candidate_research?.candidates.map((material) => [
+        material.raw_material_id,
+        material,
+      ]) ?? [],
+    );
+    const formulaLines = candidate.items.map((item) => ({
+      localId: makeLocalId(),
+      rawMaterialId: item.raw_material_id,
+      percentage: item.percentage,
+    }));
+    const requiredParameterCodes = candidate.parameters.map((parameter) => parameter.code);
+
+    await runAction("Applying optimizer draft", async () => {
+      const calculation = await calculateAdHocFormula(formulaLines, requiredParameterCodes);
+      setWorkspace((current) => {
+        const existingMaterialIds = new Set(
+          current.rawMaterials.map((material) => material.id),
+        );
+        const addedMaterials = candidate.items
+          .filter((item) => !existingMaterialIds.has(item.raw_material_id))
+          .map((item) => {
+            const material = candidateMaterials.get(item.raw_material_id);
+            const activeParameter = current.parameter
+              ? material?.parameters[current.parameter.code]
+              : undefined;
+            return {
+              id: item.raw_material_id,
+              code: material?.code ?? null,
+              name: item.name,
+              price: material?.price_eur_per_kg ?? null,
+              parameterValue: activeParameter?.value ?? null,
+              aliases: [],
+            };
+          });
+        return {
+          ...current,
+          rawMaterials: [...current.rawMaterials, ...addedMaterials],
+          formulaId: null,
+          formulaName: `${candidate.name} Review Draft`,
+          formulaLines,
+        };
+      });
+      setCalculationHistory([]);
+      setResult(calculation);
+      setMessage("Optimizer draft applied and recalculated");
+    });
   }
 
   async function calculateFormula() {
@@ -753,7 +831,7 @@ export default function Home() {
           <div className="actions">
             <button className="primaryButton" type="button" onClick={calculateFormula} disabled={!canCalculate}>
               {isBusy ? <Loader2 className="spin" size={17} /> : <Calculator size={17} />}
-              Calculate
+              Save & calculate
             </button>
           </div>
         </header>
@@ -1339,7 +1417,18 @@ export default function Home() {
                         <div className="agentFormulaCard" key={candidate.name}>
                           <div className="agentFormulaHeader">
                             <strong>{candidate.name}</strong>
-                            <code>{candidate.status}</code>
+                            <div>
+                              <code>{candidate.status}</code>
+                              <button
+                                className="secondaryButton agentFormulaApply"
+                                type="button"
+                                onClick={() => applyOptimizerDraft(candidate)}
+                                disabled={isBusy}
+                              >
+                                <Check size={16} />
+                                Apply draft
+                              </button>
+                            </div>
                           </div>
                           <div className="agentFormulaStats">
                             <div>
