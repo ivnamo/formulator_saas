@@ -324,6 +324,10 @@ label span {
   grid-column: 1 / -1;
 }
 
+.aiRunsPanel {
+  grid-column: 1 / -1;
+}
+
 .importPanel {
   grid-column: 1 / -1;
 }
@@ -590,6 +594,13 @@ label span {
   align-items: start;
 }
 
+.aiRunGrid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(420px, 1.15fr);
+  gap: 16px;
+  align-items: start;
+}
+
 .formulaList,
 .historyList {
   display: grid;
@@ -662,6 +673,15 @@ label span {
   padding-left: 9px;
 }
 
+.aiRunRow {
+  gap: 7px;
+}
+
+.aiRunRow[data-selected="true"] {
+  border-left: 3px solid var(--teal);
+  padding-left: 9px;
+}
+
 .historyRowTop,
 .historyActions {
   display: flex;
@@ -677,6 +697,11 @@ label span {
 
 .optimizationHistoryRow[data-state="infeasible"] .historyStatus,
 .optimizationHistoryRow[data-state="invalid"] .historyStatus {
+  color: var(--danger);
+}
+
+.aiRunRow[data-state="error"] .historyStatus,
+.aiRunRow[data-state="failed"] .historyStatus {
   color: var(--danger);
 }
 
@@ -703,7 +728,8 @@ label span {
 }
 
 .optimizationDetail,
-.optimizationComparison {
+.optimizationComparison,
+.aiRunDetail {
   display: grid;
   gap: 10px;
   padding-top: 2px;
@@ -822,6 +848,33 @@ label span {
 }
 
 .detailMessage span {
+  overflow-wrap: anywhere;
+}
+
+.jsonBlock {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding: 10px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.toolCallItem {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.toolCallItem .historyRowTop strong {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
@@ -1074,6 +1127,7 @@ label span {
 
   .materialPanel,
   .libraryGrid,
+  .aiRunGrid,
   .importPanel {
     grid-column: auto;
     grid-template-columns: 1fr;

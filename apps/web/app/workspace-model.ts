@@ -237,6 +237,43 @@ export type OptimizationRunHistory = {
   created_at: string;
 };
 
+export type JsonObject = Record<string, unknown>;
+
+export type AiToolCallRead = {
+  id: string;
+  tenant_id: string;
+  ai_run_id: string;
+  tool_name: string;
+  status: string;
+  input_json: JsonObject;
+  output_json: JsonObject | null;
+  error: string | null;
+  created_at: string;
+  finished_at: string | null;
+};
+
+export type AiRunRead = {
+  id: string;
+  tenant_id: string;
+  user_id: string | null;
+  run_type: string;
+  provider: string | null;
+  model: string | null;
+  status: string;
+  input_json: JsonObject;
+  output_json: JsonObject | null;
+  error: string | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  cost_estimate: number | null;
+  created_at: string;
+  finished_at: string | null;
+};
+
+export type AiRunDetailRead = AiRunRead & {
+  tool_calls: AiToolCallRead[];
+};
+
 export type RequirementParseResult = {
   tenant_id: string;
   user_id: string;

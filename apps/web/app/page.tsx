@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUp,
   Beaker,
+  Bot,
   Calculator,
   Check,
   Database,
@@ -36,6 +37,8 @@ import {
   withRawMaterialAlias,
   withRawMaterialPrice,
   withResolvedImportRow,
+  type AiRunDetailRead,
+  type AiRunRead,
   type CalculationResult,
   type ExcelColumnMapping,
   type ExcelImportColumns,
@@ -126,6 +129,9 @@ export default function Home() {
     "Minimiza coste con active content entre 20 y 40.",
   );
   const [parsedRequirements, setParsedRequirements] = useState<RequirementParseResult | null>(null);
+  const [aiRuns, setAiRuns] = useState<AiRunRead[]>([]);
+  const [selectedAiRunId, setSelectedAiRunId] = useState<string | null>(null);
+  const [selectedAiRunDetail, setSelectedAiRunDetail] = useState<AiRunDetailRead | null>(null);
   const [optimizationRun, setOptimizationRun] = useState<OptimizationRun | null>(null);
   const [optimizationHistory, setOptimizationHistory] = useState<OptimizationRunHistory[]>([]);
   const [selectedOptimizationRunId, setSelectedOptimizationRunId] = useState<string | null>(null);
@@ -227,6 +233,7 @@ export default function Home() {
     Boolean(workspace.tenant) && requirementText.trim().length > 0 && !isBusy;
   const canApplyRequirementBounds =
     Boolean(workspace.parameter) && activeRequirementParameterBound !== null && !isBusy;
+  const canRefreshAiRuns = Boolean(workspace.tenant) && !isBusy;
   const canSaveOptimizedFormula =
     Boolean(workspace.tenant) &&
     optimizationRun?.status === "success" &&
@@ -277,6 +284,9 @@ export default function Home() {
       setOptimizationComparisonCandidateId("");
       setOptimizerCandidates({});
       setParsedRequirements(null);
+      setAiRuns([]);
+      setSelectedAiRunId(null);
+      setSelectedAiRunDetail(null);
       setOptimizationRun(null);
       resetImportState();
       setMessage("Workspace ready");
@@ -703,7 +713,55 @@ export default function Home() {
         }),
       });
       setParsedRequirements(parsed);
+      const nextAiRuns = await fetchAiRuns();
+      setAiRuns(nextAiRuns);
+      const latestRequirementRun =
+        nextAiRuns.find((run) => run.run_type === "requirement_parser") ?? null;
+      if (latestRequirementRun) {
+        const detail = await fetchAiRunDetail(latestRequirementRun.id);
+        setSelectedAiRunId(detail.id);
+        setSelectedAiRunDetail(detail);
+      }
       setMessage("Requirement parsed");
+    });
+  }
+
+  async function fetchAiRuns(): Promise<AiRunRead[]> {
+    return request<AiRunRead[]>("/api/v1/ai/runs", {
+      method: "GET",
+      headers,
+    });
+  }
+
+  async function fetchAiRunDetail(runId: string): Promise<AiRunDetailRead> {
+    return request<AiRunDetailRead>(`/api/v1/ai/runs/${runId}`, {
+      method: "GET",
+      headers,
+    });
+  }
+
+  async function refreshAiRunHistory() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    await runAction("Refreshing AI history", async () => {
+      const nextAiRuns = await fetchAiRuns();
+      setAiRuns(nextAiRuns);
+      if (selectedAiRunId && !nextAiRuns.some((run) => run.id === selectedAiRunId)) {
+        setSelectedAiRunId(null);
+        setSelectedAiRunDetail(null);
+      }
+      setMessage("AI history refreshed");
+    });
+  }
+
+  async function openAiRunDetail(runId: string) {
+    await runAction("Loading AI run", async () => {
+      const detail = await fetchAiRunDetail(runId);
+      setSelectedAiRunId(detail.id);
+      setSelectedAiRunDetail(detail);
+      setMessage("AI run detail loaded");
     });
   }
 
@@ -1459,6 +1517,32 @@ export default function Home() {
     return items.length ? items.join(", ") : "-";
   }
 
+  function aiRunTypeLabel(runType: string): string {
+    return runType
+      .split("_")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+
+  function aiStatusLabel(statusValue: string): string {
+    return statusValue.charAt(0).toUpperCase() + statusValue.slice(1);
+  }
+
+  function aiUsageLabel(run: AiRunRead): string {
+    const tokenLabel =
+      run.prompt_tokens === null && run.completion_tokens === null
+        ? null
+        : `${run.prompt_tokens ?? 0}/${run.completion_tokens ?? 0} tokens`;
+    const costLabel =
+      run.cost_estimate === null ? null : `cost ${run.cost_estimate.toFixed(4)}`;
+    return [tokenLabel, costLabel].filter(Boolean).join(" - ") || "No usage data";
+  }
+
+  function formatJsonBlock(value: unknown): string {
+    return JSON.stringify(value ?? {}, null, 2);
+  }
+
   function formatRequirementInputValue(value: number | null): string {
     return value === null ? "" : formatBoundValue(value);
   }
@@ -1498,6 +1582,9 @@ export default function Home() {
           </a>
           <a className="navItem" href="#library">
             <FolderOpen size={18} /> Library
+          </a>
+          <a className="navItem" href="#ai-runs">
+            <Bot size={18} /> AI runs
           </a>
           <a className="navItem" href="#parameters">
             <Settings2 size={18} /> Parameters
@@ -2268,6 +2355,154 @@ export default function Home() {
                     <div className="empty">Select two optimization runs.</div>
                   )}
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="ai-runs" className="panel aiRunsPanel">
+            <div className="panelHeader">
+              <h2>AI run history</h2>
+              <span>{aiRuns.length} runs</span>
+            </div>
+            <div className="libraryActions">
+              <button
+                className="secondaryButton"
+                type="button"
+                onClick={() => refreshAiRunHistory()}
+                disabled={!canRefreshAiRuns}
+              >
+                <RefreshCw size={17} />
+                Refresh runs
+              </button>
+            </div>
+            <div className="aiRunGrid">
+              <div className="historyList">
+                <div className="historyTitle">
+                  <Bot size={17} />
+                  <strong>Runs</strong>
+                </div>
+                {aiRuns.length === 0 ? (
+                  <div className="empty">No AI runs yet.</div>
+                ) : (
+                  aiRuns.map((run) => (
+                    <div
+                      className="historyRow aiRunRow"
+                      data-selected={run.id === selectedAiRunId ? "true" : undefined}
+                      data-state={run.status}
+                      key={run.id}
+                    >
+                      <div className="historyRowTop">
+                        <span>{formatDateTime(run.created_at)}</span>
+                        <strong className="historyStatus">{aiStatusLabel(run.status)}</strong>
+                      </div>
+                      <strong>{aiRunTypeLabel(run.run_type)}</strong>
+                      <span>
+                        {run.provider ?? "No provider"} - {run.model ?? "No model"}
+                      </span>
+                      <div className="historyActions">
+                        <span>{aiUsageLabel(run)}</span>
+                        <button
+                          className="secondaryButton compactButton"
+                          type="button"
+                          onClick={() => openAiRunDetail(run.id)}
+                          disabled={isBusy}
+                        >
+                          <ListChecks size={16} />
+                          Details
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="aiRunDetail">
+                <div className="historyTitle">
+                  <ListChecks size={17} />
+                  <strong>AI run details</strong>
+                </div>
+                {selectedAiRunDetail ? (
+                  <>
+                    <div className="detailStats">
+                      <div>
+                        <span>Status</span>
+                        <strong>{aiStatusLabel(selectedAiRunDetail.status)}</strong>
+                      </div>
+                      <div>
+                        <span>Type</span>
+                        <strong>{aiRunTypeLabel(selectedAiRunDetail.run_type)}</strong>
+                      </div>
+                      <div>
+                        <span>Provider</span>
+                        <strong>{selectedAiRunDetail.provider ?? "-"}</strong>
+                      </div>
+                      <div>
+                        <span>Model</span>
+                        <strong>{selectedAiRunDetail.model ?? "-"}</strong>
+                      </div>
+                      <div>
+                        <span>Finished</span>
+                        <strong>
+                          {selectedAiRunDetail.finished_at
+                            ? formatDateTime(selectedAiRunDetail.finished_at)
+                            : "-"}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>Tool calls</span>
+                        <strong>{selectedAiRunDetail.tool_calls.length}</strong>
+                      </div>
+                    </div>
+                    {selectedAiRunDetail.error ? (
+                      <div className="detailMessage">
+                        <AlertTriangle size={15} />
+                        <span>{selectedAiRunDetail.error}</span>
+                      </div>
+                    ) : null}
+                    <div className="detailGroup">
+                      <span>Input</span>
+                      <pre className="jsonBlock">{formatJsonBlock(selectedAiRunDetail.input_json)}</pre>
+                    </div>
+                    <div className="detailGroup">
+                      <span>Output</span>
+                      <pre className="jsonBlock">{formatJsonBlock(selectedAiRunDetail.output_json)}</pre>
+                    </div>
+                    <div className="detailGroup">
+                      <span>Tool calls</span>
+                      {selectedAiRunDetail.tool_calls.length ? (
+                        selectedAiRunDetail.tool_calls.map((toolCall) => (
+                          <div className="toolCallItem" key={toolCall.id}>
+                            <div className="historyRowTop">
+                              <strong>{toolCall.tool_name}</strong>
+                              <span>{aiStatusLabel(toolCall.status)}</span>
+                            </div>
+                            <div className="detailLine">
+                              <strong>Finished</strong>
+                              <span>
+                                {toolCall.finished_at
+                                  ? formatDateTime(toolCall.finished_at)
+                                  : "-"}
+                              </span>
+                            </div>
+                            {toolCall.error ? (
+                              <div className="detailMessage">
+                                <AlertTriangle size={15} />
+                                <span>{toolCall.error}</span>
+                              </div>
+                            ) : null}
+                            <pre className="jsonBlock">{formatJsonBlock({
+                              input: toolCall.input_json,
+                              output: toolCall.output_json,
+                            })}</pre>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="detailMuted">No tool calls</div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty">Select an AI run.</div>
+                )}
               </div>
             </div>
           </section>
