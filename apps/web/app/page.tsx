@@ -13,6 +13,7 @@ import {
   Save,
   Settings2,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { apiUrl, request, userId } from "./workspace-api";
@@ -23,6 +24,7 @@ import {
   parseOptionalNumber,
   slugify,
   type CalculationResult,
+  type ExcelImportPreview,
   type FormulaRead,
   type MaterialForm,
   type ParameterRead,
@@ -47,12 +49,21 @@ export default function Home() {
     parameterValue: "",
   });
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
+  const [importFileName, setImportFileName] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("Ready");
 
   const headers = useMemo(
     () => ({
       "Content-Type": "application/json",
+      "X-User-Id": userId,
+      ...(workspace.tenant ? { "X-Tenant-Id": workspace.tenant.id } : {}),
+    }),
+    [workspace.tenant],
+  );
+  const uploadHeaders = useMemo(
+    () => ({
       "X-User-Id": userId,
       ...(workspace.tenant ? { "X-Tenant-Id": workspace.tenant.id } : {}),
     }),
@@ -70,6 +81,11 @@ export default function Home() {
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
   const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
+  const canSaveImport =
+    Boolean(importPreview) &&
+    importPreview?.rows.length !== 0 &&
+    importPreview?.pending_rows === 0 &&
+    !isBusy;
 
   async function createWorkspace() {
     await runAction("Creating workspace", async () => {
@@ -88,6 +104,8 @@ export default function Home() {
         formulaName: `${name} Formula`,
       });
       setResult(null);
+      setImportPreview(null);
+      setImportFileName("");
       setMessage("Workspace ready");
     });
   }
@@ -179,6 +197,7 @@ export default function Home() {
       }));
       setMaterialForm({ code: "", name: "", price: "", parameterValue: "" });
       setResult(null);
+      setImportPreview(null);
       setMessage("Raw material ready");
     });
   }
@@ -257,6 +276,68 @@ export default function Home() {
     });
   }
 
+  async function previewExcelImport(file: File | null) {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (!file) {
+      return;
+    }
+    await runAction("Reading Excel file", async () => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const preview = await request<ExcelImportPreview>(
+        "/api/v1/imports/formulas/excel/preview",
+        {
+          method: "POST",
+          headers: uploadHeaders,
+          body: formData,
+        },
+      );
+      setImportPreview(preview);
+      setImportFileName(file.name);
+      setMessage("Import preview ready");
+    });
+  }
+
+  async function saveExcelImport() {
+    if (!workspace.tenant || !importPreview) {
+      setError("Preview an Excel file first");
+      return;
+    }
+    if (importPreview.pending_rows > 0) {
+      setError("Resolve import rows before saving");
+      return;
+    }
+
+    await runAction("Saving imported formula", async () => {
+      const formula = await request<FormulaRead>("/api/v1/imports/formulas/excel/save", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          name: `${workspace.tenant?.name ?? "Imported"} Excel Formula`,
+          rows: importPreview.rows.map((row) => ({
+            raw_material_id: row.raw_material_id,
+            percentage: row.percentage,
+          })),
+        }),
+      });
+      setWorkspace((current) => ({
+        ...current,
+        formulaId: formula.id,
+        formulaName: formula.name,
+        formulaLines: formula.items.map((item) => ({
+          localId: makeLocalId(),
+          rawMaterialId: item.raw_material_id,
+          percentage: item.percentage,
+        })),
+      }));
+      setResult(null);
+      setMessage("Imported formula saved");
+    });
+  }
+
   async function runAction(label: string, action: () => Promise<void>) {
     setStatus("working");
     setMessage(label);
@@ -292,6 +373,9 @@ export default function Home() {
           </a>
           <a className="navItem" href="#parameters">
             <Settings2 size={18} /> Parameters
+          </a>
+          <a className="navItem" href="#import">
+            <Upload size={18} /> Import
           </a>
           <a className="navItem" href="#results">
             <ListChecks size={18} /> Results
@@ -473,6 +557,66 @@ export default function Home() {
                     </button>
                   </div>
                 ))
+              )}
+            </div>
+          </section>
+
+          <section id="import" className="panel importPanel">
+            <div className="panelHeader">
+              <h2>Excel import</h2>
+              <span>{importPreview ? importPreview.sheet_name : "No file"}</span>
+            </div>
+            <div className="importActions">
+              <label>
+                <span>Upload .xlsx</span>
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  onChange={(event) => previewExcelImport(event.target.files?.[0] ?? null)}
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <button className="secondaryButton" type="button" onClick={saveExcelImport} disabled={!canSaveImport}>
+                <Save size={17} />
+                Save formula
+              </button>
+            </div>
+            <div className="importSummary">
+              <div>
+                <span>File</span>
+                <strong>{importFileName || "-"}</strong>
+              </div>
+              <div>
+                <span>Total</span>
+                <strong>{importPreview ? `${importPreview.total_percentage.toFixed(1)}%` : "-"}</strong>
+              </div>
+              <div>
+                <span>Resolved</span>
+                <strong>{importPreview ? importPreview.resolved_rows : "-"}</strong>
+              </div>
+              <div>
+                <span>Pending</span>
+                <strong>{importPreview ? importPreview.pending_rows : "-"}</strong>
+              </div>
+            </div>
+            <div className="importTable">
+              <div className="importHead">
+                <span>Row</span>
+                <span>Material</span>
+                <span>Share</span>
+                <span>Status</span>
+              </div>
+              {importPreview ? (
+                importPreview.rows.map((row) => (
+                  <div className="importRow" key={row.row_number}>
+                    <code>{row.row_number}</code>
+                    <span>{row.material_code || row.material_name || "-"}</span>
+                    <span>{row.percentage === null ? "-" : `${row.percentage.toFixed(2)}%`}</span>
+                    <span data-state={row.status}>{row.status}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="empty">No import preview.</div>
               )}
             </div>
           </section>

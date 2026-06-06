@@ -82,6 +82,30 @@ export type CalculationResult = {
   }>;
 };
 
+export type ExcelImportPreviewRow = {
+  row_number: number;
+  material_code: string | null;
+  material_name: string | null;
+  percentage: number | null;
+  raw_material_id: string | null;
+  matched_by: string | null;
+  status: string;
+  message: string | null;
+};
+
+export type ExcelImportPreview = {
+  sheet_name: string;
+  columns: {
+    material_name: string | null;
+    material_code: string | null;
+    percentage: string | null;
+  };
+  rows: ExcelImportPreviewRow[];
+  total_percentage: number;
+  resolved_rows: number;
+  pending_rows: number;
+};
+
 export type Status = "idle" | "working" | "error";
 
 export type MaterialForm = {

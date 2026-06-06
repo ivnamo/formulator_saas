@@ -303,13 +303,18 @@ label span {
   grid-column: 1;
 }
 
+.importPanel {
+  grid-column: 1;
+}
+
 .materialForm {
   grid-template-columns: 90px minmax(150px, 1fr) 112px 112px auto;
   margin-bottom: 16px;
 }
 
 .materialTable,
-.formulaLines {
+.formulaLines,
+.importTable {
   display: grid;
 }
 
@@ -338,6 +343,82 @@ label span {
 .materialRow code {
   color: var(--teal-dark);
   font-size: 12px;
+  font-weight: 800;
+}
+
+.importActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.importSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.importSummary div {
+  min-width: 0;
+  min-height: 54px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px;
+}
+
+.importSummary span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.importSummary strong {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.importHead,
+.importRow {
+  display: grid;
+  grid-template-columns: 48px minmax(150px, 1fr) 82px 130px;
+  gap: 10px;
+  align-items: center;
+}
+
+.importHead {
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.importRow {
+  min-height: 42px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.importRow code {
+  color: var(--teal-dark);
+  font-weight: 800;
+}
+
+.importRow [data-state="matched_exact"] {
+  color: var(--teal-dark);
+  font-weight: 800;
+}
+
+.importRow [data-state="needs_review"],
+.importRow [data-state="invalid_percentage"] {
+  color: var(--danger);
   font-weight: 800;
 }
 
@@ -474,11 +555,13 @@ label span {
 @media (max-width: 1100px) {
   .grid,
   .formGrid.threeColumns,
-  .materialForm {
+  .materialForm,
+  .importActions {
     grid-template-columns: 1fr;
   }
 
-  .materialPanel {
+  .materialPanel,
+  .importPanel {
     grid-column: auto;
   }
 }
@@ -539,16 +622,21 @@ label span {
   .formGrid,
   .materialHead,
   .materialRow,
-  .formulaLine {
+  .formulaLine,
+  .importHead,
+  .importRow,
+  .importSummary {
     grid-template-columns: 1fr;
   }
 
-  .materialHead {
+  .materialHead,
+  .importHead {
     display: none;
   }
 
   .materialRow,
-  .formulaLine {
+  .formulaLine,
+  .importRow {
     gap: 7px;
     padding: 10px 0;
   }
