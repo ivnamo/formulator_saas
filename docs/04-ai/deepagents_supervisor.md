@@ -72,6 +72,18 @@ Estados posibles:
 
 La UI muestra la propuesta, pero no la guarda automaticamente.
 
+## META-015
+
+La UI puede aplicar una `formula_candidate` al editor manual:
+
+- copia materiales y porcentajes,
+- limpia `formulaId` para evitar sobrescribir formulas existentes,
+- recalcula con `POST /api/v1/formulas/calculate`,
+- muestra resultados calculados,
+- mantiene el guardado como accion explicita del usuario.
+
+El boton principal del editor indica `Save & calculate` porque ese flujo si persiste una formula.
+
 ## Regla de seguridad funcional
 
 El supervisor propone borradores controlados. Ninguna formula queda guardada ni se considera final sin aplicarla al editor, recalcularla y pasar revision humana.
