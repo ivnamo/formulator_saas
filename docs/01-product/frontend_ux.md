@@ -169,6 +169,17 @@ El comparador MVP permite enfocar la lista de restricciones:
 
 El filtro es local y no persiste preferencias.
 
+### META-024
+
+El panel del supervisor muestra explicaciones de inviabilidad del optimizer:
+
+- codigo/severidad tecnica,
+- motivo legible,
+- siguiente accion sugerida,
+- solo cuando no hay alternativa generada.
+
+Estas explicaciones son deterministas y no relajan restricciones automaticamente.
+
 ## ERP settings
 
 - crear conexión,

@@ -108,6 +108,17 @@ La revision humana local incluye comparacion pre-guardado:
 
 La comparacion es un control de UI. No es versionado historico ni workflow persistido.
 
+## META-024
+
+El optimizer explica por que no puede generar una alternativa:
+
+- `optimization_plan.infeasibility_explanations` contiene codigo, severidad, mensaje y accion sugerida,
+- `blocking_reasons` se mantiene como razon tecnica compacta,
+- estados `blocked` e `infeasible` devuelven explicaciones deterministas,
+- estado `solved` no devuelve explicaciones de inviabilidad.
+
+La UI muestra estas explicaciones cuando no hay `formula_candidates`. No relaja restricciones automaticamente ni invoca IA para justificar el fallo.
+
 ## Regla de seguridad funcional
 
 El supervisor propone borradores controlados. Ninguna formula queda guardada ni se considera final sin aplicarla al editor, recalcularla y pasar revision humana.
