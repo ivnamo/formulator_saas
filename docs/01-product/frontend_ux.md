@@ -180,6 +180,15 @@ El panel del supervisor muestra explicaciones de inviabilidad del optimizer:
 
 Estas explicaciones son deterministas y no relajan restricciones automaticamente.
 
+### META-025
+
+Cada explicacion de inviabilidad puede reutilizarse manualmente como ajuste del requisito:
+
+- se anade al textarea de requisitos,
+- evita duplicar el mismo texto,
+- no ejecuta `Plan` automaticamente,
+- mantiene visible el plan original hasta que el usuario decida replantear.
+
 ## ERP settings
 
 - crear conexión,

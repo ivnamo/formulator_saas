@@ -119,6 +119,12 @@ El optimizer explica por que no puede generar una alternativa:
 
 La UI muestra estas explicaciones cuando no hay `formula_candidates`. No relaja restricciones automaticamente ni invoca IA para justificar el fallo.
 
+## META-025
+
+La UI permite reutilizar manualmente una accion de `infeasibility_explanations` como texto adicional del requisito.
+
+Este gesto no crea un nuevo `ai_run`, no ejecuta `Plan` automaticamente y no modifica constraints en backend. Solo prepara el texto para que el usuario lo revise antes de volver a planificar.
+
 ## Regla de seguridad funcional
 
 El supervisor propone borradores controlados. Ninguna formula queda guardada ni se considera final sin aplicarla al editor, recalcularla y pasar revision humana.
