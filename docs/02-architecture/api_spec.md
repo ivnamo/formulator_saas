@@ -121,10 +121,11 @@ Response:
 
 ```http
 POST /optimizations/validate
+GET /optimizations/runs
 POST /optimizations/run
 ```
 
-Alcance actual: objetivo `minimize_price`, materias candidatas del tenant activo, bounds por materia prima y bounds por parametro tecnico. No persiste jobs ni el payload completo de restricciones.
+Alcance actual: objetivo `minimize_price`, materias candidatas del tenant activo, bounds por materia prima y bounds por parametro tecnico. Cada ejecucion de `run` persiste un snapshot de request/response en `optimization_runs`; no hay workflow asincrono de jobs ni re-ejecucion historica.
 
 ### Validar optimizacion
 
@@ -174,6 +175,8 @@ Response con solucion:
 
 ```json
 {
+  "id": "uuid",
+  "created_at": "2026-06-06T10:00:00Z",
   "status": "success",
   "objective": "minimize_price",
   "items": [
@@ -197,6 +200,8 @@ Response sin solucion factible:
 
 ```json
 {
+  "id": "uuid",
+  "created_at": "2026-06-06T10:00:00Z",
   "status": "infeasible",
   "objective": "minimize_price",
   "items": [],
@@ -210,6 +215,8 @@ Response con request invalido:
 
 ```json
 {
+  "id": "uuid",
+  "created_at": "2026-06-06T10:00:00Z",
   "status": "invalid",
   "objective": "minimize_price",
   "items": [],
@@ -225,7 +232,51 @@ Response con request invalido:
 }
 ```
 
-La UI no guarda automaticamente el resultado. Al pulsar `Save optimized`, el frontend persiste la formula mediante `POST /formulas` con `objective: "minimize_price"`; la biblioteca muestra ese objetivo como `Low cost`.
+La UI no guarda automaticamente el resultado como formula. Al pulsar `Save optimized`, el frontend persiste la formula mediante `POST /formulas` con `objective: "minimize_price"` y `optimization_run_id`; el historial del run queda enlazado a la formula guardada y la biblioteca muestra ese objetivo como `Low cost`.
+
+### Historial de optimizaciones
+
+```http
+GET /optimizations/runs
+```
+
+Response:
+
+```json
+[
+  {
+    "id": "uuid",
+    "tenant_id": "uuid",
+    "user_id": "uuid",
+    "formula_id": "uuid",
+    "status": "success",
+    "objective": "minimize_price",
+    "request_json": {
+      "objective": "minimize_price",
+      "candidate_raw_material_ids": ["uuid"],
+      "raw_material_bounds": [],
+      "parameter_bounds": [{"code": "active_content", "min_value": 20.0}]
+    },
+    "result_json": {
+      "status": "success",
+      "objective": "minimize_price",
+      "items": [{"raw_material_id": "uuid", "percentage": 40.0}],
+      "calculation": {
+        "total_percentage": 100.0,
+        "price_total": 2.2,
+        "currency": "EUR",
+        "parameters": [],
+        "warnings": []
+      },
+      "messages": [],
+      "issues": []
+    },
+    "created_at": "2026-06-06T10:00:00Z"
+  }
+]
+```
+
+El listado esta filtrado por tenant activo y ordenado por `created_at` descendente.
 
 ## Excel import
 

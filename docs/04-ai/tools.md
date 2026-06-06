@@ -91,6 +91,8 @@ Output:
 
 ```json
 {
+  "id": "uuid",
+  "created_at": "2026-06-06T10:00:00Z",
   "status": "success",
   "objective": "minimize_price",
   "items": [
@@ -114,7 +116,8 @@ Notas:
 
 - La tool debe usar el contrato actual de `POST /api/v1/optimizations/run`.
 - `constraints` queda reservado como lenguaje natural o estructura intermedia del agente, no como payload API.
-- El resultado no se persiste automaticamente; si se guarda como formula, debe conservar `objective=minimize_price`.
+- La ejecucion queda registrada en `optimization_runs`.
+- El resultado no se persiste automaticamente como formula; si se guarda, debe conservar `objective=minimize_price` y enlazarse con `optimization_run_id`.
 
 ## RAGMaterialDocsTool
 

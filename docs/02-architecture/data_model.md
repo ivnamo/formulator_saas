@@ -207,6 +207,18 @@ CREATE TABLE formula_calculation_results (
   result_json jsonb NOT NULL,
   calculated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE optimization_runs (
+  id uuid PRIMARY KEY,
+  tenant_id uuid NOT NULL REFERENCES tenants(id),
+  user_id uuid REFERENCES users(id),
+  formula_id uuid REFERENCES formulas(id),
+  status text NOT NULL,
+  objective text NOT NULL,
+  request_json jsonb NOT NULL,
+  result_json jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 ```
 
 ## Importaciones Excel

@@ -15,8 +15,9 @@ Generar fórmulas que cumplan restricciones técnicas y económicas.
 - Resultado unico, no multiples alternativas.
 - Estados `success`, `invalid` e `infeasible`.
 - Mensajes deterministas para casos simples de problemas infeasible.
+- Historial tenant-aware de ejecuciones con request y response normalizados.
 - La UI carga la solucion en el editor y solo la persiste al pulsar `Save optimized`.
-- La formula guardada conserva `objective=minimize_price`.
+- La formula guardada conserva `objective=minimize_price` y puede quedar enlazada al run origen.
 
 ## Entrada actual
 
@@ -83,6 +84,8 @@ Ejemplo:
 
 ```json
 {
+  "id": "uuid",
+  "created_at": "2026-06-06T10:00:00Z",
   "status": "success",
   "objective": "minimize_price",
   "items": [
@@ -101,6 +104,20 @@ Ejemplo:
   "issues": []
 }
 ```
+
+## Historial
+
+Cada llamada a `POST /api/v1/optimizations/run` crea un registro `optimization_runs` con:
+
+- tenant,
+- usuario,
+- estado,
+- objetivo,
+- request normalizado,
+- response normalizado,
+- formula enlazada si el resultado se guarda despues.
+
+El historial no reemplaza el historial de calculo de formulas. Sirve para auditar decisiones de optimizacion y para preparar comparaciones o explicaciones futuras.
 
 ## Infeasible problems
 
