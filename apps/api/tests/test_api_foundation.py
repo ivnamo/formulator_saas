@@ -478,6 +478,56 @@ def test_requirement_parser_rejects_cross_tenant_access() -> None:
     assert response.status_code == 403
 
 
+def test_requirement_parser_unknown_provider_is_audited(monkeypatch) -> None:
+    monkeypatch.setenv("REQUIREMENT_PARSER_PROVIDER", "hybrid")
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    response = client.post(
+        "/api/v1/requirements/parse",
+        headers=headers,
+        json={"text": "Minimiza coste con token=abc123456"},
+    )
+    runs = client.get("/api/v1/ai/runs", headers=headers)
+
+    assert response.status_code == 500
+    assert "Unsupported REQUIREMENT_PARSER_PROVIDER 'hybrid'" in response.json()["detail"]
+    assert runs.status_code == 200
+    run = runs.json()[0]
+    assert run["provider"] == "hybrid"
+    assert run["model"] is None
+    assert run["status"] == "error"
+    assert run["output_json"] is None
+    assert run["error"] == response.json()["detail"]
+    assert run["input_json"]["text"] == "Minimiza coste con token=[REDACTED]"
+
+
+def test_requirement_parser_llm_provider_requires_adapter(monkeypatch) -> None:
+    monkeypatch.setenv("REQUIREMENT_PARSER_PROVIDER", "llm")
+    monkeypatch.setenv("REQUIREMENT_PARSER_MODEL", "gpt-test")
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    response = client.post(
+        "/api/v1/requirements/parse",
+        headers=headers,
+        json={"text": "Minimiza coste con active content minimo 20"},
+    )
+    runs = client.get("/api/v1/ai/runs", headers=headers)
+
+    assert response.status_code == 501
+    assert "no LLM adapter is enabled yet" in response.json()["detail"]
+    assert runs.status_code == 200
+    run = runs.json()[0]
+    assert run["provider"] == "llm"
+    assert run["model"] == "gpt-test"
+    assert run["status"] == "error"
+    assert run["output_json"] is None
+    assert run["error"] == response.json()["detail"]
+
+
 def test_requirement_parser_logs_ai_run_and_tool_call() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

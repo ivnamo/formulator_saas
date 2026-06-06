@@ -119,6 +119,16 @@ _OPENAI_KEY_PATTERN = re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b")
 _BEARER_TOKEN_PATTERN = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{8,}\b", re.IGNORECASE)
 
 FUZZY_SUGGESTION_THRESHOLD = 0.82
+REQUIREMENT_PARSER_PROVIDER_ENV = "REQUIREMENT_PARSER_PROVIDER"
+REQUIREMENT_PARSER_MODEL_ENV = "REQUIREMENT_PARSER_MODEL"
+REQUIREMENT_PARSER_PROVIDER_DETERMINISTIC = "deterministic"
+REQUIREMENT_PARSER_PROVIDER_LLM = "llm"
+SUPPORTED_REQUIREMENT_PARSER_PROVIDERS = frozenset(
+    {
+        REQUIREMENT_PARSER_PROVIDER_DETERMINISTIC,
+        REQUIREMENT_PARSER_PROVIDER_LLM,
+    }
+)
 
 
 def create_app(engine: Engine | None = None) -> FastAPI:
@@ -429,6 +439,31 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> RequirementParseRead:
+        provider = _configured_requirement_parser_provider()
+        if provider not in SUPPORTED_REQUIREMENT_PARSER_PROVIDERS:
+            supported = ", ".join(sorted(SUPPORTED_REQUIREMENT_PARSER_PROVIDERS))
+            error = (
+                f"Unsupported {REQUIREMENT_PARSER_PROVIDER_ENV} '{provider}'. "
+                f"Supported values: {supported}."
+            )
+            _persist_requirement_parser_error(session, tenant, payload, provider, None, error)
+            raise HTTPException(status_code=500, detail=error)
+
+        if provider == REQUIREMENT_PARSER_PROVIDER_LLM:
+            error = (
+                "LLM requirement parser provider is configured, but no LLM adapter "
+                "is enabled yet."
+            )
+            _persist_requirement_parser_error(
+                session,
+                tenant,
+                payload,
+                provider,
+                _configured_requirement_parser_model(),
+                error,
+            )
+            raise HTTPException(status_code=501, detail=error)
+
         parsed = parse_requirements(
             payload.text,
             active_parameter_code=payload.active_parameter_code,
@@ -471,10 +506,12 @@ def register_routes(app: FastAPI) -> None:
             session,
             tenant,
             run_type="requirement_parser",
-            provider="deterministic",
+            provider=provider,
             model="rules:v1",
+            status="success",
             input_json=payload.model_dump(mode="json"),
             output_json=response.model_dump(mode="json"),
+            error=None,
             tool_name="RequirementParserTool",
         )
         return response
@@ -1479,6 +1516,40 @@ def _model_dict(model: Any) -> dict[str, Any]:
     return model.model_dump(mode="json")
 
 
+def _configured_requirement_parser_provider() -> str:
+    return os.getenv(
+        REQUIREMENT_PARSER_PROVIDER_ENV,
+        REQUIREMENT_PARSER_PROVIDER_DETERMINISTIC,
+    ).strip().casefold() or REQUIREMENT_PARSER_PROVIDER_DETERMINISTIC
+
+
+def _configured_requirement_parser_model() -> str | None:
+    model = os.getenv(REQUIREMENT_PARSER_MODEL_ENV, "").strip()
+    return model or None
+
+
+def _persist_requirement_parser_error(
+    session: Session,
+    tenant: TenantContext,
+    payload: RequirementParseRequest,
+    provider: str,
+    model: str | None,
+    error: str,
+) -> AiRun:
+    return _persist_ai_run(
+        session,
+        tenant,
+        run_type="requirement_parser",
+        provider=provider,
+        model=model,
+        status="error",
+        input_json=payload.model_dump(mode="json"),
+        output_json=None,
+        error=error,
+        tool_name="RequirementParserTool",
+    )
+
+
 def _redact_ai_log_payload(value: Any) -> Any:
     if isinstance(value, dict):
         return {
@@ -1517,10 +1588,12 @@ def _persist_ai_run(
     tenant: TenantContext,
     *,
     run_type: str,
-    provider: str,
-    model: str,
+    provider: str | None,
+    model: str | None,
+    status: str,
     input_json: dict[str, Any],
-    output_json: dict[str, Any],
+    output_json: dict[str, Any] | None,
+    error: str | None,
     tool_name: str,
 ) -> AiRun:
     finished_at = utc_now()
@@ -1532,9 +1605,10 @@ def _persist_ai_run(
         run_type=run_type,
         provider=provider,
         model=model,
-        status="success",
+        status=status,
         input_json=redacted_input_json,
         output_json=redacted_output_json,
+        error=error,
         finished_at=finished_at,
     )
     session.add(ai_run)
@@ -1542,9 +1616,10 @@ def _persist_ai_run(
         tenant_id=tenant.tenant_id,
         ai_run_id=ai_run.id,
         tool_name=tool_name,
-        status="success",
+        status=status,
         input_json=redacted_input_json,
         output_json=redacted_output_json,
+        error=error,
         finished_at=finished_at,
     )
     session.add(tool_call)
