@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import uuid
+import os
 from contextlib import asynccontextmanager
 from datetime import date
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine
 from sqlmodel import Session, select
 
@@ -57,6 +59,13 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     app = FastAPI(title="FormulIA API", version="0.1.0", lifespan=lifespan)
     app.state.engine = engine or create_db_engine()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     register_routes(app)
     return app
 
@@ -505,6 +514,14 @@ def _model_dict(model: Any) -> dict[str, Any]:
 
 def _normalize(value: str) -> str:
     return " ".join(value.strip().lower().split())
+
+
+def _cors_origins() -> list[str]:
+    raw_origins = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    )
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 
 app = create_app()
