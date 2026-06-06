@@ -12,6 +12,7 @@ Inventario de documentación ordenado por área.
 
 - [`00-meta/meta_prompts.md`](00-meta/meta_prompts.md)
 - [`00-meta/meta_001_foundation_slice.md`](00-meta/meta_001_foundation_slice.md)
+- [`00-meta/meta_002_workspace_editor.md`](00-meta/meta_002_workspace_editor.md)
 
 ## Producto
 
