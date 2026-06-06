@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import date
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine
 from sqlmodel import Session, select
@@ -19,6 +19,7 @@ from formulia_core import (
 )
 
 from .database import create_db_engine, get_session, init_db
+from .excel_import import ExcelImportError, ParsedFormulaImport, ParsedFormulaRow, parse_formula_xlsx
 from .models import (
     Formula,
     FormulaCalculationResult,
@@ -34,6 +35,8 @@ from .models import (
 )
 from .schemas import (
     CalculationRead,
+    ExcelImportPreviewRead,
+    ExcelImportSaveRequest,
     FormulaCalculateRequest,
     FormulaCreate,
     FormulaRead,
@@ -362,6 +365,42 @@ def register_routes(app: FastAPI) -> None:
             required_parameter_codes=payload.required_parameter_codes,
         )
 
+    @app.post(
+        "/api/v1/imports/formulas/excel/preview",
+        response_model=ExcelImportPreviewRead,
+    )
+    async def preview_formula_excel_import(
+        file: UploadFile = File(...),
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        if not file.filename or not file.filename.lower().endswith(".xlsx"):
+            raise HTTPException(status_code=400, detail="Only .xlsx files are supported.")
+        try:
+            parsed = parse_formula_xlsx(await file.read())
+        except ExcelImportError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return _excel_preview(session, tenant.tenant_id, parsed)
+
+    @app.post("/api/v1/imports/formulas/excel/save", response_model=FormulaRead, status_code=201)
+    def save_formula_excel_import(
+        payload: ExcelImportSaveRequest,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        if not payload.rows:
+            raise HTTPException(status_code=400, detail="Import rows are required.")
+        formula = Formula(
+            tenant_id=tenant.tenant_id,
+            name=payload.name,
+            created_by=tenant.user_id,
+        )
+        session.add(formula)
+        session.commit()
+        session.refresh(formula)
+        _replace_formula_items(session, tenant.tenant_id, formula.id, payload.rows)
+        return _formula_read(session, formula)
+
 
 def _get_raw_material(
     session: Session,
@@ -420,7 +459,7 @@ def _replace_formula_items(
                 formula_id=formula_id,
                 raw_material_id=item.raw_material_id,
                 percentage=item.percentage,
-                order_index=item.order_index or index,
+                order_index=getattr(item, "order_index", index) or index,
             )
         )
     session.commit()
@@ -483,6 +522,86 @@ def _calculate(
     }
 
 
+def _excel_preview(
+    session: Session,
+    tenant_id: uuid.UUID,
+    parsed: ParsedFormulaImport,
+) -> dict[str, Any]:
+    materials = session.exec(
+        select(RawMaterial).where(RawMaterial.tenant_id == tenant_id)
+    ).all()
+    by_code = {
+        _match_key(material.code): material
+        for material in materials
+        if material.code
+    }
+    by_name = {material.normalized_name: material for material in materials}
+    rows = [
+        _excel_preview_row(row, by_code=by_code, by_name=by_name)
+        for row in parsed.rows
+    ]
+    resolved_rows = sum(1 for row in rows if row["raw_material_id"] is not None)
+    pending_rows = sum(1 for row in rows if row["status"] != "matched_exact")
+    return {
+        "sheet_name": parsed.sheet_name,
+        "columns": {
+            "material_name": parsed.columns.material_name,
+            "material_code": parsed.columns.material_code,
+            "percentage": parsed.columns.percentage,
+        },
+        "rows": rows,
+        "total_percentage": parsed.total_percentage,
+        "resolved_rows": resolved_rows,
+        "pending_rows": pending_rows,
+    }
+
+
+def _excel_preview_row(
+    row: ParsedFormulaRow,
+    *,
+    by_code: dict[str, RawMaterial],
+    by_name: dict[str, RawMaterial],
+) -> dict[str, Any]:
+    if row.status == "invalid_percentage":
+        return {
+            **_parsed_row_dict(row),
+            "raw_material_id": None,
+            "matched_by": None,
+        }
+    if row.material_code and (material := by_code.get(_match_key(row.material_code))):
+        return {
+            **_parsed_row_dict(row),
+            "raw_material_id": material.id,
+            "matched_by": "code",
+            "status": "matched_exact",
+        }
+    if row.material_name and (material := by_name.get(_normalize(row.material_name))):
+        return {
+            **_parsed_row_dict(row),
+            "raw_material_id": material.id,
+            "matched_by": "name",
+            "status": "matched_exact",
+        }
+    return {
+        **_parsed_row_dict(row),
+        "raw_material_id": None,
+        "matched_by": None,
+        "status": "needs_review",
+        "message": "No exact raw material match was found.",
+    }
+
+
+def _parsed_row_dict(row: ParsedFormulaRow) -> dict[str, Any]:
+    return {
+        "row_number": row.row_number,
+        "material_code": row.material_code,
+        "material_name": row.material_name,
+        "percentage": row.percentage,
+        "status": row.status,
+        "message": row.message,
+    }
+
+
 def _core_raw_material(
     session: Session,
     tenant_id: uuid.UUID,
@@ -528,6 +647,10 @@ def _model_dict(model: Any) -> dict[str, Any]:
 
 def _normalize(value: str) -> str:
     return " ".join(value.strip().lower().split())
+
+
+def _match_key(value: str | None) -> str:
+    return "" if value is None else value.strip().casefold()
 
 
 def _cors_origins() -> list[str]:

@@ -137,3 +137,33 @@ class CalculationRead(BaseModel):
     currency: str
     parameters: list[dict[str, Any]]
     warnings: list[dict[str, Any]]
+
+
+class ExcelImportPreviewRowRead(BaseModel):
+    row_number: int
+    material_code: str | None
+    material_name: str | None
+    percentage: float | None
+    raw_material_id: uuid.UUID | None
+    matched_by: str | None
+    status: str
+    message: str | None = None
+
+
+class ExcelImportPreviewRead(BaseModel):
+    sheet_name: str
+    columns: dict[str, str | None]
+    rows: list[ExcelImportPreviewRowRead]
+    total_percentage: float
+    resolved_rows: int
+    pending_rows: int
+
+
+class ExcelImportSaveRow(BaseModel):
+    raw_material_id: uuid.UUID
+    percentage: float
+
+
+class ExcelImportSaveRequest(BaseModel):
+    name: str
+    rows: list[ExcelImportSaveRow]
