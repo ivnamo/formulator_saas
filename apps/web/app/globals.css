@@ -574,6 +574,51 @@ label span {
   display: grid;
 }
 
+.agentPlan {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.agentPlanHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.agentPlanHeader strong {
+  color: var(--text);
+}
+
+.agentPlanSteps {
+  display: grid;
+}
+
+.agentPlanStep {
+  display: grid;
+  grid-template-columns: 86px minmax(180px, 0.5fr) minmax(220px, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.agentPlanStep code {
+  color: var(--teal-dark);
+  font-weight: 800;
+}
+
+.agentPlanStep strong,
+.agentPlanStep span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .aiRunHead,
 .aiRunRow {
   display: grid;
@@ -890,6 +935,7 @@ label span {
 
   .formGrid,
   .aliasEditor,
+  .agentPlanStep,
   .formulaListHead,
   .formulaListRow,
   .materialHead,

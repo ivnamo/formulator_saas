@@ -34,6 +34,7 @@ import {
   withResolvedImportRow,
   type CalculationResult,
   type AiRun,
+  type AgentPlan,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
   type ExcelImportSheets,
@@ -72,6 +73,7 @@ export default function Home() {
     "Liquido barato con contenido activo minimo 12% y precio maximo 2 EUR/kg. Dame 2 alternativas.",
   );
   const [requirementParse, setRequirementParse] = useState<RequirementParse | null>(null);
+  const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null);
   const [aiRuns, setAiRuns] = useState<AiRun[]>([]);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -116,6 +118,7 @@ export default function Home() {
     !isBusy;
   const canParseRequirements =
     Boolean(workspace.tenant) && requirementText.trim().length >= 3 && !isBusy;
+  const canPlanRequirements = canParseRequirements;
 
   async function createWorkspace() {
     await runAction("Creating workspace", async () => {
@@ -137,6 +140,7 @@ export default function Home() {
       setFormulas([]);
       setCalculationHistory([]);
       setRequirementParse(null);
+      setAgentPlan(null);
       setAiRuns([]);
       resetImportState();
       setMessage("Workspace ready");
@@ -467,6 +471,28 @@ export default function Home() {
       setRequirementParse(parsed);
       await refreshAiRuns({ silent: true });
       setMessage("Requirements parsed");
+    });
+  }
+
+  async function planRequirements() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (requirementText.trim().length < 3) {
+      setError("Requirement text is required");
+      return;
+    }
+
+    await runAction("Planning with supervisor", async () => {
+      const plan = await request<AgentPlan>("/api/v1/ai/supervisor/plan", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ text: requirementText.trim() }),
+      });
+      setAgentPlan(plan);
+      await refreshAiRuns({ silent: true });
+      setMessage("Supervisor plan ready");
     });
   }
 
@@ -1152,6 +1178,15 @@ export default function Home() {
                 <button
                   className="secondaryButton"
                   type="button"
+                  onClick={planRequirements}
+                  disabled={!canPlanRequirements}
+                >
+                  <ListChecks size={17} />
+                  Plan
+                </button>
+                <button
+                  className="secondaryButton"
+                  type="button"
                   onClick={() => refreshAiRuns()}
                   disabled={!canEditTenantData}
                 >
@@ -1208,6 +1243,25 @@ export default function Home() {
             ) : (
               <div className="empty">No parsed requirements.</div>
             )}
+            <div className="agentPlan">
+              <div className="agentPlanHeader">
+                <strong>Supervisor plan</strong>
+                <span>{agentPlan ? agentPlan.orchestrator : "Pending"}</span>
+              </div>
+              {agentPlan ? (
+                <div className="agentPlanSteps">
+                  {agentPlan.steps.map((step) => (
+                    <div className="agentPlanStep" key={`${step.tool}-${step.status}`}>
+                      <code>{step.status}</code>
+                      <strong>{step.tool}</strong>
+                      <span>{step.summary}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty">No supervisor plan.</div>
+              )}
+            </div>
             <div className="aiRunList">
               <div className="aiRunHead">
                 <span>Time</span>

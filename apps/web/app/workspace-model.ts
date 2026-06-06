@@ -203,6 +203,22 @@ export type AiRun = {
   error: string | null;
 };
 
+export type AgentPlanStep = {
+  tool: string;
+  status: string;
+  summary: string;
+};
+
+export type AgentPlan = {
+  run_id: string;
+  orchestrator: "deterministic" | "deepagents";
+  model: string | null;
+  parsed_requirements: Record<string, unknown> | null;
+  steps: AgentPlanStep[];
+  human_review_required: boolean;
+  notes: string[];
+};
+
 export function withResolvedImportRow(
   preview: ExcelImportPreview,
   rowNumber: number,
