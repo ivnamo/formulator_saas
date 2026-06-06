@@ -688,10 +688,51 @@ label span {
   flex: 0 0 auto;
 }
 
-.optimizationDetail {
+.optimizationDetail,
+.optimizationComparison {
   display: grid;
   gap: 10px;
   padding-top: 2px;
+}
+
+.comparisonSelectors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.comparisonSelectors label {
+  min-width: 0;
+}
+
+.comparisonRows,
+.comparisonMessages {
+  display: grid;
+  gap: 6px;
+}
+
+.comparisonRow,
+.comparisonMessages > div {
+  display: grid;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  font-size: 13px;
+}
+
+.comparisonRow strong,
+.comparisonMessages strong {
+  color: var(--ink);
+}
+
+.comparisonRow span,
+.comparisonMessages span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.comparisonRow[data-changed="true"] strong {
+  color: var(--teal-dark);
 }
 
 .detailStats {
@@ -1109,6 +1150,10 @@ label span {
 
   .historyActionButtons {
     flex-direction: column;
+  }
+
+  .comparisonSelectors {
+    grid-template-columns: 1fr;
   }
 
   .detailLine,

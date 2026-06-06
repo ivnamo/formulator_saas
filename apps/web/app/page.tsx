@@ -79,6 +79,28 @@ type OptimizerParameterBoundsResult =
   | { bounds: OptimizerParameterBounds }
   | { error: string };
 
+type OptimizationBoundComparisonRow = {
+  key: string;
+  label: string;
+  baseline: string;
+  candidate: string;
+  changed: boolean;
+};
+
+type OptimizationCandidateComparison = {
+  added: string[];
+  removed: string[];
+  shared: string[];
+};
+
+type OptimizationComparisonSummary = {
+  candidateComparison: OptimizationCandidateComparison;
+  rawMaterialBounds: OptimizationBoundComparisonRow[];
+  parameterBounds: OptimizationBoundComparisonRow[];
+  baselineMessages: string[];
+  candidateMessages: string[];
+};
+
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
   const [workspaceName, setWorkspaceName] = useState("Workspace Lab");
@@ -102,6 +124,8 @@ export default function Home() {
   const [optimizationRun, setOptimizationRun] = useState<OptimizationRun | null>(null);
   const [optimizationHistory, setOptimizationHistory] = useState<OptimizationRunHistory[]>([]);
   const [selectedOptimizationRunId, setSelectedOptimizationRunId] = useState<string | null>(null);
+  const [optimizationComparisonBaselineId, setOptimizationComparisonBaselineId] = useState("");
+  const [optimizationComparisonCandidateId, setOptimizationComparisonCandidateId] = useState("");
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
@@ -151,6 +175,32 @@ export default function Home() {
   const selectedOptimizationMessages = useMemo(
     () => (selectedOptimizationRun ? optimizationDetailMessages(selectedOptimizationRun) : []),
     [selectedOptimizationRun],
+  );
+  const optimizationComparisonBaselineRun = useMemo(
+    () =>
+      optimizationHistory.find((run) => run.id === optimizationComparisonBaselineId) ?? null,
+    [optimizationHistory, optimizationComparisonBaselineId],
+  );
+  const optimizationComparisonCandidateRun = useMemo(
+    () =>
+      optimizationHistory.find((run) => run.id === optimizationComparisonCandidateId) ?? null,
+    [optimizationHistory, optimizationComparisonCandidateId],
+  );
+  const optimizationComparisonSummary = useMemo(
+    () =>
+      optimizationComparisonBaselineRun &&
+      optimizationComparisonCandidateRun &&
+      optimizationComparisonBaselineRun.id !== optimizationComparisonCandidateRun.id
+        ? buildOptimizationComparison(
+            optimizationComparisonBaselineRun,
+            optimizationComparisonCandidateRun,
+          )
+        : null,
+    [
+      optimizationComparisonBaselineRun,
+      optimizationComparisonCandidateRun,
+      rawMaterialsById,
+    ],
   );
   const selectedOptimizerMaterials = workspace.rawMaterials.filter(
     (material) => optimizerCandidateConfig(material.id).enabled,
@@ -210,6 +260,8 @@ export default function Home() {
       setCalculationHistory([]);
       setOptimizationHistory([]);
       setSelectedOptimizationRunId(null);
+      setOptimizationComparisonBaselineId("");
+      setOptimizationComparisonCandidateId("");
       setOptimizerCandidates({});
       setOptimizationRun(null);
       resetImportState();
@@ -597,6 +649,8 @@ export default function Home() {
       });
       setOptimizationRun(optimization);
       setSelectedOptimizationRunId(optimization.id);
+      setOptimizationComparisonBaselineId((current) => current || optimization.id);
+      setOptimizationComparisonCandidateId(optimization.id);
       await loadOptimizationHistory();
       if (optimization.status === "success" && optimization.calculation) {
         setWorkspace((current) => ({
@@ -1220,6 +1274,142 @@ export default function Home() {
     ];
   }
 
+  function optimizationRunOptionLabel(run: OptimizationRunHistory): string {
+    return `${formatDateTime(run.created_at)} - ${optimizationStatusLabel(
+      run.status,
+    )} - ${optimizationHistoryPrice(run)}`;
+  }
+
+  function optimizationRunPriceValue(run: OptimizationRunHistory): number | null {
+    return run.result_json.calculation?.price_total ?? null;
+  }
+
+  function formatOptimizationPriceDelta(
+    baseline: OptimizationRunHistory,
+    candidate: OptimizationRunHistory,
+  ): string {
+    const baselinePrice = optimizationRunPriceValue(baseline);
+    const candidatePrice = optimizationRunPriceValue(candidate);
+    if (baselinePrice === null || candidatePrice === null) {
+      return "Unavailable";
+    }
+    const currency =
+      candidate.result_json.calculation?.currency ??
+      baseline.result_json.calculation?.currency ??
+      "EUR";
+    return `${formatSignedNumber(candidatePrice - baselinePrice)} ${currency}/kg`;
+  }
+
+  function formatOptimizationLineDelta(
+    baseline: OptimizationRunHistory,
+    candidate: OptimizationRunHistory,
+  ): string {
+    return formatSignedNumber(
+      candidate.result_json.items.length - baseline.result_json.items.length,
+      0,
+    );
+  }
+
+  function buildOptimizationComparison(
+    baseline: OptimizationRunHistory,
+    candidate: OptimizationRunHistory,
+  ): OptimizationComparisonSummary {
+    return {
+      candidateComparison: compareOptimizationCandidates(baseline, candidate),
+      rawMaterialBounds: compareOptimizationRawMaterialBounds(baseline, candidate),
+      parameterBounds: compareOptimizationParameterBounds(baseline, candidate),
+      baselineMessages: optimizationDetailMessages(baseline),
+      candidateMessages: optimizationDetailMessages(candidate),
+    };
+  }
+
+  function compareOptimizationCandidates(
+    baseline: OptimizationRunHistory,
+    candidate: OptimizationRunHistory,
+  ): OptimizationCandidateComparison {
+    const baselineIds = new Set(baseline.request_json.candidate_raw_material_ids);
+    const candidateIds = new Set(candidate.request_json.candidate_raw_material_ids);
+    return {
+      added: [...candidateIds]
+        .filter((rawMaterialId) => !baselineIds.has(rawMaterialId))
+        .map(rawMaterialLabel),
+      removed: [...baselineIds]
+        .filter((rawMaterialId) => !candidateIds.has(rawMaterialId))
+        .map(rawMaterialLabel),
+      shared: [...candidateIds]
+        .filter((rawMaterialId) => baselineIds.has(rawMaterialId))
+        .map(rawMaterialLabel),
+    };
+  }
+
+  function compareOptimizationRawMaterialBounds(
+    baseline: OptimizationRunHistory,
+    candidate: OptimizationRunHistory,
+  ): OptimizationBoundComparisonRow[] {
+    const baselineBounds = new Map(
+      baseline.request_json.raw_material_bounds.map((bound) => [bound.raw_material_id, bound]),
+    );
+    const candidateBounds = new Map(
+      candidate.request_json.raw_material_bounds.map((bound) => [bound.raw_material_id, bound]),
+    );
+    const rawMaterialIds = new Set([...baselineBounds.keys(), ...candidateBounds.keys()]);
+    return [...rawMaterialIds].map((rawMaterialId) => {
+      const baselineLabel = formatBoundRange(
+        baselineBounds.get(rawMaterialId)?.min_percentage ?? null,
+        baselineBounds.get(rawMaterialId)?.max_percentage ?? null,
+        "%",
+      );
+      const candidateLabel = formatBoundRange(
+        candidateBounds.get(rawMaterialId)?.min_percentage ?? null,
+        candidateBounds.get(rawMaterialId)?.max_percentage ?? null,
+        "%",
+      );
+      return {
+        key: rawMaterialId,
+        label: rawMaterialLabel(rawMaterialId),
+        baseline: baselineLabel,
+        candidate: candidateLabel,
+        changed: baselineLabel !== candidateLabel,
+      };
+    });
+  }
+
+  function compareOptimizationParameterBounds(
+    baseline: OptimizationRunHistory,
+    candidate: OptimizationRunHistory,
+  ): OptimizationBoundComparisonRow[] {
+    const baselineBounds = new Map(
+      baseline.request_json.parameter_bounds.map((bound) => [bound.code, bound]),
+    );
+    const candidateBounds = new Map(
+      candidate.request_json.parameter_bounds.map((bound) => [bound.code, bound]),
+    );
+    const codes = new Set([...baselineBounds.keys(), ...candidateBounds.keys()]);
+    return [...codes].map((code) => {
+      const baselineLabel = formatBoundRange(
+        baselineBounds.get(code)?.min_value ?? null,
+        baselineBounds.get(code)?.max_value ?? null,
+        "",
+      );
+      const candidateLabel = formatBoundRange(
+        candidateBounds.get(code)?.min_value ?? null,
+        candidateBounds.get(code)?.max_value ?? null,
+        "",
+      );
+      return {
+        key: code,
+        label: code,
+        baseline: baselineLabel,
+        candidate: candidateLabel,
+        changed: baselineLabel !== candidateLabel,
+      };
+    });
+  }
+
+  function formatNameList(items: string[]): string {
+    return items.length ? items.join(", ") : "-";
+  }
+
   async function runAction(label: string, action: () => Promise<void>) {
     setStatus("working");
     setMessage(label);
@@ -1837,6 +2027,192 @@ export default function Home() {
                     </>
                   ) : (
                     <div className="empty">Select an optimization run.</div>
+                  )}
+                </div>
+                <div className="optimizationComparison">
+                  <div className="historyTitle">
+                    <ListChecks size={17} />
+                    <strong>Run comparison</strong>
+                  </div>
+                  <div className="comparisonSelectors">
+                    <label>
+                      <span>Baseline</span>
+                      <select
+                        aria-label="Optimization comparison baseline"
+                        value={optimizationComparisonBaselineId}
+                        onChange={(event) =>
+                          setOptimizationComparisonBaselineId(event.target.value)
+                        }
+                        disabled={isBusy || optimizationHistory.length === 0}
+                      >
+                        <option value="">Select run</option>
+                        {optimizationHistory.map((run) => (
+                          <option key={run.id} value={run.id}>
+                            {optimizationRunOptionLabel(run)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Candidate</span>
+                      <select
+                        aria-label="Optimization comparison candidate"
+                        value={optimizationComparisonCandidateId}
+                        onChange={(event) =>
+                          setOptimizationComparisonCandidateId(event.target.value)
+                        }
+                        disabled={isBusy || optimizationHistory.length === 0}
+                      >
+                        <option value="">Select run</option>
+                        {optimizationHistory.map((run) => (
+                          <option key={run.id} value={run.id}>
+                            {optimizationRunOptionLabel(run)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  {optimizationComparisonBaselineRun &&
+                  optimizationComparisonCandidateRun &&
+                  optimizationComparisonBaselineRun.id === optimizationComparisonCandidateRun.id ? (
+                    <div className="empty">Select two different optimization runs.</div>
+                  ) : optimizationComparisonBaselineRun &&
+                    optimizationComparisonCandidateRun &&
+                    optimizationComparisonSummary ? (
+                    <>
+                      <div className="detailStats">
+                        <div>
+                          <span>Status</span>
+                          <strong>
+                            {optimizationStatusLabel(optimizationComparisonBaselineRun.status)} -{" "}
+                            {optimizationStatusLabel(optimizationComparisonCandidateRun.status)}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>Objective</span>
+                          <strong>
+                            {formulaObjectiveLabel(optimizationComparisonBaselineRun.objective)} -{" "}
+                            {formulaObjectiveLabel(optimizationComparisonCandidateRun.objective)}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>Price delta</span>
+                          <strong>
+                            {formatOptimizationPriceDelta(
+                              optimizationComparisonBaselineRun,
+                              optimizationComparisonCandidateRun,
+                            )}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>Line delta</span>
+                          <strong>
+                            {formatOptimizationLineDelta(
+                              optimizationComparisonBaselineRun,
+                              optimizationComparisonCandidateRun,
+                            )}
+                          </strong>
+                        </div>
+                      </div>
+                      <div className="detailGroup">
+                        <span>Candidates</span>
+                        <div className="comparisonRows">
+                          <div className="comparisonRow">
+                            <strong>Added</strong>
+                            <span>
+                              {formatNameList(
+                                optimizationComparisonSummary.candidateComparison.added,
+                              )}
+                            </span>
+                          </div>
+                          <div className="comparisonRow">
+                            <strong>Removed</strong>
+                            <span>
+                              {formatNameList(
+                                optimizationComparisonSummary.candidateComparison.removed,
+                              )}
+                            </span>
+                          </div>
+                          <div className="comparisonRow">
+                            <strong>Shared</strong>
+                            <span>
+                              {formatNameList(
+                                optimizationComparisonSummary.candidateComparison.shared,
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="detailGroup">
+                        <span>Raw material bounds</span>
+                        {optimizationComparisonSummary.rawMaterialBounds.length ? (
+                          <div className="comparisonRows">
+                            {optimizationComparisonSummary.rawMaterialBounds.map((row) => (
+                              <div
+                                className="comparisonRow"
+                                data-changed={row.changed ? "true" : undefined}
+                                key={row.key}
+                              >
+                                <strong>{row.label}</strong>
+                                <span>
+                                  {row.baseline} - {row.candidate}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="detailMuted">No raw material bounds</div>
+                        )}
+                      </div>
+                      <div className="detailGroup">
+                        <span>Parameter bounds</span>
+                        {optimizationComparisonSummary.parameterBounds.length ? (
+                          <div className="comparisonRows">
+                            {optimizationComparisonSummary.parameterBounds.map((row) => (
+                              <div
+                                className="comparisonRow"
+                                data-changed={row.changed ? "true" : undefined}
+                                key={row.key}
+                              >
+                                <strong>{row.label}</strong>
+                                <span>
+                                  {row.baseline} - {row.candidate}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="detailMuted">No parameter bounds</div>
+                        )}
+                      </div>
+                      <div className="detailGroup">
+                        <span>Messages</span>
+                        <div className="comparisonMessages">
+                          <div>
+                            <strong>Baseline</strong>
+                            {optimizationComparisonSummary.baselineMessages.length ? (
+                              optimizationComparisonSummary.baselineMessages.map((item, index) => (
+                                <span key={`baseline-${item}-${index}`}>{item}</span>
+                              ))
+                            ) : (
+                              <span>No messages</span>
+                            )}
+                          </div>
+                          <div>
+                            <strong>Candidate</strong>
+                            {optimizationComparisonSummary.candidateMessages.length ? (
+                              optimizationComparisonSummary.candidateMessages.map((item, index) => (
+                                <span key={`candidate-${item}-${index}`}>{item}</span>
+                              ))
+                            ) : (
+                              <span>No messages</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="empty">Select two optimization runs.</div>
                   )}
                 </div>
               </div>
