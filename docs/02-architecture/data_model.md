@@ -304,10 +304,15 @@ CREATE TABLE ai_runs (
   tenant_id uuid NOT NULL REFERENCES tenants(id),
   user_id uuid,
   run_type text NOT NULL,
+  provider text,
   input_json jsonb NOT NULL,
   output_json jsonb,
   status text NOT NULL,
   model text,
+  error text,
+  prompt_tokens integer,
+  completion_tokens integer,
+  cost_estimate numeric,
   created_at timestamptz NOT NULL DEFAULT now(),
   finished_at timestamptz
 );
@@ -320,7 +325,9 @@ CREATE TABLE ai_tool_calls (
   input_json jsonb NOT NULL,
   output_json jsonb,
   status text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
+  error text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  finished_at timestamptz
 );
 ```
 

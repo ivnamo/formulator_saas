@@ -72,6 +72,8 @@ Guardar en `ai_runs`:
 - errores,
 - tokens/coste si disponible.
 
+El parser determinista de requisitos tambien se registra en `ai_runs` con `provider=deterministic` y `model=rules:v1`. Cuando se conecte un LLM real, cada llamada debera conservar el mismo contrato y anadir tokens/coste si el proveedor lo devuelve.
+
 ## Reglas anti-contaminación
 
 - Nunca usar documentos de otro tenant.

@@ -162,6 +162,43 @@ Response:
 
 Alcance actual: objetivo de coste, bounds del parametro activo, precio maximo, numero de alternativas, materias obligatorias/excluidas e incertidumbres. No genera formula ni selecciona materias candidatas.
 
+Cada parseo crea un registro `ai_runs` con `run_type=requirement_parser`, `provider=deterministic`, `model=rules:v1` y una `ai_tool_call` `RequirementParserTool`.
+
+## Logging IA
+
+```http
+GET /ai/runs
+GET /ai/runs/{run_id}
+```
+
+Lista runs IA del tenant activo y permite inspeccionar sus tool calls. Los endpoints siempre filtran por tenant context.
+
+Response de lista:
+
+```json
+[
+  {
+    "id": "uuid",
+    "tenant_id": "uuid",
+    "user_id": "uuid",
+    "run_type": "requirement_parser",
+    "provider": "deterministic",
+    "model": "rules:v1",
+    "status": "success",
+    "input_json": {},
+    "output_json": {},
+    "error": null,
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "cost_estimate": null,
+    "created_at": "2026-06-06T10:00:00Z",
+    "finished_at": "2026-06-06T10:00:00Z"
+  }
+]
+```
+
+El detalle anade `tool_calls` con `tool_name`, `input_json`, `output_json`, `status`, `error`, `created_at` y `finished_at`.
+
 ## Optimización
 
 ```http
