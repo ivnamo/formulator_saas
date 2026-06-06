@@ -33,6 +33,7 @@ import {
   withRawMaterialAlias,
   withResolvedImportRow,
   type CalculationResult,
+  type CompatibilityRuleRead,
   type AiRun,
   type AgentCandidate,
   type AgentFormulaCandidate,
@@ -81,6 +82,14 @@ export default function Home() {
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
   const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
+  const [compatibilityRules, setCompatibilityRules] = useState<CompatibilityRuleRead[]>([]);
+  const [compatibilityRuleForm, setCompatibilityRuleForm] = useState({
+    materialAId: "",
+    materialBId: "",
+    severity: "warning",
+    message: "",
+    recommendedAction: "",
+  });
   const [requirementText, setRequirementText] = useState(
     "Liquido barato con contenido activo minimo 12% y precio maximo 2 EUR/kg. Dame 2 alternativas.",
   );
@@ -220,6 +229,13 @@ export default function Home() {
   const canParseRequirements =
     Boolean(workspace.tenant) && requirementText.trim().length >= 3 && !isBusy;
   const canPlanRequirements = canParseRequirements;
+  const canCreateCompatibilityRule =
+    Boolean(workspace.tenant) &&
+    Boolean(compatibilityRuleForm.materialAId) &&
+    Boolean(compatibilityRuleForm.materialBId) &&
+    compatibilityRuleForm.materialAId !== compatibilityRuleForm.materialBId &&
+    compatibilityRuleForm.message.trim().length > 0 &&
+    !isBusy;
 
   async function createWorkspace() {
     await runAction("Creating workspace", async () => {
@@ -240,6 +256,14 @@ export default function Home() {
       setResult(null);
       setFormulas([]);
       setCalculationHistory([]);
+      setCompatibilityRules([]);
+      setCompatibilityRuleForm({
+        materialAId: "",
+        materialBId: "",
+        severity: "warning",
+        message: "",
+        recommendedAction: "",
+      });
       setRequirementParse(null);
       setAgentPlan(null);
       setDraftReview(null);
@@ -411,6 +435,48 @@ export default function Home() {
       setAliasInputs((current) => ({ ...current, [rawMaterialId]: "" }));
       resetImportState();
       setMessage("Alias ready");
+    });
+  }
+
+  async function createCompatibilityRule() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (!compatibilityRuleForm.materialAId || !compatibilityRuleForm.materialBId) {
+      setError("Select two raw materials");
+      return;
+    }
+    if (compatibilityRuleForm.materialAId === compatibilityRuleForm.materialBId) {
+      setError("Select two different raw materials");
+      return;
+    }
+    const message = compatibilityRuleForm.message.trim();
+    if (!message) {
+      setError("Compatibility message is required");
+      return;
+    }
+
+    await runAction("Creating compatibility rule", async () => {
+      const rule = await request<CompatibilityRuleRead>("/api/v1/compatibility-rules", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          material_a_id: compatibilityRuleForm.materialAId,
+          material_b_id: compatibilityRuleForm.materialBId,
+          severity: compatibilityRuleForm.severity,
+          message,
+          recommended_action: compatibilityRuleForm.recommendedAction.trim() || null,
+        }),
+      });
+      setCompatibilityRules((current) => [rule, ...current]);
+      setCompatibilityRuleForm((current) => ({
+        ...current,
+        message: "",
+        recommendedAction: "",
+      }));
+      setResult(null);
+      setMessage("Compatibility rule ready");
     });
   }
 
@@ -1112,6 +1178,9 @@ export default function Home() {
           <a className="navItem" href="#materials">
             <Database size={18} /> Materials
           </a>
+          <a className="navItem" href="#compatibility">
+            <AlertTriangle size={18} /> Compatibility
+          </a>
           <a className="navItem" href="#library">
             <FolderOpen size={18} /> Library
           </a>
@@ -1337,6 +1406,130 @@ export default function Home() {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          </section>
+
+          <section id="compatibility" className="panel compatibilityPanel">
+            <div className="panelHeader">
+              <h2>Compatibility</h2>
+              <span>{compatibilityRules.length} rules</span>
+            </div>
+            <div className="compatibilityForm">
+              <label>
+                <span>Material A</span>
+                <select
+                  aria-label="Compatibility material A"
+                  value={compatibilityRuleForm.materialAId}
+                  onChange={(event) =>
+                    setCompatibilityRuleForm((current) => ({
+                      ...current,
+                      materialAId: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData || workspace.rawMaterials.length < 2}
+                >
+                  <option value="">Select material</option>
+                  {workspace.rawMaterials.map((material) => (
+                    <option key={material.id} value={material.id}>
+                      {material.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Material B</span>
+                <select
+                  aria-label="Compatibility material B"
+                  value={compatibilityRuleForm.materialBId}
+                  onChange={(event) =>
+                    setCompatibilityRuleForm((current) => ({
+                      ...current,
+                      materialBId: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData || workspace.rawMaterials.length < 2}
+                >
+                  <option value="">Select material</option>
+                  {workspace.rawMaterials.map((material) => (
+                    <option key={material.id} value={material.id}>
+                      {material.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Severity</span>
+                <select
+                  aria-label="Compatibility severity"
+                  value={compatibilityRuleForm.severity}
+                  onChange={(event) =>
+                    setCompatibilityRuleForm((current) => ({
+                      ...current,
+                      severity: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                >
+                  <option value="warning">warning</option>
+                  <option value="blocker">blocker</option>
+                  <option value="info">info</option>
+                </select>
+              </label>
+              <label>
+                <span>Message</span>
+                <input
+                  value={compatibilityRuleForm.message}
+                  onChange={(event) =>
+                    setCompatibilityRuleForm((current) => ({
+                      ...current,
+                      message: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Recommended action</span>
+                <input
+                  value={compatibilityRuleForm.recommendedAction}
+                  onChange={(event) =>
+                    setCompatibilityRuleForm((current) => ({
+                      ...current,
+                      recommendedAction: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <button
+                className="secondaryButton"
+                type="button"
+                onClick={createCompatibilityRule}
+                disabled={!canCreateCompatibilityRule}
+              >
+                <Save size={17} />
+                Save rule
+              </button>
+            </div>
+            <div className="compatibilityList">
+              {compatibilityRules.length === 0 ? (
+                <div className="empty">No compatibility rules yet.</div>
+              ) : (
+                compatibilityRules.map((rule) => {
+                  const materialNames =
+                    rule.condition_json.raw_material_ids
+                      ?.map((id) => rawMaterialsById.get(id)?.name ?? `Material ${id.slice(0, 8)}`)
+                      .join(" + ") ?? "Material pair";
+                  return (
+                    <div className="compatibilityRow" key={rule.id}>
+                      <code data-severity={rule.severity}>{rule.severity}</code>
+                      <span>{materialNames}</span>
+                      <strong>{rule.message}</strong>
+                      <span>{rule.condition_json.recommended_action ?? "-"}</span>
+                    </div>
+                  );
+                })
               )}
             </div>
           </section>
@@ -2366,9 +2559,17 @@ export default function Home() {
             <div className="warningList">
               {result?.warnings.length ? (
                 result.warnings.map((warning) => (
-                  <div key={`${warning.code}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}`}>
+                  <div
+                    key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}`}
+                  >
                     <AlertTriangle size={16} />
-                    <span>{warning.message}</span>
+                    <span>
+                      <strong>{warning.severity ?? warning.code}</strong>
+                      {warning.message}
+                      {warning.recommended_action ? (
+                        <small>{warning.recommended_action}</small>
+                      ) : null}
+                    </span>
                   </div>
                 ))
               ) : (

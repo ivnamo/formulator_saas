@@ -115,7 +115,25 @@ export type CalculationResult = {
     message: string;
     raw_material_id?: string | null;
     parameter_code?: string | null;
+    severity?: string;
+    rule_id?: string;
+    recommended_action?: string | null;
   }>;
+};
+
+export type CompatibilityRuleRead = {
+  id: string;
+  tenant_id: string;
+  rule_type: string;
+  severity: "blocker" | "warning" | "info" | string;
+  condition_json: {
+    raw_material_ids?: string[];
+    recommended_action?: string | null;
+  };
+  message: string;
+  source_type: string;
+  active: boolean;
+  created_at: string;
 };
 
 export type FormulaCalculationHistory = {

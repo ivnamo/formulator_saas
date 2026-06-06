@@ -316,7 +316,8 @@ label span {
   grid-template-columns: minmax(120px, 0.9fr) minmax(150px, 1fr) minmax(90px, 0.7fr) auto;
 }
 
-.materialPanel {
+.materialPanel,
+.compatibilityPanel {
   grid-column: 1;
 }
 
@@ -335,6 +336,52 @@ label span {
 .materialForm {
   grid-template-columns: 90px minmax(150px, 1fr) 112px 112px auto;
   margin-bottom: 16px;
+}
+
+.compatibilityForm {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) 110px;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.compatibilityForm label:nth-of-type(4),
+.compatibilityForm label:nth-of-type(5) {
+  grid-column: span 1;
+}
+
+.compatibilityList {
+  display: grid;
+}
+
+.compatibilityRow {
+  display: grid;
+  grid-template-columns: 76px minmax(140px, 0.8fr) minmax(180px, 1fr) minmax(160px, 0.8fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.compatibilityRow code {
+  color: var(--amber);
+  font-weight: 800;
+}
+
+.compatibilityRow code[data-severity="blocker"] {
+  color: var(--danger);
+}
+
+.compatibilityRow code[data-severity="info"] {
+  color: var(--blue);
+}
+
+.compatibilityRow span,
+.compatibilityRow strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .materialTable,
@@ -1331,9 +1378,27 @@ label span {
 .warningList div {
   min-height: 32px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.warningList span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.warningList strong {
+  color: var(--text);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.warningList small {
+  color: var(--muted);
 }
 
 .warningList svg {
@@ -1355,6 +1420,7 @@ label span {
   .grid,
   .formGrid.threeColumns,
   .materialForm,
+  .compatibilityForm,
   .importActions,
   .libraryActions,
   .comparisonConstraintBar,
@@ -1452,6 +1518,7 @@ label span {
   .formulaListRow,
   .materialHead,
   .materialRow,
+  .compatibilityRow,
   .formulaLine,
   .importHead,
   .importRow,
