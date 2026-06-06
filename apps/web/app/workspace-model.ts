@@ -135,6 +135,9 @@ export type ExcelImportPreviewRow = {
   matched_by: string | null;
   status: string;
   message: string | null;
+  suggested_raw_material_id: string | null;
+  suggested_material_name: string | null;
+  suggested_match_score: number | null;
 };
 
 export type ExcelImportPreview = {

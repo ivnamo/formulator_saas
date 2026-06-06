@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Beaker,
   Calculator,
+  Check,
   Database,
   FlaskConical,
   FolderOpen,
@@ -505,6 +506,14 @@ export default function Home() {
     setMessage("Import row resolved");
   }
 
+  function acceptImportSuggestion(row: ExcelImportPreviewRow) {
+    if (!row.suggested_raw_material_id) {
+      setError("Import row has no suggestion");
+      return;
+    }
+    resolveImportRow(row.row_number, row.suggested_raw_material_id);
+  }
+
   async function runAction(label: string, action: () => Promise<void>) {
     setStatus("working");
     setMessage(label);
@@ -921,6 +930,24 @@ export default function Home() {
                         >
                           <Plus size={16} />
                         </button>
+                        {row.suggested_raw_material_id ? (
+                          <button
+                            aria-label={`Use suggestion for row ${row.row_number}`}
+                            className="suggestionButton"
+                            disabled={isBusy}
+                            onClick={() => acceptImportSuggestion(row)}
+                            title="Use suggestion"
+                            type="button"
+                          >
+                            <Check size={15} />
+                            <span>
+                              {row.suggested_material_name}
+                              {row.suggested_match_score === null
+                                ? ""
+                                : ` (${Math.round(row.suggested_match_score * 100)}%)`}
+                            </span>
+                          </button>
+                        ) : null}
                       </div>
                     ) : row.matched_by === "manual" && row.raw_material_id ? (
                       <div className="aliasResolveControls">
