@@ -35,6 +35,7 @@ import {
   type CalculationResult,
   type AiRun,
   type AgentCandidate,
+  type AgentFormulaCandidate,
   type AgentPlan,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
@@ -672,6 +673,12 @@ export default function Home() {
         return `${code}: ${parameter.value.toFixed(2)}${unit}`;
       })
       .join(", ");
+  }
+
+  function formatAgentFormulaPrice(candidate: AgentFormulaCandidate): string {
+    return candidate.price_total === null
+      ? "-"
+      : `${candidate.price_total.toFixed(2)} ${candidate.currency}/kg`;
   }
 
   function resetImportState() {
@@ -1322,6 +1329,47 @@ export default function Home() {
                           <strong>{candidate.name}</strong>
                           <span>{formatCandidatePrice(candidate)}</span>
                           <span>{formatCandidateParameters(candidate)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {agentPlan.optimization_plan?.formula_candidates.length ? (
+                    <div className="agentFormulaList">
+                      {agentPlan.optimization_plan.formula_candidates.map((candidate) => (
+                        <div className="agentFormulaCard" key={candidate.name}>
+                          <div className="agentFormulaHeader">
+                            <strong>{candidate.name}</strong>
+                            <code>{candidate.status}</code>
+                          </div>
+                          <div className="agentFormulaStats">
+                            <div>
+                              <span>Price</span>
+                              <strong>{formatAgentFormulaPrice(candidate)}</strong>
+                            </div>
+                            <div>
+                              <span>Total</span>
+                              <strong>{candidate.total_percentage.toFixed(1)}%</strong>
+                            </div>
+                            <div>
+                              <span>Parameters</span>
+                              <strong>
+                                {candidate.parameters
+                                  .map(
+                                    (parameter) =>
+                                      `${parameter.code}: ${parameter.value.toFixed(2)}${parameter.unit ? ` ${parameter.unit}` : ""}`,
+                                  )
+                                  .join(", ") || "-"}
+                              </strong>
+                            </div>
+                          </div>
+                          <div className="agentFormulaItems">
+                            {candidate.items.map((item) => (
+                              <div key={item.raw_material_id}>
+                                <span>{item.name}</span>
+                                <code>{item.percentage.toFixed(1)}%</code>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>

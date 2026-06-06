@@ -684,6 +684,67 @@ label span {
   overflow-wrap: anywhere;
 }
 
+.agentFormulaList {
+  display: grid;
+  gap: 10px;
+}
+
+.agentFormulaCard {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.agentFormulaHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.agentFormulaHeader code,
+.agentFormulaItems code {
+  color: var(--teal-dark);
+  font-weight: 800;
+}
+
+.agentFormulaStats {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.45fr) minmax(80px, 0.35fr) minmax(180px, 1fr);
+  gap: 10px;
+}
+
+.agentFormulaStats div,
+.agentFormulaItems div {
+  display: grid;
+  gap: 4px;
+}
+
+.agentFormulaStats span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.agentFormulaStats strong,
+.agentFormulaItems span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.agentFormulaItems {
+  display: grid;
+  gap: 6px;
+}
+
+.agentFormulaItems div {
+  grid-template-columns: minmax(0, 1fr) 72px;
+  align-items: center;
+  min-height: 28px;
+}
+
 .aiRunHead,
 .aiRunRow {
   display: grid;
@@ -1001,6 +1062,8 @@ label span {
   .formGrid,
   .aliasEditor,
   .agentCandidateRow,
+  .agentFormulaStats,
+  .agentFormulaItems div,
   .agentToolSummary,
   .agentPlanStep,
   .formulaListHead,

@@ -236,6 +236,23 @@ export type AgentOptimizationPlan = {
   blocking_reasons: string[];
   warnings: string[];
   solver: string;
+  formula_candidates: AgentFormulaCandidate[];
+};
+
+export type AgentFormulaCandidate = {
+  name: string;
+  status: string;
+  total_percentage: number;
+  price_total: number | null;
+  currency: string;
+  items: Array<{
+    raw_material_id: string;
+    name: string;
+    percentage: number;
+  }>;
+  parameters: Array<{ code: string; value: number; unit: string | null }>;
+  warnings: Array<Record<string, unknown>>;
+  constraints_status: Array<Record<string, unknown>>;
 };
 
 export type AgentPlan = {
