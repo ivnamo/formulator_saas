@@ -111,6 +111,16 @@ def test_supervisor_plan_uses_requirement_parser_tool(monkeypatch) -> None:
     ]
     assert plan["candidate_research"]["candidate_count"] == 0
     assert plan["optimization_plan"]["status"] == "blocked"
+    assert plan["optimization_plan"]["infeasibility_explanations"] == [
+        {
+            "code": "no_candidates",
+            "severity": "blocker",
+            "message": "No tenant raw material candidates are available.",
+            "action": (
+                "Create active raw materials or relax excluded and mandatory material terms."
+            ),
+        }
+    ]
     detail = client.get(f"/api/v1/ai/runs/{plan['run_id']}", headers=headers)
     assert detail.status_code == 200
     run = detail.json()
@@ -229,6 +239,7 @@ def test_supervisor_researches_tenant_candidates_and_optimizer_inputs(monkeypatc
     assert {constraint["status"] for constraint in formula["constraints_status"]} == {
         "satisfied"
     }
+    assert plan["optimization_plan"]["infeasibility_explanations"] == []
     assert [step["status"] for step in plan["steps"]] == [
         "completed",
         "completed",
@@ -266,6 +277,55 @@ def test_optimization_blocks_price_constraints_without_prices(monkeypatch) -> No
     assert "No priced candidate can satisfy price constraints." in plan["optimization_plan"][
         "blocking_reasons"
     ]
+    assert plan["optimization_plan"]["infeasibility_explanations"] == [
+        {
+            "code": "missing_price_coverage",
+            "severity": "blocker",
+            "message": "No priced candidate can satisfy price constraints.",
+            "action": (
+                "Add current EUR/kg prices to candidate raw materials or remove the price constraint."
+            ),
+        }
+    ]
+
+
+def test_optimization_explains_missing_parameter_coverage(monkeypatch) -> None:
+    monkeypatch.delenv("AGENT_ORCHESTRATOR_PROVIDER", raising=False)
+    monkeypatch.delenv("REQUIREMENT_PARSER_PROVIDER", raising=False)
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = create_parameter(client, headers)
+    create_raw_material(
+        client,
+        headers,
+        parameter["id"],
+        name="Priced Carrier",
+        code="CAR-P",
+        price=0.8,
+    )
+
+    response = client.post(
+        "/api/v1/ai/supervisor/plan",
+        headers=headers,
+        json={"text": "Liquido con contenido activo minimo 12%."},
+    )
+
+    assert response.status_code == 200
+    plan = response.json()
+    assert plan["candidate_research"]["candidate_count"] == 1
+    assert plan["optimization_plan"]["status"] == "blocked"
+    assert plan["optimization_plan"]["infeasibility_explanations"] == [
+        {
+            "code": "missing_parameter_coverage",
+            "severity": "blocker",
+            "message": "No candidate has parameter active_content.",
+            "action": (
+                "Add measured values for parameter active_content to candidate raw materials "
+                "or remove that technical constraint."
+            ),
+        }
+    ]
 
 
 def test_optimization_marks_infeasible_when_grid_has_no_solution(monkeypatch) -> None:
@@ -298,6 +358,17 @@ def test_optimization_marks_infeasible_when_grid_has_no_solution(monkeypatch) ->
     assert plan["optimization_plan"]["formula_candidates"] == []
     assert "No grid solution satisfies supported constraints." in plan["optimization_plan"][
         "blocking_reasons"
+    ]
+    assert plan["optimization_plan"]["infeasibility_explanations"] == [
+        {
+            "code": "grid_no_solution",
+            "severity": "blocker",
+            "message": "No grid solution satisfies supported constraints.",
+            "action": (
+                "Relax at least one numeric constraint, add more priced materials with required "
+                "parameters, or reduce the requested constraint set."
+            ),
+        }
     ]
 
 

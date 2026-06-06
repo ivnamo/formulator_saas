@@ -80,10 +80,17 @@ def build_optimization_plan(
     technical_constraints = parsed_requirements.get("technical_constraints", [])
     economic_constraints = parsed_requirements.get("economic_constraints", [])
     blocking_reasons: list[str] = []
+    infeasibility_explanations: list[dict[str, str]] = []
     warnings: list[str] = []
 
     if not candidates:
-        blocking_reasons.append("No tenant raw material candidates are available.")
+        _add_infeasibility_explanation(
+            blocking_reasons=blocking_reasons,
+            explanations=infeasibility_explanations,
+            code="no_candidates",
+            reason="No tenant raw material candidates are available.",
+            action="Create active raw materials or relax excluded and mandatory material terms.",
+        )
 
     for constraint in technical_constraints:
         target = constraint.get("target")
@@ -93,8 +100,17 @@ def build_optimization_plan(
             target in candidate.get("parameters", {})
             for candidate in candidates
         )
-        if not has_coverage:
-            blocking_reasons.append(f"No candidate has parameter {target}.")
+        if candidates and not has_coverage:
+            _add_infeasibility_explanation(
+                blocking_reasons=blocking_reasons,
+                explanations=infeasibility_explanations,
+                code="missing_parameter_coverage",
+                reason=f"No candidate has parameter {target}.",
+                action=(
+                    f"Add measured values for parameter {target} to candidate raw materials "
+                    "or remove that technical constraint."
+                ),
+            )
 
     priced_candidates = [
         candidate for candidate in candidates if candidate.get("price_eur_per_kg") is not None
@@ -102,11 +118,24 @@ def build_optimization_plan(
     if candidates and not priced_candidates:
         warnings.append("No candidate has a current price.")
         if any(constraint.get("target") == "price_total" for constraint in economic_constraints):
-            blocking_reasons.append("No priced candidate can satisfy price constraints.")
+            _add_infeasibility_explanation(
+                blocking_reasons=blocking_reasons,
+                explanations=infeasibility_explanations,
+                code="missing_price_coverage",
+                reason="No priced candidate can satisfy price constraints.",
+                action="Add current EUR/kg prices to candidate raw materials or remove the price constraint.",
+            )
 
     objective = _optimization_objective(parsed_requirements)
     if not technical_constraints and not economic_constraints:
-        blocking_reasons.append("No numeric constraints were detected.")
+        _add_infeasibility_explanation(
+            blocking_reasons=blocking_reasons,
+            explanations=infeasibility_explanations,
+            code="no_numeric_constraints",
+            reason="No numeric constraints were detected.",
+            action="Add at least one numeric technical or economic constraint before running the optimizer.",
+            severity="warning",
+        )
     formula_candidates: list[dict[str, Any]] = []
     constraints = _constraint_statuses(
         technical_constraints=technical_constraints,
@@ -125,7 +154,16 @@ def build_optimization_plan(
         )
         if solver_result is None:
             status = "infeasible"
-            blocking_reasons.append("No grid solution satisfies supported constraints.")
+            _add_infeasibility_explanation(
+                blocking_reasons=blocking_reasons,
+                explanations=infeasibility_explanations,
+                code="grid_no_solution",
+                reason="No grid solution satisfies supported constraints.",
+                action=(
+                    "Relax at least one numeric constraint, add more priced materials with required "
+                    "parameters, or reduce the requested constraint set."
+                ),
+            )
         else:
             status = "solved"
             formula_candidates = [solver_result]
@@ -143,10 +181,31 @@ def build_optimization_plan(
         ],
         "constraints": constraints,
         "blocking_reasons": blocking_reasons,
+        "infeasibility_explanations": infeasibility_explanations,
         "warnings": warnings,
         "solver": solver,
         "formula_candidates": formula_candidates,
     }
+
+
+def _add_infeasibility_explanation(
+    *,
+    blocking_reasons: list[str],
+    explanations: list[dict[str, str]],
+    code: str,
+    reason: str,
+    action: str,
+    severity: str = "blocker",
+) -> None:
+    blocking_reasons.append(reason)
+    explanations.append(
+        {
+            "code": code,
+            "severity": severity,
+            "message": reason,
+            "action": action,
+        }
+    )
 
 
 def _candidate_from_material(
