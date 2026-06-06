@@ -214,6 +214,20 @@ class OptimizationValidationRead(BaseModel):
     issues: list[OptimizationValidationIssueRead]
 
 
+class OptimizationFormulaItemRead(BaseModel):
+    raw_material_id: uuid.UUID
+    percentage: float
+
+
+class OptimizationRunRead(BaseModel):
+    status: str
+    objective: OptimizationObjective
+    items: list[OptimizationFormulaItemRead]
+    calculation: CalculationRead | None
+    messages: list[str]
+    issues: list[OptimizationValidationIssueRead]
+
+
 class FormulaComparisonFormulaRead(BaseModel):
     id: uuid.UUID
     name: str

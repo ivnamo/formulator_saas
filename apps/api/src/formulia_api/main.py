@@ -14,10 +14,15 @@ from sqlalchemy import Engine
 from sqlmodel import Session, select
 
 from formulia_core import (
+    FormulaCalculation as CoreFormulaCalculation,
     FormulaItem as CoreFormulaItem,
+    OptimizationProblem as CoreOptimizationProblem,
     ParameterValue as CoreParameterValue,
+    ParameterBound as CoreParameterBound,
     RawMaterial as CoreRawMaterial,
+    RawMaterialBound as CoreRawMaterialBound,
     calculate_formula,
+    minimize_price,
 )
 
 from .database import create_db_engine, get_session, init_db
@@ -59,6 +64,7 @@ from .schemas import (
     FormulaRead,
     FormulaUpdate,
     OptimizationValidateRequest,
+    OptimizationRunRead,
     OptimizationValidationRead,
     ParameterCreate,
     ParameterRead,
@@ -389,6 +395,45 @@ def register_routes(app: FastAPI) -> None:
             "raw_material_bound_count": len(payload.raw_material_bounds),
             "parameter_bound_count": len(payload.parameter_bounds),
             "issues": issues,
+        }
+
+    @app.post("/api/v1/optimizations/run", response_model=OptimizationRunRead)
+    def run_optimization(
+        payload: OptimizationValidateRequest,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        issues = _optimization_validation_issues(session, tenant.tenant_id, payload)
+        if issues:
+            return {
+                "status": "invalid",
+                "objective": payload.objective,
+                "items": [],
+                "calculation": None,
+                "messages": [],
+                "issues": issues,
+            }
+
+        result = minimize_price(
+            _optimization_problem(session, tenant.tenant_id, payload)
+        )
+        return {
+            "status": result.status,
+            "objective": payload.objective,
+            "items": [
+                {
+                    "raw_material_id": item.raw_material_id,
+                    "percentage": item.percentage,
+                }
+                for item in result.items
+            ],
+            "calculation": (
+                None
+                if result.calculation is None
+                else _calculation_payload(result.calculation)
+            ),
+            "messages": list(result.messages),
+            "issues": [],
         }
 
     @app.get("/api/v1/formulas/{formula_id}", response_model=FormulaRead)
@@ -851,6 +896,60 @@ def _optimization_validation_issues(
     return issues
 
 
+def _optimization_problem(
+    session: Session,
+    tenant_id: uuid.UUID,
+    payload: OptimizationValidateRequest,
+) -> CoreOptimizationProblem:
+    materials = _optimization_candidate_materials(
+        session,
+        tenant_id,
+        payload.candidate_raw_material_ids,
+    )
+    return CoreOptimizationProblem(
+        raw_materials=[
+            _core_raw_material(session, tenant_id, material)
+            for material in materials
+        ],
+        raw_material_bounds=[
+            CoreRawMaterialBound(
+                raw_material_id=str(bound.raw_material_id),
+                min_percentage=bound.min_percentage,
+                max_percentage=bound.max_percentage,
+            )
+            for bound in payload.raw_material_bounds
+        ],
+        parameter_bounds=[
+            CoreParameterBound(
+                code=bound.code,
+                min_value=bound.min_value,
+                max_value=bound.max_value,
+            )
+            for bound in payload.parameter_bounds
+        ],
+    )
+
+
+def _optimization_candidate_materials(
+    session: Session,
+    tenant_id: uuid.UUID,
+    candidate_raw_material_ids: list[uuid.UUID],
+) -> list[RawMaterial]:
+    candidate_ids = list(dict.fromkeys(candidate_raw_material_ids))
+    materials = session.exec(
+        select(RawMaterial).where(
+            RawMaterial.tenant_id == tenant_id,
+            RawMaterial.id.in_(candidate_ids),
+        )
+    ).all()
+    materials_by_id = {material.id: material for material in materials}
+    return [
+        materials_by_id[candidate_id]
+        for candidate_id in candidate_ids
+        if candidate_id in materials_by_id
+    ]
+
+
 def _tenant_raw_material_ids(
     session: Session,
     tenant_id: uuid.UUID,
@@ -948,6 +1047,10 @@ def _calculate(
         raw_materials=core_materials,
         required_parameter_codes=required_parameter_codes,
     )
+    return _calculation_payload(calculation)
+
+
+def _calculation_payload(calculation: CoreFormulaCalculation) -> dict[str, Any]:
     return {
         "total_percentage": calculation.total_percentage,
         "price_total": calculation.price_total,

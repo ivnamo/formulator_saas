@@ -528,6 +528,132 @@ def test_optimization_validation_reports_incoherent_ranges() -> None:
     ]
 
 
+def test_optimization_run_returns_lowest_price_candidate_formula() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "active_content", "name": "Active Content", "unit": "% p/p"},
+    ).json()
+    active = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    carrier = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Carrier B", "code": "CAR-B"},
+    ).json()
+    for raw_material, price, parameter_value in [
+        (active, 4.0, 50),
+        (carrier, 1.0, 0),
+    ]:
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/prices",
+            headers=headers,
+            json={"price": price, "currency": "EUR", "unit": "kg"},
+        )
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/parameter-values",
+            headers=headers,
+            json={"parameter_id": parameter["id"], "value": parameter_value},
+        )
+
+    response = client.post(
+        "/api/v1/optimizations/run",
+        headers=headers,
+        json={
+            "objective": "minimize_price",
+            "candidate_raw_material_ids": [active["id"], carrier["id"]],
+            "parameter_bounds": [{"code": "active_content", "min_value": 20}],
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["status"] == "success"
+    assert result["items"] == [
+        {"raw_material_id": active["id"], "percentage": 40.0},
+        {"raw_material_id": carrier["id"], "percentage": 60.0},
+    ]
+    assert result["calculation"]["price_total"] == 2.2
+    assert result["calculation"]["parameters"] == [
+        {"code": "active_content", "value": 20.0, "unit": "% p/p"}
+    ]
+    assert result["issues"] == []
+
+
+def test_optimization_run_is_tenant_scoped() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+    foreign_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_b,
+        json={"name": "Foreign Active", "code": "FOR-A"},
+    ).json()
+
+    response = client.post(
+        "/api/v1/optimizations/run",
+        headers=headers_a,
+        json={
+            "objective": "minimize_price",
+            "candidate_raw_material_ids": [foreign_material["id"]],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "invalid"
+    assert response.json()["items"] == []
+    assert response.json()["issues"][0]["code"] == "candidate_not_found"
+
+
+def test_optimization_run_reports_infeasible_problem() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    material_a = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Material A", "code": "MAT-A"},
+    ).json()
+    material_b = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Material B", "code": "MAT-B"},
+    ).json()
+    for raw_material in [material_a, material_b]:
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/prices",
+            headers=headers,
+            json={"price": 1.0, "currency": "EUR", "unit": "kg"},
+        )
+
+    response = client.post(
+        "/api/v1/optimizations/run",
+        headers=headers,
+        json={
+            "objective": "minimize_price",
+            "candidate_raw_material_ids": [material_a["id"], material_b["id"]],
+            "raw_material_bounds": [
+                {"raw_material_id": material_a["id"], "max_percentage": 40},
+                {"raw_material_id": material_b["id"], "max_percentage": 40},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "infeasible"
+    assert response.json()["items"] == []
+    assert response.json()["calculation"] is None
+    assert response.json()["messages"]
+
+
 def test_persisted_formula_requires_active_tenant_parameters() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
