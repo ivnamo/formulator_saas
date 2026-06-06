@@ -85,7 +85,14 @@ def minimize_price(problem: OptimizationProblem) -> OptimizationResult:
             status=OptimizationStatus.INFEASIBLE,
             items=[],
             calculation=None,
-            messages=(result.message,),
+            messages=tuple(
+                _unique_messages(
+                    [
+                        *_infeasible_messages(problem, bounds),
+                        result.message,
+                    ]
+                )
+            ),
         )
 
     items = [
@@ -169,6 +176,96 @@ def _parameter_constraints(
     return matrix, limits
 
 
+def _infeasible_messages(
+    problem: OptimizationProblem,
+    variable_bounds: list[tuple[float, float]],
+) -> list[str]:
+    messages = ["No feasible formula found for the selected constraints."]
+    messages.extend(_raw_material_bound_messages(variable_bounds))
+    messages.extend(_parameter_bound_messages(problem, variable_bounds))
+    return messages
+
+
+def _raw_material_bound_messages(
+    variable_bounds: list[tuple[float, float]],
+) -> list[str]:
+    min_total = sum(minimum for minimum, _ in variable_bounds)
+    max_total = sum(maximum for _, maximum in variable_bounds)
+    messages: list[str] = []
+    if min_total > 100.000001:
+        messages.append(
+            f"Raw material minimum percentages total {_format_number(min_total)}%, above 100%."
+        )
+    if max_total < 99.999999:
+        messages.append(
+            f"Raw material maximum percentages total {_format_number(max_total)}%, below 100%."
+        )
+    return messages
+
+
+def _parameter_bound_messages(
+    problem: OptimizationProblem,
+    variable_bounds: list[tuple[float, float]],
+) -> list[str]:
+    messages: list[str] = []
+    for bound in problem.parameter_bounds:
+        attainable_range = _attainable_parameter_range(
+            problem.raw_materials,
+            variable_bounds,
+            bound.code,
+        )
+        if attainable_range is None:
+            continue
+        attainable_min, attainable_max = attainable_range
+        if bound.min_value is not None and bound.min_value > attainable_max + 0.000001:
+            messages.append(
+                (
+                    f"Parameter {bound.code} minimum {_format_number(bound.min_value)} "
+                    f"is above attainable maximum {_format_number(attainable_max)}."
+                )
+            )
+        if bound.max_value is not None and bound.max_value < attainable_min - 0.000001:
+            messages.append(
+                (
+                    f"Parameter {bound.code} maximum {_format_number(bound.max_value)} "
+                    f"is below attainable minimum {_format_number(attainable_min)}."
+                )
+            )
+    return messages
+
+
+def _attainable_parameter_range(
+    raw_materials: list[RawMaterial],
+    variable_bounds: list[tuple[float, float]],
+    parameter_code: str,
+) -> tuple[float, float] | None:
+    coefficients = [
+        _parameter_value(material.parameters.get(parameter_code)) / 100.0
+        for material in raw_materials
+    ]
+    minimum = linprog(
+        c=coefficients,
+        A_eq=[[1.0 for _ in raw_materials]],
+        b_eq=[100.0],
+        bounds=variable_bounds,
+        method="highs",
+    )
+    maximum = linprog(
+        c=[-coefficient for coefficient in coefficients],
+        A_eq=[[1.0 for _ in raw_materials]],
+        b_eq=[100.0],
+        bounds=variable_bounds,
+        method="highs",
+    )
+    if not minimum.success or not maximum.success:
+        return None
+    return _clean_number(minimum.fun), _clean_number(-maximum.fun)
+
+
+def _unique_messages(messages: list[str]) -> list[str]:
+    return list(dict.fromkeys(messages))
+
+
 def _price(material: RawMaterial) -> float:
     return 0.0 if material.price is None else material.price
 
@@ -184,3 +281,13 @@ def _invalid_range(minimum: float | None, maximum: float | None) -> bool:
 def _clean_percentage(value: float) -> float:
     rounded = round(float(value), 10)
     return 0.0 if abs(rounded) < 0.0000001 else rounded
+
+
+def _clean_number(value: float) -> float:
+    rounded = round(float(value), 10)
+    return 0.0 if abs(rounded) < 0.0000001 else rounded
+
+
+def _format_number(value: float) -> str:
+    cleaned = _clean_number(value)
+    return str(int(cleaned)) if cleaned.is_integer() else f"{cleaned:.2f}"

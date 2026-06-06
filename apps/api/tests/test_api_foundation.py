@@ -651,7 +651,10 @@ def test_optimization_run_reports_infeasible_problem() -> None:
     assert response.json()["status"] == "infeasible"
     assert response.json()["items"] == []
     assert response.json()["calculation"] is None
-    assert response.json()["messages"]
+    assert (
+        "Raw material maximum percentages total 80%, below 100%."
+        in response.json()["messages"]
+    )
 
 
 def test_persisted_formula_requires_active_tenant_parameters() -> None:

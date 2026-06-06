@@ -86,4 +86,103 @@ def test_reports_infeasible_problem() -> None:
     assert result.status == OptimizationStatus.INFEASIBLE
     assert result.items == []
     assert result.calculation is None
-    assert result.messages
+    assert "No feasible formula found for the selected constraints." in result.messages
+    assert "Raw material maximum percentages total 80%, below 100%." in result.messages
+
+
+def test_explains_raw_material_minimums_above_100() -> None:
+    result = minimize_price(
+        OptimizationProblem(
+            raw_materials=[
+                RawMaterial(id="a", name="A", price=2.0),
+                RawMaterial(id="b", name="B", price=1.0),
+            ],
+            raw_material_bounds=[
+                RawMaterialBound(raw_material_id="a", min_percentage=60),
+                RawMaterialBound(raw_material_id="b", min_percentage=50),
+            ],
+        )
+    )
+
+    assert result.status == OptimizationStatus.INFEASIBLE
+    assert "Raw material minimum percentages total 110%, above 100%." in result.messages
+
+
+def test_explains_parameter_minimum_above_attainable_range() -> None:
+    result = minimize_price(
+        OptimizationProblem(
+            raw_materials=[
+                RawMaterial(
+                    id="active",
+                    name="Active",
+                    price=2.0,
+                    parameters={
+                        "active_content": ParameterValue(
+                            code="active_content",
+                            value=50,
+                            unit="% p/p",
+                        )
+                    },
+                ),
+                RawMaterial(
+                    id="carrier",
+                    name="Carrier",
+                    price=1.0,
+                    parameters={
+                        "active_content": ParameterValue(
+                            code="active_content",
+                            value=0,
+                            unit="% p/p",
+                        )
+                    },
+                ),
+            ],
+            parameter_bounds=[ParameterBound(code="active_content", min_value=60)],
+        )
+    )
+
+    assert result.status == OptimizationStatus.INFEASIBLE
+    assert (
+        "Parameter active_content minimum 60 is above attainable maximum 50."
+        in result.messages
+    )
+
+
+def test_explains_parameter_maximum_below_attainable_range() -> None:
+    result = minimize_price(
+        OptimizationProblem(
+            raw_materials=[
+                RawMaterial(
+                    id="active",
+                    name="Active",
+                    price=2.0,
+                    parameters={
+                        "active_content": ParameterValue(
+                            code="active_content",
+                            value=50,
+                            unit="% p/p",
+                        )
+                    },
+                ),
+                RawMaterial(
+                    id="carrier",
+                    name="Carrier",
+                    price=1.0,
+                    parameters={
+                        "active_content": ParameterValue(
+                            code="active_content",
+                            value=10,
+                            unit="% p/p",
+                        )
+                    },
+                ),
+            ],
+            parameter_bounds=[ParameterBound(code="active_content", max_value=5)],
+        )
+    )
+
+    assert result.status == OptimizationStatus.INFEASIBLE
+    assert (
+        "Parameter active_content maximum 5 is below attainable minimum 10."
+        in result.messages
+    )
