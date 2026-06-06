@@ -487,12 +487,20 @@ export default function Home() {
       setError("Run a successful optimization first");
       return;
     }
-    await saveFormulaAndCalculate("Saving optimized formula", "Optimized formula saved");
+    await saveFormulaAndCalculate(
+      "Saving optimized formula",
+      "Optimized formula saved",
+      "minimize_price",
+    );
   }
 
-  async function saveFormulaAndCalculate(label: string, successMessage: string) {
+  async function saveFormulaAndCalculate(
+    label: string,
+    successMessage: string,
+    objective?: string,
+  ) {
     await runAction(label, async () => {
-      const formula = await persistCurrentFormula();
+      const formula = await persistCurrentFormula(objective);
       const calculation = await request<CalculationResult>(
         `/api/v1/formulas/${formula.id}/calculate`,
         { method: "POST", headers },
@@ -509,7 +517,7 @@ export default function Home() {
     });
   }
 
-  async function persistCurrentFormula(): Promise<FormulaRead> {
+  async function persistCurrentFormula(objective?: string): Promise<FormulaRead> {
     const items = workspace.formulaLines.map((line, index) => ({
       raw_material_id: line.rawMaterialId,
       percentage: line.percentage,
@@ -517,6 +525,7 @@ export default function Home() {
     }));
     const payload = {
       name: workspace.formulaName.trim() || "Manual Formula",
+      ...(objective === undefined ? {} : { objective }),
       items,
     };
     return workspace.formulaId
@@ -1075,6 +1084,13 @@ export default function Home() {
     return "Review needed";
   }
 
+  function formulaObjectiveLabel(objective: string | null): string {
+    if (objective === "minimize_price") {
+      return "Low cost";
+    }
+    return objective ?? "-";
+  }
+
   async function runAction(label: string, action: () => Promise<void>) {
     setStatus("working");
     setMessage(label);
@@ -1482,6 +1498,7 @@ export default function Home() {
               <div className="formulaList">
                 <div className="formulaListHead">
                   <span>Name</span>
+                  <span>Objective</span>
                   <span>Price</span>
                   <span>Lines</span>
                   <span>Open</span>
@@ -1493,6 +1510,7 @@ export default function Home() {
                   formulas.map((formula) => (
                     <div className="formulaListRow" key={formula.id}>
                       <span>{formula.name}</span>
+                      <span>{formulaObjectiveLabel(formula.objective)}</span>
                       <span>
                         {formula.total_price === null
                           ? "-"

@@ -312,6 +312,42 @@ def test_formula_items_keep_saved_order() -> None:
     ]
 
 
+def test_formula_persists_objective() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+
+    created = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={
+            "name": "Optimized Formula",
+            "objective": "minimize_price",
+            "items": [{"raw_material_id": material["id"], "percentage": 100}],
+        },
+    )
+
+    assert created.status_code == 201
+    assert created.json()["objective"] == "minimize_price"
+
+    manual = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={
+            "name": "Manual Formula",
+            "items": [{"raw_material_id": material["id"], "percentage": 100}],
+        },
+    )
+
+    assert manual.status_code == 201
+    assert manual.json()["objective"] is None
+
+
 def test_formula_comparison_is_tenant_scoped_and_returns_deltas() -> None:
     client = make_client()
     tenant_a = create_tenant(client, USER_A, "tenant-a")
