@@ -610,6 +610,8 @@ def test_optimization_run_returns_lowest_price_candidate_formula() -> None:
 
     assert response.status_code == 200
     result = response.json()
+    assert result["id"]
+    assert result["created_at"]
     assert result["status"] == "success"
     assert result["items"] == [
         {"raw_material_id": active["id"], "percentage": 40.0},
@@ -620,6 +622,21 @@ def test_optimization_run_returns_lowest_price_candidate_formula() -> None:
         {"code": "active_content", "value": 20.0, "unit": "% p/p"}
     ]
     assert result["issues"] == []
+
+    runs = client.get("/api/v1/optimizations/runs", headers=headers)
+    assert runs.status_code == 200
+    assert len(runs.json()) == 1
+    run = runs.json()[0]
+    assert run["id"] == result["id"]
+    assert run["tenant_id"] == tenant_id
+    assert run["user_id"] == USER_A
+    assert run["formula_id"] is None
+    assert run["status"] == "success"
+    assert run["objective"] == "minimize_price"
+    assert run["request_json"]["parameter_bounds"] == [
+        {"code": "active_content", "min_value": 20.0, "max_value": None}
+    ]
+    assert run["result_json"]["calculation"]["price_total"] == 2.2
 
 
 def test_optimization_run_is_tenant_scoped() -> None:
@@ -647,6 +664,84 @@ def test_optimization_run_is_tenant_scoped() -> None:
     assert response.json()["status"] == "invalid"
     assert response.json()["items"] == []
     assert response.json()["issues"][0]["code"] == "candidate_not_found"
+
+    runs_a = client.get("/api/v1/optimizations/runs", headers=headers_a)
+    runs_b = client.get("/api/v1/optimizations/runs", headers=headers_b)
+
+    assert runs_a.status_code == 200
+    assert runs_b.status_code == 200
+    assert [run["status"] for run in runs_a.json()] == ["invalid"]
+    assert runs_a.json()[0]["request_json"]["candidate_raw_material_ids"] == [
+        foreign_material["id"]
+    ]
+    assert runs_b.json() == []
+
+
+def test_optimized_formula_can_link_to_source_run() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "active_content", "name": "Active Content", "unit": "% p/p"},
+    ).json()
+    active = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    carrier = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Carrier B", "code": "CAR-B"},
+    ).json()
+    for raw_material, price, parameter_value in [
+        (active, 4.0, 50),
+        (carrier, 1.0, 0),
+    ]:
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/prices",
+            headers=headers,
+            json={"price": price, "currency": "EUR", "unit": "kg"},
+        )
+        client.post(
+            f"/api/v1/raw-materials/{raw_material['id']}/parameter-values",
+            headers=headers,
+            json={"parameter_id": parameter["id"], "value": parameter_value},
+        )
+
+    optimization = client.post(
+        "/api/v1/optimizations/run",
+        headers=headers,
+        json={
+            "objective": "minimize_price",
+            "candidate_raw_material_ids": [active["id"], carrier["id"]],
+            "parameter_bounds": [{"code": "active_content", "min_value": 20}],
+        },
+    ).json()
+
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={
+            "name": "Optimized Low Cost Formula",
+            "objective": "minimize_price",
+            "optimization_run_id": optimization["id"],
+            "items": [
+                {
+                    "raw_material_id": item["raw_material_id"],
+                    "percentage": item["percentage"],
+                    "order_index": index,
+                }
+                for index, item in enumerate(optimization["items"])
+            ],
+        },
+    )
+
+    assert formula.status_code == 201
+    runs = client.get("/api/v1/optimizations/runs", headers=headers).json()
+    assert runs[0]["formula_id"] == formula.json()["id"]
 
 
 def test_optimization_run_reports_infeasible_problem() -> None:
@@ -690,6 +785,13 @@ def test_optimization_run_reports_infeasible_problem() -> None:
     assert (
         "Raw material maximum percentages total 80%, below 100%."
         in response.json()["messages"]
+    )
+    runs = client.get("/api/v1/optimizations/runs", headers=headers)
+    assert runs.status_code == 200
+    assert runs.json()[0]["status"] == "infeasible"
+    assert (
+        "Raw material maximum percentages total 80%, below 100%."
+        in runs.json()[0]["result_json"]["messages"]
     )
 
 

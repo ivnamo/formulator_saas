@@ -134,6 +134,7 @@ class FormulaItemCreate(BaseModel):
 class FormulaCreate(BaseModel):
     name: str
     objective: str | None = None
+    optimization_run_id: uuid.UUID | None = None
     items: list[FormulaItemCreate] = []
 
 
@@ -141,6 +142,7 @@ class FormulaUpdate(BaseModel):
     name: str | None = None
     status: str | None = None
     objective: str | None = None
+    optimization_run_id: uuid.UUID | None = None
     items: list[FormulaItemCreate] | None = None
 
 
@@ -220,12 +222,26 @@ class OptimizationFormulaItemRead(BaseModel):
 
 
 class OptimizationRunRead(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
     status: str
     objective: OptimizationObjective
     items: list[OptimizationFormulaItemRead]
     calculation: CalculationRead | None
     messages: list[str]
     issues: list[OptimizationValidationIssueRead]
+
+
+class OptimizationRunHistoryRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID | None
+    formula_id: uuid.UUID | None
+    status: str
+    objective: OptimizationObjective
+    request_json: dict[str, Any]
+    result_json: dict[str, Any]
+    created_at: datetime
 
 
 class FormulaComparisonFormulaRead(BaseModel):

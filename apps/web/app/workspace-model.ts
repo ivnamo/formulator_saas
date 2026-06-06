@@ -192,6 +192,8 @@ export type FormulaComparisonFormula = {
 };
 
 export type OptimizationRun = {
+  id: string;
+  created_at: string;
   status: "success" | "infeasible" | "invalid";
   objective: "minimize_price";
   items: Array<{

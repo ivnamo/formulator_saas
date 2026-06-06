@@ -491,6 +491,7 @@ export default function Home() {
       "Saving optimized formula",
       "Optimized formula saved",
       "minimize_price",
+      optimizationRun?.id,
     );
   }
 
@@ -498,9 +499,10 @@ export default function Home() {
     label: string,
     successMessage: string,
     objective?: string,
+    optimizationRunId?: string,
   ) {
     await runAction(label, async () => {
-      const formula = await persistCurrentFormula(objective);
+      const formula = await persistCurrentFormula(objective, optimizationRunId);
       const calculation = await request<CalculationResult>(
         `/api/v1/formulas/${formula.id}/calculate`,
         { method: "POST", headers },
@@ -517,7 +519,10 @@ export default function Home() {
     });
   }
 
-  async function persistCurrentFormula(objective?: string): Promise<FormulaRead> {
+  async function persistCurrentFormula(
+    objective?: string,
+    optimizationRunId?: string,
+  ): Promise<FormulaRead> {
     const items = workspace.formulaLines.map((line, index) => ({
       raw_material_id: line.rawMaterialId,
       percentage: line.percentage,
@@ -526,6 +531,7 @@ export default function Home() {
     const payload = {
       name: workspace.formulaName.trim() || "Manual Formula",
       ...(objective === undefined ? {} : { objective }),
+      ...(optimizationRunId ? { optimization_run_id: optimizationRunId } : {}),
       items,
     };
     return workspace.formulaId

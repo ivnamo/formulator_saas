@@ -157,3 +157,17 @@ class FormulaCalculationResult(SQLModel, table=True):
     price_total: float | None = None
     result_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     calculated_at: datetime = Field(default_factory=utc_now)
+
+
+class OptimizationRun(SQLModel, table=True):
+    __tablename__ = "optimization_runs"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    user_id: uuid.UUID | None = Field(default=None, index=True, foreign_key="users.id")
+    formula_id: uuid.UUID | None = Field(default=None, index=True, foreign_key="formulas.id")
+    status: str = Field(index=True)
+    objective: str = Field(index=True)
+    request_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    result_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utc_now)

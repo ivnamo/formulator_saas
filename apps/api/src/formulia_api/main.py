@@ -40,6 +40,7 @@ from .models import (
     Formula,
     FormulaCalculationResult,
     FormulaItem,
+    OptimizationRun,
     Parameter,
     RawMaterial,
     RawMaterialAlias,
@@ -64,6 +65,7 @@ from .schemas import (
     FormulaRead,
     FormulaUpdate,
     OptimizationValidateRequest,
+    OptimizationRunHistoryRead,
     OptimizationRunRead,
     OptimizationValidationRead,
     ParameterCreate,
@@ -355,6 +357,11 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        optimization_run = _optional_optimization_run(
+            session,
+            tenant.tenant_id,
+            payload.optimization_run_id,
+        )
         formula = Formula(
             tenant_id=tenant.tenant_id,
             name=payload.name,
@@ -365,6 +372,7 @@ def register_routes(app: FastAPI) -> None:
         session.commit()
         session.refresh(formula)
         _replace_formula_items(session, tenant.tenant_id, formula.id, payload.items)
+        _link_optimization_run_to_formula(session, optimization_run, formula.id)
         return _formula_read(session, formula)
 
     @app.post("/api/v1/formulas/compare", response_model=FormulaComparisonRead)
@@ -397,6 +405,21 @@ def register_routes(app: FastAPI) -> None:
             "issues": issues,
         }
 
+    @app.get(
+        "/api/v1/optimizations/runs",
+        response_model=list[OptimizationRunHistoryRead],
+    )
+    def list_optimization_runs(
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        runs = session.exec(
+            select(OptimizationRun)
+            .where(OptimizationRun.tenant_id == tenant.tenant_id)
+            .order_by(OptimizationRun.created_at.desc())
+        ).all()
+        return [_model_dict(run) for run in runs]
+
     @app.post("/api/v1/optimizations/run", response_model=OptimizationRunRead)
     def run_optimization(
         payload: OptimizationValidateRequest,
@@ -405,21 +428,22 @@ def register_routes(app: FastAPI) -> None:
     ) -> dict[str, Any]:
         issues = _optimization_validation_issues(session, tenant.tenant_id, payload)
         if issues:
-            return {
+            result_payload = {
                 "status": "invalid",
-                "objective": payload.objective,
+                "objective": payload.objective.value,
                 "items": [],
                 "calculation": None,
                 "messages": [],
                 "issues": issues,
             }
+            return _persist_optimization_run(session, tenant, payload, result_payload)
 
         result = minimize_price(
             _optimization_problem(session, tenant.tenant_id, payload)
         )
-        return {
-            "status": result.status,
-            "objective": payload.objective,
+        result_payload = {
+            "status": result.status.value,
+            "objective": payload.objective.value,
             "items": [
                 {
                     "raw_material_id": item.raw_material_id,
@@ -435,6 +459,7 @@ def register_routes(app: FastAPI) -> None:
             "messages": list(result.messages),
             "issues": [],
         }
+        return _persist_optimization_run(session, tenant, payload, result_payload)
 
     @app.get("/api/v1/formulas/{formula_id}", response_model=FormulaRead)
     def get_formula(
@@ -452,7 +477,15 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         formula = _get_formula(session, tenant.tenant_id, formula_id)
-        updates = payload.model_dump(exclude_unset=True, exclude={"items"})
+        optimization_run = _optional_optimization_run(
+            session,
+            tenant.tenant_id,
+            payload.optimization_run_id,
+        )
+        updates = payload.model_dump(
+            exclude_unset=True,
+            exclude={"items", "optimization_run_id"},
+        )
         for key, value in updates.items():
             setattr(formula, key, value)
         formula.updated_at = utc_now()
@@ -461,6 +494,7 @@ def register_routes(app: FastAPI) -> None:
         session.refresh(formula)
         if payload.items is not None:
             _replace_formula_items(session, tenant.tenant_id, formula.id, payload.items)
+        _link_optimization_run_to_formula(session, optimization_run, formula.id)
         return _formula_read(session, formula)
 
     @app.post("/api/v1/formulas/{formula_id}/calculate", response_model=CalculationRead)
@@ -693,6 +727,36 @@ def _get_formula(session: Session, tenant_id: uuid.UUID, formula_id: uuid.UUID) 
     if formula is None:
         raise HTTPException(status_code=404, detail="Formula not found.")
     return formula
+
+
+def _optional_optimization_run(
+    session: Session,
+    tenant_id: uuid.UUID,
+    optimization_run_id: uuid.UUID | None,
+) -> OptimizationRun | None:
+    if optimization_run_id is None:
+        return None
+    optimization_run = session.exec(
+        select(OptimizationRun).where(
+            OptimizationRun.id == optimization_run_id,
+            OptimizationRun.tenant_id == tenant_id,
+        )
+    ).first()
+    if optimization_run is None:
+        raise HTTPException(status_code=404, detail="Optimization run not found.")
+    return optimization_run
+
+
+def _link_optimization_run_to_formula(
+    session: Session,
+    optimization_run: OptimizationRun | None,
+    formula_id: uuid.UUID,
+) -> None:
+    if optimization_run is None:
+        return
+    optimization_run.formula_id = formula_id
+    session.add(optimization_run)
+    session.commit()
 
 
 def _replace_formula_items(
@@ -979,6 +1043,30 @@ def _validation_issue(code: str, target: str, message: str) -> dict[str, str]:
         "code": code,
         "target": target,
         "message": message,
+    }
+
+
+def _persist_optimization_run(
+    session: Session,
+    tenant: TenantContext,
+    payload: OptimizationValidateRequest,
+    result_payload: dict[str, Any],
+) -> dict[str, Any]:
+    optimization_run = OptimizationRun(
+        tenant_id=tenant.tenant_id,
+        user_id=tenant.user_id,
+        status=result_payload["status"],
+        objective=result_payload["objective"],
+        request_json=payload.model_dump(mode="json"),
+        result_json=result_payload,
+    )
+    session.add(optimization_run)
+    session.commit()
+    session.refresh(optimization_run)
+    return {
+        "id": optimization_run.id,
+        "created_at": optimization_run.created_at,
+        **result_payload,
     }
 
 
