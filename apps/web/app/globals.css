@@ -643,6 +643,11 @@ label span {
   gap: 7px;
 }
 
+.optimizationHistoryRow[data-selected="true"] {
+  border-left: 3px solid var(--teal);
+  padding-left: 9px;
+}
+
 .historyRowTop,
 .historyActions {
   display: flex;
@@ -668,6 +673,12 @@ label span {
   overflow-wrap: anywhere;
 }
 
+.historyActionButtons {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
 .compactButton {
   min-height: 32px;
   padding: 0 10px;
@@ -675,6 +686,88 @@ label span {
 
 .historyActions .compactButton {
   flex: 0 0 auto;
+}
+
+.optimizationDetail {
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.detailStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.detailStats div,
+.detailLine,
+.detailMessage,
+.detailMuted {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.detailStats span,
+.detailGroup > span,
+.detailLine span,
+.detailMuted,
+.detailMessage span {
+  color: var(--muted);
+}
+
+.detailStats strong,
+.detailLine strong {
+  text-align: right;
+}
+
+.detailGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.detailGroup > span {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.detailPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.detailPills strong {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 0 9px;
+  background: var(--surface-muted);
+  color: var(--teal-dark);
+  font-size: 12px;
+}
+
+.detailMessage {
+  justify-content: flex-start;
+}
+
+.detailMessage svg {
+  flex: 0 0 auto;
+  color: var(--danger);
+}
+
+.detailMessage span {
+  overflow-wrap: anywhere;
 }
 
 .importRow [data-state="matched_exact"] {
@@ -1009,7 +1102,22 @@ label span {
     flex-direction: column;
   }
 
+  .historyActionButtons,
   .historyActions .compactButton {
     width: 100%;
+  }
+
+  .historyActionButtons {
+    flex-direction: column;
+  }
+
+  .detailLine,
+  .detailStats div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .detailStats {
+    grid-template-columns: 1fr;
   }
 }

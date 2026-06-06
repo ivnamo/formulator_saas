@@ -101,6 +101,7 @@ export default function Home() {
   >({});
   const [optimizationRun, setOptimizationRun] = useState<OptimizationRun | null>(null);
   const [optimizationHistory, setOptimizationHistory] = useState<OptimizationRunHistory[]>([]);
+  const [selectedOptimizationRunId, setSelectedOptimizationRunId] = useState<string | null>(null);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
@@ -142,6 +143,14 @@ export default function Home() {
   const formulasById = useMemo(
     () => new Map(formulas.map((formula) => [formula.id, formula])),
     [formulas],
+  );
+  const selectedOptimizationRun = useMemo(
+    () => optimizationHistory.find((run) => run.id === selectedOptimizationRunId) ?? null,
+    [optimizationHistory, selectedOptimizationRunId],
+  );
+  const selectedOptimizationMessages = useMemo(
+    () => (selectedOptimizationRun ? optimizationDetailMessages(selectedOptimizationRun) : []),
+    [selectedOptimizationRun],
   );
   const selectedOptimizerMaterials = workspace.rawMaterials.filter(
     (material) => optimizerCandidateConfig(material.id).enabled,
@@ -200,6 +209,7 @@ export default function Home() {
       setFormulas([]);
       setCalculationHistory([]);
       setOptimizationHistory([]);
+      setSelectedOptimizationRunId(null);
       setOptimizerCandidates({});
       setOptimizationRun(null);
       resetImportState();
@@ -586,6 +596,7 @@ export default function Home() {
         }),
       });
       setOptimizationRun(optimization);
+      setSelectedOptimizationRunId(optimization.id);
       await loadOptimizationHistory();
       if (optimization.status === "success" && optimization.calculation) {
         setWorkspace((current) => ({
@@ -724,6 +735,7 @@ export default function Home() {
       ...run.result_json,
     });
     setResult(run.result_json.calculation);
+    setSelectedOptimizationRunId(run.id);
     setCalculationHistory([]);
     resetImportState();
     setStatus("idle");
@@ -1170,6 +1182,42 @@ export default function Home() {
       return "Draft only";
     }
     return formulasById.get(run.formula_id)?.name ?? "Formula linked";
+  }
+
+  function rawMaterialLabel(rawMaterialId: string): string {
+    return rawMaterialsById.get(rawMaterialId)?.name ?? rawMaterialId.slice(0, 8);
+  }
+
+  function formatBoundRange(
+    minimum: number | null,
+    maximum: number | null,
+    unit: string,
+  ): string {
+    const suffix = unit ? ` ${unit}` : "";
+    if (minimum === null && maximum === null) {
+      return "Any";
+    }
+    if (minimum !== null && maximum !== null) {
+      return `${formatBoundValue(minimum)}-${formatBoundValue(maximum)}${suffix}`;
+    }
+    if (minimum !== null) {
+      return `>= ${formatBoundValue(minimum)}${suffix}`;
+    }
+    return `<= ${formatBoundValue(maximum)}${suffix}`;
+  }
+
+  function formatBoundValue(value: number | null): string {
+    if (value === null) {
+      return "-";
+    }
+    return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2);
+  }
+
+  function optimizationDetailMessages(run: OptimizationRunHistory): string[] {
+    return [
+      ...run.result_json.issues.map((issue) => `${issue.code}: ${issue.message}`),
+      ...run.result_json.messages,
+    ];
   }
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -1658,6 +1706,7 @@ export default function Home() {
                     optimizationHistory.map((run) => (
                       <div
                         className="historyRow optimizationHistoryRow"
+                        data-selected={run.id === selectedOptimizationRunId ? "true" : undefined}
                         data-state={run.status}
                         key={run.id}
                       >
@@ -1674,22 +1723,120 @@ export default function Home() {
                         </span>
                         <div className="historyActions">
                           <span>{formulaObjectiveLabel(run.objective)}</span>
-                          <button
-                            className="secondaryButton compactButton"
-                            type="button"
-                            onClick={() => loadOptimizationRun(run)}
-                            disabled={
-                              isBusy ||
-                              run.status !== "success" ||
-                              run.result_json.calculation === null
-                            }
-                          >
-                            <FolderOpen size={16} />
-                            Load
-                          </button>
+                          <div className="historyActionButtons">
+                            <button
+                              className="secondaryButton compactButton"
+                              type="button"
+                              onClick={() => setSelectedOptimizationRunId(run.id)}
+                              disabled={isBusy}
+                            >
+                              <ListChecks size={16} />
+                              Details
+                            </button>
+                            <button
+                              className="secondaryButton compactButton"
+                              type="button"
+                              onClick={() => loadOptimizationRun(run)}
+                              disabled={
+                                isBusy ||
+                                run.status !== "success" ||
+                                run.result_json.calculation === null
+                              }
+                            >
+                              <FolderOpen size={16} />
+                              Load
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+                <div className="optimizationDetail">
+                  <div className="historyTitle">
+                    <ListChecks size={17} />
+                    <strong>Run details</strong>
+                  </div>
+                  {selectedOptimizationRun ? (
+                    <>
+                      <div className="detailStats">
+                        <div>
+                          <span>Status</span>
+                          <strong>{optimizationStatusLabel(selectedOptimizationRun.status)}</strong>
+                        </div>
+                        <div>
+                          <span>Objective</span>
+                          <strong>{formulaObjectiveLabel(selectedOptimizationRun.objective)}</strong>
+                        </div>
+                        <div>
+                          <span>Candidates</span>
+                          <strong>
+                            {selectedOptimizationRun.request_json.candidate_raw_material_ids.length}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>Result</span>
+                          <strong>{optimizationHistoryPrice(selectedOptimizationRun)}</strong>
+                        </div>
+                      </div>
+                      <div className="detailGroup">
+                        <span>Candidates</span>
+                        <div className="detailPills">
+                          {selectedOptimizationRun.request_json.candidate_raw_material_ids.map(
+                            (rawMaterialId) => (
+                              <strong key={rawMaterialId}>{rawMaterialLabel(rawMaterialId)}</strong>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                      <div className="detailGroup">
+                        <span>Raw material bounds</span>
+                        {selectedOptimizationRun.request_json.raw_material_bounds.length ? (
+                          selectedOptimizationRun.request_json.raw_material_bounds.map((bound) => (
+                            <div className="detailLine" key={bound.raw_material_id}>
+                              <strong>{rawMaterialLabel(bound.raw_material_id)}</strong>
+                              <span>
+                                {formatBoundRange(
+                                  bound.min_percentage,
+                                  bound.max_percentage,
+                                  "%",
+                                )}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="detailMuted">No raw material bounds</div>
+                        )}
+                      </div>
+                      <div className="detailGroup">
+                        <span>Parameter bounds</span>
+                        {selectedOptimizationRun.request_json.parameter_bounds.length ? (
+                          selectedOptimizationRun.request_json.parameter_bounds.map((bound) => (
+                            <div className="detailLine" key={bound.code}>
+                              <strong>{bound.code}</strong>
+                              <span>{formatBoundRange(bound.min_value, bound.max_value, "")}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="detailMuted">No parameter bounds</div>
+                        )}
+                      </div>
+                      <div className="detailGroup">
+                        <span>Messages</span>
+                        {selectedOptimizationMessages.length ? (
+                          selectedOptimizationMessages.map((item, index) => (
+                            <div className="detailMessage" key={`${item}-${index}`}>
+                              <AlertTriangle size={15} />
+                              <span>{item}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="detailMuted">No messages</div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="empty">Select an optimization run.</div>
                   )}
                 </div>
               </div>
