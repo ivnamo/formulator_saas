@@ -147,6 +147,17 @@ El comparador MVP muestra un resumen de cumplimiento cuando hay restricciones ev
 
 El resumen no es una aprobacion tecnica final ni persiste scoring.
 
+### META-022
+
+El comparador MVP explica restricciones fallidas o sin dato:
+
+- en limites maximos, indica cuanto debe reducirse el valor,
+- en limites minimos, indica cuanto debe aumentarse el valor,
+- en valores `missing`, indica que falta el valor calculado,
+- no anade mensajes a restricciones `passed`.
+
+Las explicaciones son deterministas y no sustituyen validacion tecnica.
+
 ## ERP settings
 
 - crear conexión,
