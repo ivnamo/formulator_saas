@@ -29,3 +29,36 @@ docs/       product, architecture, and delivery documentation
 - Keep commits atomic.
 - Add proportional tests for code changes.
 - Keep tenant isolation and deterministic calculation ahead of AI features.
+
+## Local Development
+
+From the repository root:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python -m pip install --upgrade pip
+.\.venv\Scripts\python -m pip install -e packages/core -e apps/api pytest
+npm install
+```
+
+Run the API:
+
+```powershell
+.\.venv\Scripts\python -m uvicorn formulia_api.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Run the web app:
+
+```powershell
+npm run dev:web -- --hostname 127.0.0.1 --port 3000
+```
+
+Checks:
+
+```powershell
+.\.venv\Scripts\python -m pytest
+npm run check
+npm audit --audit-level=moderate
+```
+
+The first web screen can seed a demo tenant, raw materials, parameter values, a formula, and then calculate the formula through the FastAPI backend.
