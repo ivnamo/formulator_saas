@@ -48,6 +48,7 @@ import {
   type MaterialForm,
   type OptimizerCandidateConfig,
   type OptimizationRun,
+  type OptimizationRunHistory,
   type RawMaterialAliasRead,
   type RawMaterialPriceRead,
   type ParameterRead,
@@ -99,6 +100,7 @@ export default function Home() {
     Record<string, OptimizerCandidateConfig>
   >({});
   const [optimizationRun, setOptimizationRun] = useState<OptimizationRun | null>(null);
+  const [optimizationHistory, setOptimizationHistory] = useState<OptimizationRunHistory[]>([]);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
@@ -136,6 +138,10 @@ export default function Home() {
   const rawMaterialsById = useMemo(
     () => new Map(workspace.rawMaterials.map((material) => [material.id, material])),
     [workspace.rawMaterials],
+  );
+  const formulasById = useMemo(
+    () => new Map(formulas.map((formula) => [formula.id, formula])),
+    [formulas],
   );
   const selectedOptimizerMaterials = workspace.rawMaterials.filter(
     (material) => optimizerCandidateConfig(material.id).enabled,
@@ -193,6 +199,7 @@ export default function Home() {
       setResult(null);
       setFormulas([]);
       setCalculationHistory([]);
+      setOptimizationHistory([]);
       setOptimizerCandidates({});
       setOptimizationRun(null);
       resetImportState();
@@ -487,11 +494,12 @@ export default function Home() {
       setError("Run a successful optimization first");
       return;
     }
+    const historyRun = optimizationHistory.find((run) => run.id === optimizationRun?.id);
     await saveFormulaAndCalculate(
       "Saving optimized formula",
       "Optimized formula saved",
       "minimize_price",
-      optimizationRun?.id,
+      historyRun?.formula_id ? undefined : optimizationRun?.id,
     );
   }
 
@@ -578,6 +586,7 @@ export default function Home() {
         }),
       });
       setOptimizationRun(optimization);
+      await loadOptimizationHistory();
       if (optimization.status === "success" && optimization.calculation) {
         setWorkspace((current) => ({
           ...current,
@@ -605,23 +614,47 @@ export default function Home() {
       return;
     }
     if (options.silent) {
-      const nextFormulas = await request<FormulaRead[]>("/api/v1/formulas", {
-        method: "GET",
-        headers,
-      });
-      setFormulas(nextFormulas);
-      syncComparisonSelection(nextFormulas);
+      const library = await fetchLibraryData();
+      setFormulas(library.formulas);
+      setOptimizationHistory(library.optimizationHistory);
+      syncComparisonSelection(library.formulas);
       return;
     }
     await runAction("Refreshing formula library", async () => {
-      const nextFormulas = await request<FormulaRead[]>("/api/v1/formulas", {
-        method: "GET",
-        headers,
-      });
-      setFormulas(nextFormulas);
-      syncComparisonSelection(nextFormulas);
+      const library = await fetchLibraryData();
+      setFormulas(library.formulas);
+      setOptimizationHistory(library.optimizationHistory);
+      syncComparisonSelection(library.formulas);
       setMessage("Formula library refreshed");
     });
+  }
+
+  async function fetchLibraryData(): Promise<{
+    formulas: FormulaRead[];
+    optimizationHistory: OptimizationRunHistory[];
+  }> {
+    const [nextFormulas, nextOptimizationHistory] = await Promise.all([
+      request<FormulaRead[]>("/api/v1/formulas", {
+        method: "GET",
+        headers,
+      }),
+      request<OptimizationRunHistory[]>("/api/v1/optimizations/runs", {
+        method: "GET",
+        headers,
+      }),
+    ]);
+    return {
+      formulas: nextFormulas,
+      optimizationHistory: nextOptimizationHistory,
+    };
+  }
+
+  async function loadOptimizationHistory() {
+    const history = await request<OptimizationRunHistory[]>("/api/v1/optimizations/runs", {
+      method: "GET",
+      headers,
+    });
+    setOptimizationHistory(history);
   }
 
   async function compareSelectedFormulas() {
@@ -668,6 +701,33 @@ export default function Home() {
       { method: "GET", headers },
     );
     setCalculationHistory(history);
+  }
+
+  function loadOptimizationRun(run: OptimizationRunHistory) {
+    if (run.status !== "success" || !run.result_json.calculation) {
+      setError("Only successful optimization runs can be loaded");
+      return;
+    }
+    setWorkspace((current) => ({
+      ...current,
+      formulaId: null,
+      formulaName: "Optimized Low Cost Formula",
+      formulaLines: run.result_json.items.map((item) => ({
+        localId: makeLocalId(),
+        rawMaterialId: item.raw_material_id,
+        percentage: item.percentage,
+      })),
+    }));
+    setOptimizationRun({
+      id: run.id,
+      created_at: run.created_at,
+      ...run.result_json,
+    });
+    setResult(run.result_json.calculation);
+    setCalculationHistory([]);
+    resetImportState();
+    setStatus("idle");
+    setMessage("Optimization run loaded");
   }
 
   async function selectExcelImportFile(file: File | null) {
@@ -1095,6 +1155,21 @@ export default function Home() {
       return "Low cost";
     }
     return objective ?? "-";
+  }
+
+  function optimizationHistoryPrice(run: OptimizationRunHistory): string {
+    const calculation = run.result_json.calculation;
+    if (calculation?.price_total == null) {
+      return "-";
+    }
+    return `${calculation.price_total.toFixed(2)} ${calculation.currency}/kg`;
+  }
+
+  function optimizationHistoryFormulaLabel(run: OptimizationRunHistory): string {
+    if (!run.formula_id) {
+      return "Draft only";
+    }
+    return formulasById.get(run.formula_id)?.name ?? "Formula linked";
   }
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -1547,29 +1622,76 @@ export default function Home() {
                   ))
                 )}
               </div>
-              <div className="historyList">
-                <div className="historyTitle">
-                  <History size={17} />
-                  <strong>Calculation history</strong>
+              <div className="sideHistoryStack">
+                <div className="historyList">
+                  <div className="historyTitle">
+                    <History size={17} />
+                    <strong>Calculation history</strong>
+                  </div>
+                  {calculationHistory.length === 0 ? (
+                    <div className="empty">No calculations yet.</div>
+                  ) : (
+                    calculationHistory.map((entry) => (
+                      <div className="historyRow" key={entry.id}>
+                        <span>{formatDateTime(entry.calculated_at)}</span>
+                        <strong>
+                          {entry.price_total === null
+                            ? "-"
+                            : `${entry.price_total.toFixed(2)} ${entry.result_json.currency}/kg`}
+                        </strong>
+                        <span>
+                          {entry.result_json.total_percentage.toFixed(1)}% -{" "}
+                          {entry.result_json.warnings.length} warnings
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
-                {calculationHistory.length === 0 ? (
-                  <div className="empty">No calculations yet.</div>
-                ) : (
-                  calculationHistory.map((entry) => (
-                    <div className="historyRow" key={entry.id}>
-                      <span>{formatDateTime(entry.calculated_at)}</span>
-                      <strong>
-                        {entry.price_total === null
-                          ? "-"
-                          : `${entry.price_total.toFixed(2)} ${entry.result_json.currency}/kg`}
-                      </strong>
-                      <span>
-                        {entry.result_json.total_percentage.toFixed(1)}% ·{" "}
-                        {entry.result_json.warnings.length} warnings
-                      </span>
-                    </div>
-                  ))
-                )}
+                <div className="historyList">
+                  <div className="historyTitle">
+                    <Settings2 size={17} />
+                    <strong>Optimization history</strong>
+                  </div>
+                  {optimizationHistory.length === 0 ? (
+                    <div className="empty">No optimization runs yet.</div>
+                  ) : (
+                    optimizationHistory.map((run) => (
+                      <div
+                        className="historyRow optimizationHistoryRow"
+                        data-state={run.status}
+                        key={run.id}
+                      >
+                        <div className="historyRowTop">
+                          <span>{formatDateTime(run.created_at)}</span>
+                          <strong className="historyStatus">
+                            {optimizationStatusLabel(run.status)}
+                          </strong>
+                        </div>
+                        <strong>{optimizationHistoryPrice(run)}</strong>
+                        <span>
+                          {run.result_json.items.length} lines -{" "}
+                          {optimizationHistoryFormulaLabel(run)}
+                        </span>
+                        <div className="historyActions">
+                          <span>{formulaObjectiveLabel(run.objective)}</span>
+                          <button
+                            className="secondaryButton compactButton"
+                            type="button"
+                            onClick={() => loadOptimizationRun(run)}
+                            disabled={
+                              isBusy ||
+                              run.status !== "success" ||
+                              run.result_json.calculation === null
+                            }
+                          >
+                            <FolderOpen size={16} />
+                            Load
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </section>

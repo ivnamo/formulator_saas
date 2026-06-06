@@ -191,9 +191,7 @@ export type FormulaComparisonFormula = {
   line_count: number;
 };
 
-export type OptimizationRun = {
-  id: string;
-  created_at: string;
+export type OptimizationRunResult = {
   status: "success" | "infeasible" | "invalid";
   objective: "minimize_price";
   items: Array<{
@@ -207,6 +205,36 @@ export type OptimizationRun = {
     target: string;
     message: string;
   }>;
+};
+
+export type OptimizationRun = OptimizationRunResult & {
+  id: string;
+  created_at: string;
+};
+
+export type OptimizationRunHistory = {
+  id: string;
+  tenant_id: string;
+  user_id: string | null;
+  formula_id: string | null;
+  status: OptimizationRunResult["status"];
+  objective: "minimize_price";
+  request_json: {
+    objective: "minimize_price";
+    candidate_raw_material_ids: string[];
+    raw_material_bounds: Array<{
+      raw_material_id: string;
+      min_percentage: number | null;
+      max_percentage: number | null;
+    }>;
+    parameter_bounds: Array<{
+      code: string;
+      min_value: number | null;
+      max_value: number | null;
+    }>;
+  };
+  result_json: OptimizationRunResult;
+  created_at: string;
 };
 
 export type OptimizerCandidateConfig = {

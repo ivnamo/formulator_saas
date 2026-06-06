@@ -581,6 +581,11 @@ label span {
   display: grid;
 }
 
+.sideHistoryStack {
+  display: grid;
+  gap: 16px;
+}
+
 .formulaListHead,
 .formulaListRow {
   display: grid;
@@ -632,6 +637,44 @@ label span {
 
 .historyRow strong {
   font-size: 14px;
+}
+
+.optimizationHistoryRow {
+  gap: 7px;
+}
+
+.historyRowTop,
+.historyActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.historyStatus {
+  color: var(--teal-dark);
+}
+
+.optimizationHistoryRow[data-state="infeasible"] .historyStatus,
+.optimizationHistoryRow[data-state="invalid"] .historyStatus {
+  color: var(--danger);
+}
+
+.historyActions span {
+  min-width: 0;
+  color: var(--muted);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.compactButton {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.historyActions .compactButton {
+  flex: 0 0 auto;
 }
 
 .importRow [data-state="matched_exact"] {
@@ -959,5 +1002,14 @@ label span {
   .importRow {
     gap: 7px;
     padding: 10px 0;
+  }
+
+  .historyActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .historyActions .compactButton {
+    width: 100%;
   }
 }
