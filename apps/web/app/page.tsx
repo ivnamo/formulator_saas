@@ -94,6 +94,9 @@ export default function Home() {
     maxPrice: "",
     parameterCode: "active_content",
     minParameterValue: "",
+    materialId: "",
+    minMaterialPercentage: "",
+    maxMaterialPercentage: "",
   });
   const [savedFormulaComparison, setSavedFormulaComparison] =
     useState<SavedFormulaComparison | null>(null);
@@ -129,13 +132,39 @@ export default function Home() {
     () => buildDraftComparison(draftReview, workspace.formulaLines, rawMaterialsById),
     [draftReview, rawMaterialsById, workspace.formulaLines],
   );
+  const comparisonMaterialOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    workspace.rawMaterials.forEach((material) => options.set(material.id, material.name));
+    const selectedFormulaIds = new Set([
+      formulaCompareSelection.baselineId,
+      formulaCompareSelection.candidateId,
+    ]);
+    formulas
+      .filter((formula) => selectedFormulaIds.has(formula.id))
+      .flatMap((formula) => formula.items)
+      .forEach((item) => {
+        if (!options.has(item.raw_material_id)) {
+          options.set(item.raw_material_id, `Material ${item.raw_material_id.slice(0, 8)}`);
+        }
+      });
+    return Array.from(options, ([id, name]) => ({ id, name })).sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+  }, [formulaCompareSelection, formulas, workspace.rawMaterials]);
   const comparisonConstraints = useMemo(
     () => ({
       maxPrice: parseOptionalNumber(comparisonConstraintForm.maxPrice),
       parameterCode: normalizeCode(comparisonConstraintForm.parameterCode),
       minParameterValue: parseOptionalNumber(comparisonConstraintForm.minParameterValue),
+      materialId: comparisonConstraintForm.materialId,
+      materialName:
+        comparisonMaterialOptions.find(
+          (material) => material.id === comparisonConstraintForm.materialId,
+        )?.name ?? "Selected material",
+      minMaterialPercentage: parseOptionalNumber(comparisonConstraintForm.minMaterialPercentage),
+      maxMaterialPercentage: parseOptionalNumber(comparisonConstraintForm.maxMaterialPercentage),
     }),
-    [comparisonConstraintForm],
+    [comparisonConstraintForm, comparisonMaterialOptions],
   );
   const comparisonConstraintEvaluations = useMemo(
     () => buildConstraintEvaluations(savedFormulaComparison, comparisonConstraints),
@@ -201,6 +230,9 @@ export default function Home() {
         maxPrice: "",
         parameterCode: "active_content",
         minParameterValue: "",
+        materialId: "",
+        minMaterialPercentage: "",
+        maxMaterialPercentage: "",
       });
       setSavedFormulaComparison(null);
       setAiRuns([]);
@@ -967,6 +999,9 @@ export default function Home() {
     if (value === null) {
       return "-";
     }
+    if (unit === "%") {
+      return `${value.toFixed(2)}%`;
+    }
     return `${value.toFixed(2)}${unit ? ` ${unit}` : ""}`;
   }
 
@@ -1354,6 +1389,55 @@ export default function Home() {
                     }))
                   }
                   disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Material</span>
+                <select
+                  aria-label="Constraint material"
+                  value={comparisonConstraintForm.materialId}
+                  onChange={(event) =>
+                    setComparisonConstraintForm((current) => ({
+                      ...current,
+                      materialId: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData || comparisonMaterialOptions.length === 0}
+                >
+                  <option value="">No material limit</option>
+                  {comparisonMaterialOptions.map((material) => (
+                    <option key={material.id} value={material.id}>
+                      {material.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Material min %</span>
+                <input
+                  inputMode="decimal"
+                  value={comparisonConstraintForm.minMaterialPercentage}
+                  onChange={(event) =>
+                    setComparisonConstraintForm((current) => ({
+                      ...current,
+                      minMaterialPercentage: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
+                />
+              </label>
+              <label>
+                <span>Material max %</span>
+                <input
+                  inputMode="decimal"
+                  value={comparisonConstraintForm.maxMaterialPercentage}
+                  onChange={(event) =>
+                    setComparisonConstraintForm((current) => ({
+                      ...current,
+                      maxMaterialPercentage: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
                 />
               </label>
             </div>

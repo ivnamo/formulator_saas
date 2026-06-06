@@ -55,6 +55,10 @@ export type SavedFormulaComparisonConstraints = {
   maxPrice: number | null;
   parameterCode: string;
   minParameterValue: number | null;
+  materialId: string;
+  materialName: string;
+  minMaterialPercentage: number | null;
+  maxMaterialPercentage: number | null;
 };
 
 export type ConstraintStatus = "passed" | "failed" | "missing";
@@ -253,6 +257,12 @@ function getParameterValue(result: CalculationResult, code: string) {
   return result.parameters.find((parameter) => parameter.code === code) ?? null;
 }
 
+function getMaterialPercentage(formula: FormulaRead, rawMaterialId: string) {
+  return formula.items
+    .filter((item) => item.raw_material_id === rawMaterialId)
+    .reduce((sum, item) => sum + item.percentage, 0);
+}
+
 export function buildConstraintEvaluations(
   comparison: SavedFormulaComparison | null,
   constraints: SavedFormulaComparisonConstraints,
@@ -297,6 +307,36 @@ export function buildConstraintEvaluations(
         candidateParameter?.value ?? null,
         constraints.minParameterValue,
       ),
+    });
+  }
+
+  if (constraints.materialId && constraints.minMaterialPercentage !== null) {
+    const baselineValue = getMaterialPercentage(comparison.baseline, constraints.materialId);
+    const candidateValue = getMaterialPercentage(comparison.candidate, constraints.materialId);
+    evaluations.push({
+      key: `material:min:${constraints.materialId}`,
+      label: `${constraints.materialName} min`,
+      rule: `>= ${constraints.minMaterialPercentage.toFixed(2)}%`,
+      unit: "%",
+      baselineValue,
+      candidateValue,
+      baselineStatus: evaluateMinimum(baselineValue, constraints.minMaterialPercentage),
+      candidateStatus: evaluateMinimum(candidateValue, constraints.minMaterialPercentage),
+    });
+  }
+
+  if (constraints.materialId && constraints.maxMaterialPercentage !== null) {
+    const baselineValue = getMaterialPercentage(comparison.baseline, constraints.materialId);
+    const candidateValue = getMaterialPercentage(comparison.candidate, constraints.materialId);
+    evaluations.push({
+      key: `material:max:${constraints.materialId}`,
+      label: `${constraints.materialName} max`,
+      rule: `<= ${constraints.maxMaterialPercentage.toFixed(2)}%`,
+      unit: "%",
+      baselineValue,
+      candidateValue,
+      baselineStatus: evaluateMaximum(baselineValue, constraints.maxMaterialPercentage),
+      candidateStatus: evaluateMaximum(candidateValue, constraints.maxMaterialPercentage),
     });
   }
 
