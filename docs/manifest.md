@@ -18,6 +18,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_005_raw_material_aliases.md`](00-meta/meta_005_raw_material_aliases.md)
 - [`00-meta/meta_006_excel_row_resolution.md`](00-meta/meta_006_excel_row_resolution.md)
 - [`00-meta/meta_007_excel_row_create_material.md`](00-meta/meta_007_excel_row_create_material.md)
+- [`00-meta/meta_008_excel_row_create_alias.md`](00-meta/meta_008_excel_row_create_alias.md)
 
 ## Producto
 
