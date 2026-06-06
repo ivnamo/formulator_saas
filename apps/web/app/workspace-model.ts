@@ -164,6 +164,33 @@ export type CalculationResult = {
   }>;
 };
 
+export type FormulaComparison = {
+  left: FormulaComparisonFormula;
+  right: FormulaComparisonFormula;
+  delta: {
+    total_percentage: number;
+    price_total: number | null;
+    parameters: Array<{
+      code: string;
+      left_value: number | null;
+      right_value: number | null;
+      delta: number | null;
+      unit: string | null;
+    }>;
+  };
+};
+
+export type FormulaComparisonFormula = {
+  id: string;
+  name: string;
+  total_percentage: number;
+  price_total: number | null;
+  currency: string;
+  parameters: CalculationResult["parameters"];
+  warnings: CalculationResult["warnings"];
+  line_count: number;
+};
+
 export type FormulaCalculationHistory = {
   id: string;
   formula_id: string;

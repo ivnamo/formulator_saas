@@ -43,6 +43,7 @@ import {
   type ExcelImportPreviewRow,
   type ExcelImportSheets,
   type FormulaCalculationHistory,
+  type FormulaComparison,
   type FormulaRead,
   type MaterialForm,
   type RawMaterialAliasRead,
@@ -72,6 +73,9 @@ export default function Home() {
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
+  const [comparisonLeftId, setComparisonLeftId] = useState("");
+  const [comparisonRightId, setComparisonRightId] = useState("");
+  const [formulaComparison, setFormulaComparison] = useState<FormulaComparison | null>(null);
   const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -111,6 +115,12 @@ export default function Home() {
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
   const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
+  const canCompareFormulas =
+    Boolean(workspace.tenant) &&
+    Boolean(comparisonLeftId) &&
+    Boolean(comparisonRightId) &&
+    comparisonLeftId !== comparisonRightId &&
+    !isBusy;
   const canSelectImportSheet = availableImportSheets.length > 1 && Boolean(importFile) && !isBusy;
   const canApplyImportColumnMapping =
     Boolean(importFile) &&
@@ -459,6 +469,7 @@ export default function Home() {
         headers,
       });
       setFormulas(nextFormulas);
+      syncComparisonSelection(nextFormulas);
       return;
     }
     await runAction("Refreshing formula library", async () => {
@@ -467,7 +478,27 @@ export default function Home() {
         headers,
       });
       setFormulas(nextFormulas);
+      syncComparisonSelection(nextFormulas);
       setMessage("Formula library refreshed");
+    });
+  }
+
+  async function compareSelectedFormulas() {
+    if (!canCompareFormulas) {
+      setError("Select two different formulas");
+      return;
+    }
+    await runAction("Comparing formulas", async () => {
+      const comparison = await request<FormulaComparison>("/api/v1/formulas/compare", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          left_formula_id: comparisonLeftId,
+          right_formula_id: comparisonRightId,
+        }),
+      });
+      setFormulaComparison(comparison);
+      setMessage("Formula comparison ready");
     });
   }
 
@@ -756,6 +787,29 @@ export default function Home() {
 
   function formatPriceEntry(price: RawMaterialPriceRead): string {
     return `${price.price.toFixed(2)} ${price.currency}/${price.unit} - ${price.valid_from}`;
+  }
+
+  function syncComparisonSelection(nextFormulas: FormulaRead[]) {
+    const formulaIds = new Set(nextFormulas.map((formula) => formula.id));
+    const nextLeftId = formulaIds.has(comparisonLeftId)
+      ? comparisonLeftId
+      : nextFormulas[0]?.id ?? "";
+    const nextRightId =
+      formulaIds.has(comparisonRightId) && comparisonRightId !== nextLeftId
+        ? comparisonRightId
+        : nextFormulas.find((formula) => formula.id !== nextLeftId)?.id ?? "";
+
+    setComparisonLeftId(nextLeftId);
+    setComparisonRightId(nextRightId);
+    setFormulaComparison(null);
+  }
+
+  function formatSignedNumber(value: number | null, digits = 2): string {
+    if (value === null) {
+      return "-";
+    }
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${value.toFixed(digits)}`;
   }
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -1066,6 +1120,100 @@ export default function Home() {
                 <RefreshCw size={17} />
                 Refresh library
               </button>
+            </div>
+            <div className="comparisonPanel">
+              <div className="comparisonControls">
+                <label>
+                  <span>Baseline</span>
+                  <select
+                    aria-label="Comparison baseline"
+                    value={comparisonLeftId}
+                    onChange={(event) => {
+                      setComparisonLeftId(event.target.value);
+                      setFormulaComparison(null);
+                    }}
+                    disabled={!canEditTenantData || formulas.length < 2}
+                  >
+                    <option value="">Select formula</option>
+                    {formulas.map((formula) => (
+                      <option key={formula.id} value={formula.id}>
+                        {formula.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Candidate</span>
+                  <select
+                    aria-label="Comparison candidate"
+                    value={comparisonRightId}
+                    onChange={(event) => {
+                      setComparisonRightId(event.target.value);
+                      setFormulaComparison(null);
+                    }}
+                    disabled={!canEditTenantData || formulas.length < 2}
+                  >
+                    <option value="">Select formula</option>
+                    {formulas.map((formula) => (
+                      <option key={formula.id} value={formula.id}>
+                        {formula.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={compareSelectedFormulas}
+                  disabled={!canCompareFormulas}
+                >
+                  <ListChecks size={17} />
+                  Compare
+                </button>
+              </div>
+              {formulaComparison ? (
+                <>
+                  <div className="comparisonStats">
+                    <div>
+                      <span>Price delta</span>
+                      <strong>
+                        {formulaComparison.delta.price_total === null
+                          ? "-"
+                          : `${formatSignedNumber(formulaComparison.delta.price_total)} ${
+                              formulaComparison.right.currency
+                            }/kg`}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Total delta</span>
+                      <strong>
+                        {formatSignedNumber(formulaComparison.delta.total_percentage, 1)}%
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Lines</span>
+                      <strong>
+                        {formulaComparison.left.line_count} {"->"} {formulaComparison.right.line_count}
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="comparisonParameters">
+                    {formulaComparison.delta.parameters.length ? (
+                      formulaComparison.delta.parameters.map((parameter) => (
+                        <div key={parameter.code}>
+                          <span>{parameter.code}</span>
+                          <strong>
+                            {formatSignedNumber(parameter.delta)}
+                            {parameter.unit ? ` ${parameter.unit}` : ""}
+                          </strong>
+                        </div>
+                      ))
+                    ) : (
+                      <span>No calculated parameter differences</span>
+                    )}
+                  </div>
+                </>
+              ) : null}
             </div>
             <div className="libraryGrid">
               <div className="formulaList">

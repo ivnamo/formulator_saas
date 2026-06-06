@@ -527,6 +527,48 @@ label span {
   margin-bottom: 14px;
 }
 
+.comparisonPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.comparisonControls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.comparisonStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.comparisonStats div,
+.comparisonParameters div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.comparisonStats span,
+.comparisonParameters span {
+  color: var(--muted);
+}
+
+.comparisonParameters {
+  display: grid;
+  gap: 6px;
+}
+
 .libraryGrid {
   display: grid;
   grid-template-columns: minmax(360px, 1fr) minmax(280px, 0.65fr);
@@ -811,6 +853,8 @@ label span {
 
   .formGrid,
   .aliasEditor,
+  .comparisonControls,
+  .comparisonStats,
   .priceEditor,
   .formulaListHead,
   .formulaListRow,
