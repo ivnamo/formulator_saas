@@ -930,6 +930,58 @@ label span {
   text-align: right;
 }
 
+.draftReview {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.draftReviewHeader,
+.draftReviewActions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.draftReviewHeader div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.draftReviewHeader span,
+.draftReviewActions span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.draftReviewHeader strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.draftReviewHeader code {
+  color: var(--teal-dark);
+  font-weight: 800;
+}
+
+.draftReview[data-state="pending"] .draftReviewHeader code {
+  color: var(--amber);
+}
+
+.draftReviewActions {
+  align-items: center;
+}
+
+.draftReviewActions .secondaryButton {
+  width: auto;
+}
+
 .formulaLine {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) 86px 34px;
@@ -1052,6 +1104,10 @@ label span {
   .agentFormulaApply {
     width: auto;
   }
+
+  .draftReviewActions .secondaryButton {
+    width: auto;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1104,7 +1160,16 @@ label span {
     flex-direction: column;
   }
 
+  .draftReviewHeader,
+  .draftReviewActions {
+    flex-direction: column;
+  }
+
   .agentFormulaApply {
+    width: auto;
+  }
+
+  .draftReviewActions .secondaryButton {
     width: auto;
   }
 

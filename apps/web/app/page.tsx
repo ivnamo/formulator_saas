@@ -54,6 +54,12 @@ import {
   type WorkspaceState,
 } from "./workspace-model";
 
+type DraftReviewState = {
+  candidateName: string;
+  status: "pending" | "confirmed";
+  notes: string;
+};
+
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
   const [workspaceName, setWorkspaceName] = useState("Workspace Lab");
@@ -77,6 +83,7 @@ export default function Home() {
   );
   const [requirementParse, setRequirementParse] = useState<RequirementParse | null>(null);
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null);
+  const [draftReview, setDraftReview] = useState<DraftReviewState | null>(null);
   const [aiRuns, setAiRuns] = useState<AiRun[]>([]);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -112,7 +119,17 @@ export default function Home() {
   );
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
-  const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
+  const hasPendingDraftReview = draftReview !== null && draftReview.status !== "confirmed";
+  const canConfirmDraftReview =
+    draftReview !== null &&
+    draftReview.status !== "confirmed" &&
+    draftReview.notes.trim().length >= 3 &&
+    !isBusy;
+  const canCalculate =
+    Boolean(workspace.tenant) &&
+    workspace.formulaLines.length > 0 &&
+    !hasPendingDraftReview &&
+    !isBusy;
   const canSelectImportSheet = availableImportSheets.length > 1 && Boolean(importFile) && !isBusy;
   const canSaveImport =
     Boolean(importPreview) &&
@@ -144,6 +161,7 @@ export default function Home() {
       setCalculationHistory([]);
       setRequirementParse(null);
       setAgentPlan(null);
+      setDraftReview(null);
       setAiRuns([]);
       resetImportState();
       setMessage("Workspace ready");
@@ -329,6 +347,41 @@ export default function Home() {
     });
   }
 
+  function markDraftReviewPending() {
+    setDraftReview((current) =>
+      current && current.status === "confirmed" ? { ...current, status: "pending" } : current,
+    );
+  }
+
+  function updateDraftReviewNotes(notes: string) {
+    setDraftReview((current) =>
+      current
+        ? {
+            ...current,
+            notes,
+            status: current.status === "confirmed" ? "pending" : current.status,
+          }
+        : current,
+    );
+  }
+
+  function confirmDraftReview() {
+    if (!draftReview) {
+      return;
+    }
+    const notes = draftReview.notes.trim();
+    if (notes.length < 3) {
+      setError("Decision notes are required before saving a draft");
+      return;
+    }
+    setDraftReview({
+      ...draftReview,
+      notes,
+      status: "confirmed",
+    });
+    setMessage("Draft review confirmed");
+  }
+
   function addFormulaLine(rawMaterialId: string) {
     setWorkspace((current) => ({
       ...current,
@@ -337,6 +390,7 @@ export default function Home() {
         { localId: makeLocalId(), rawMaterialId, percentage: 0 },
       ],
     }));
+    markDraftReviewPending();
     setResult(null);
   }
 
@@ -345,6 +399,7 @@ export default function Home() {
       ...current,
       formulaLines: current.formulaLines.filter((line) => line.localId !== localId),
     }));
+    markDraftReviewPending();
     setResult(null);
   }
 
@@ -355,6 +410,7 @@ export default function Home() {
         line.localId === localId ? { ...line, percentage } : line,
       ),
     }));
+    markDraftReviewPending();
     setResult(null);
   }
 
@@ -431,6 +487,11 @@ export default function Home() {
       });
       setCalculationHistory([]);
       setResult(calculation);
+      setDraftReview({
+        candidateName: candidate.name,
+        status: "pending",
+        notes: "",
+      });
       setMessage("Optimizer draft applied and recalculated");
     });
   }
@@ -442,6 +503,10 @@ export default function Home() {
     }
     if (!workspace.formulaLines.length) {
       setError("Add at least one formula line");
+      return;
+    }
+    if (hasPendingDraftReview) {
+      setError("Confirm draft review before saving");
       return;
     }
 
@@ -476,6 +541,7 @@ export default function Home() {
         formulaName: formula.name,
       }));
       setResult(calculation);
+      setDraftReview(null);
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
       setMessage("Calculation complete");
@@ -518,6 +584,7 @@ export default function Home() {
         })),
       }));
       setResult(null);
+      setDraftReview(null);
       resetImportState();
       await loadCalculationHistory(formula.id);
       setMessage("Formula opened");
@@ -697,6 +764,7 @@ export default function Home() {
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
       setResult(null);
+      setDraftReview(null);
       setMessage("Imported formula saved");
     });
   }
@@ -1505,9 +1573,10 @@ export default function Home() {
               <span>Name</span>
               <input
                 value={workspace.formulaName}
-                onChange={(event) =>
-                  setWorkspace((current) => ({ ...current, formulaName: event.target.value }))
-                }
+                onChange={(event) => {
+                  setWorkspace((current) => ({ ...current, formulaName: event.target.value }));
+                  markDraftReviewPending();
+                }}
                 disabled={isBusy}
               />
             </label>
@@ -1528,6 +1597,39 @@ export default function Home() {
                 <strong>Backend</strong>
               </div>
             </div>
+            {draftReview ? (
+              <div className="draftReview" data-state={draftReview.status}>
+                <div className="draftReviewHeader">
+                  <div>
+                    <span>Draft review</span>
+                    <strong>{draftReview.candidateName}</strong>
+                  </div>
+                  <code>{draftReview.status}</code>
+                </div>
+                <label className="fullWidthLabel">
+                  <span>Decision notes</span>
+                  <textarea
+                    value={draftReview.notes}
+                    onChange={(event) => updateDraftReviewNotes(event.target.value)}
+                    disabled={isBusy}
+                  />
+                </label>
+                <div className="draftReviewActions">
+                  <span>
+                    {draftReview.status === "confirmed" ? "Ready to save" : "Pending confirmation"}
+                  </span>
+                  <button
+                    className="secondaryButton"
+                    type="button"
+                    onClick={confirmDraftReview}
+                    disabled={!canConfirmDraftReview}
+                  >
+                    <Check size={16} />
+                    Confirm review
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <div className="formulaLines">
               {workspace.formulaLines.length === 0 ? (
                 <div className="empty">Add materials to build a formula.</div>
