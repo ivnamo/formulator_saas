@@ -17,6 +17,7 @@ export type RawMaterial = {
   name: string;
   price: number | null;
   parameterValue: number | null;
+  aliases: string[];
 };
 
 export type FormulaLine = {
@@ -51,6 +52,15 @@ export type RawMaterialRead = {
   normalized_name: string;
   is_active: boolean;
   is_obsolete: boolean;
+};
+
+export type RawMaterialAliasRead = {
+  id: string;
+  tenant_id: string;
+  raw_material_id: string;
+  alias: string;
+  normalized_alias: string;
+  source: string;
 };
 
 export type FormulaRead = {

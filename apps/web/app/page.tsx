@@ -31,6 +31,7 @@ import {
   type FormulaCalculationHistory,
   type FormulaRead,
   type MaterialForm,
+  type RawMaterialAliasRead,
   type ParameterRead,
   type RawMaterialRead,
   type Status,
@@ -53,6 +54,7 @@ export default function Home() {
     parameterValue: "",
   });
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
   const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
@@ -200,6 +202,7 @@ export default function Home() {
             name: material.name,
             price,
             parameterValue: workspace.parameter ? parameterValue : null,
+            aliases: [],
           },
         ],
       }));
@@ -207,6 +210,36 @@ export default function Home() {
       setResult(null);
       setImportPreview(null);
       setMessage("Raw material ready");
+    });
+  }
+
+  async function createAlias(rawMaterialId: string) {
+    const alias = aliasInputs[rawMaterialId]?.trim();
+    if (!alias) {
+      setError("Alias is required");
+      return;
+    }
+
+    await runAction("Creating alias", async () => {
+      const created = await request<RawMaterialAliasRead>(
+        `/api/v1/raw-materials/${rawMaterialId}/aliases`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ alias }),
+        },
+      );
+      setWorkspace((current) => ({
+        ...current,
+        rawMaterials: current.rawMaterials.map((material) =>
+          material.id === rawMaterialId
+            ? { ...material, aliases: [...material.aliases, created.alias] }
+            : material,
+        ),
+      }));
+      setAliasInputs((current) => ({ ...current, [rawMaterialId]: "" }));
+      setImportPreview(null);
+      setMessage("Alias ready");
     });
   }
 
@@ -606,21 +639,54 @@ export default function Home() {
                 <div className="empty">No raw materials yet.</div>
               ) : (
                 workspace.rawMaterials.map((material) => (
-                  <div className="materialRow" key={material.id}>
-                    <code>{material.code || "-"}</code>
-                    <span>{material.name}</span>
-                    <span>{material.price === null ? "-" : material.price.toFixed(2)}</span>
-                    <span>{material.parameterValue === null ? "-" : material.parameterValue.toFixed(2)}</span>
-                    <button
-                      className="iconButton"
-                      type="button"
-                      onClick={() => addFormulaLine(material.id)}
-                      disabled={isBusy}
-                      title="Add to formula"
-                      aria-label={`Add ${material.name} to formula`}
-                    >
-                      <Plus size={16} />
-                    </button>
+                  <div className="materialRowWrap" key={material.id}>
+                    <div className="materialRow">
+                      <code>{material.code || "-"}</code>
+                      <span>{material.name}</span>
+                      <span>{material.price === null ? "-" : material.price.toFixed(2)}</span>
+                      <span>{material.parameterValue === null ? "-" : material.parameterValue.toFixed(2)}</span>
+                      <button
+                        className="iconButton"
+                        type="button"
+                        onClick={() => addFormulaLine(material.id)}
+                        disabled={isBusy}
+                        title="Add to formula"
+                        aria-label={`Add ${material.name} to formula`}
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                    <div className="aliasEditor">
+                      <span>Aliases</span>
+                      <div className="aliasTags">
+                        {material.aliases.length ? (
+                          material.aliases.map((alias) => <code key={alias}>{alias}</code>)
+                        ) : (
+                          <em>None</em>
+                        )}
+                      </div>
+                      <input
+                        aria-label={`${material.name} alias`}
+                        value={aliasInputs[material.id] ?? ""}
+                        onChange={(event) =>
+                          setAliasInputs((current) => ({
+                            ...current,
+                            [material.id]: event.target.value,
+                          }))
+                        }
+                        disabled={isBusy}
+                      />
+                      <button
+                        className="iconButton"
+                        type="button"
+                        onClick={() => createAlias(material.id)}
+                        disabled={isBusy}
+                        title="Add alias"
+                        aria-label={`Add alias for ${material.name}`}
+                      >
+                        <Save size={16} />
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
