@@ -678,12 +678,14 @@ label span {
 }
 
 .formulaSummary,
+.optimizerStats,
 .resultStats {
   display: grid;
   gap: 10px;
 }
 
 .formulaSummary div,
+.optimizerStats div,
 .resultStats div {
   display: flex;
   justify-content: space-between;
@@ -694,15 +696,51 @@ label span {
 }
 
 .formulaSummary span,
+.optimizerStats span,
 .resultStats span {
   color: var(--muted);
   font-size: 13px;
 }
 
 .formulaSummary strong,
+.optimizerStats strong,
 .resultStats strong {
   font-size: 14px;
   text-align: right;
+}
+
+.optimizerPanel {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.optimizerControls {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.optimizerMessages {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.optimizerMessages div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  border-top: 1px solid var(--border);
+}
+
+.optimizerMessages svg {
+  color: var(--danger);
+  flex: 0 0 auto;
 }
 
 .formulaLine {
@@ -855,6 +893,8 @@ label span {
   .aliasEditor,
   .comparisonControls,
   .comparisonStats,
+  .optimizerControls,
+  .optimizerStats,
   .priceEditor,
   .formulaListHead,
   .formulaListRow,

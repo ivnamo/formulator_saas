@@ -191,6 +191,22 @@ export type FormulaComparisonFormula = {
   line_count: number;
 };
 
+export type OptimizationRun = {
+  status: "success" | "infeasible" | "invalid";
+  objective: "minimize_price";
+  items: Array<{
+    raw_material_id: string;
+    percentage: number;
+  }>;
+  calculation: CalculationResult | null;
+  messages: string[];
+  issues: Array<{
+    code: string;
+    target: string;
+    message: string;
+  }>;
+};
+
 export type FormulaCalculationHistory = {
   id: string;
   formula_id: string;

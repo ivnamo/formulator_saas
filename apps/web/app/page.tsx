@@ -46,6 +46,7 @@ import {
   type FormulaComparison,
   type FormulaRead,
   type MaterialForm,
+  type OptimizationRun,
   type RawMaterialAliasRead,
   type RawMaterialPriceRead,
   type ParameterRead,
@@ -70,6 +71,8 @@ export default function Home() {
     parameterValue: "",
   });
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const [optimizerMinValue, setOptimizerMinValue] = useState("20");
+  const [optimizationRun, setOptimizationRun] = useState<OptimizationRun | null>(null);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
@@ -115,6 +118,8 @@ export default function Home() {
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
   const canCalculate = Boolean(workspace.tenant) && workspace.formulaLines.length > 0 && !isBusy;
+  const canRunOptimizer =
+    Boolean(workspace.tenant) && workspace.rawMaterials.length > 0 && !isBusy;
   const canCompareFormulas =
     Boolean(workspace.tenant) &&
     Boolean(comparisonLeftId) &&
@@ -133,6 +138,7 @@ export default function Home() {
     importPreview?.rows.length !== 0 &&
     importPreview?.pending_rows === 0 &&
     !isBusy;
+  const optimizerFeedbackMessages = optimizationRun ? optimizationFeedback(optimizationRun) : [];
 
   async function createWorkspace() {
     await runAction("Creating workspace", async () => {
@@ -455,6 +461,56 @@ export default function Home() {
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
       setMessage("Calculation complete");
+    });
+  }
+
+  async function runOptimizer() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (!workspace.rawMaterials.length) {
+      setError("Create at least one raw material");
+      return;
+    }
+    const minValue = parseOptionalNumber(optimizerMinValue);
+    if (optimizerMinValue.trim() && minValue === null) {
+      setError("Enter a valid parameter minimum");
+      return;
+    }
+
+    await runAction("Running optimizer", async () => {
+      const optimization = await request<OptimizationRun>("/api/v1/optimizations/run", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          objective: "minimize_price",
+          candidate_raw_material_ids: workspace.rawMaterials.map((material) => material.id),
+          parameter_bounds:
+            workspace.parameter && minValue !== null
+              ? [{ code: workspace.parameter.code, min_value: minValue }]
+              : [],
+        }),
+      });
+      setOptimizationRun(optimization);
+      if (optimization.status === "success" && optimization.calculation) {
+        setWorkspace((current) => ({
+          ...current,
+          formulaId: null,
+          formulaName: "Optimized Low Cost Formula",
+          formulaLines: optimization.items.map((item) => ({
+            localId: makeLocalId(),
+            rawMaterialId: item.raw_material_id,
+            percentage: item.percentage,
+          })),
+        }));
+        setResult(optimization.calculation);
+        setMessage("Optimization ready");
+        return;
+      }
+      setMessage(
+        optimization.status === "infeasible" ? "Optimization infeasible" : "Optimization invalid",
+      );
     });
   }
 
@@ -810,6 +866,13 @@ export default function Home() {
     }
     const sign = value > 0 ? "+" : "";
     return `${sign}${value.toFixed(digits)}`;
+  }
+
+  function optimizationFeedback(run: OptimizationRun): string[] {
+    return [
+      ...run.issues.map((issue) => issue.message),
+      ...run.messages,
+    ];
   }
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -1544,6 +1607,72 @@ export default function Home() {
                 <span>Calculation source</span>
                 <strong>Backend</strong>
               </div>
+            </div>
+            <div className="optimizerPanel">
+              <div className="optimizerControls">
+                <label>
+                  <span>
+                    {workspace.parameter
+                      ? `Minimum ${workspace.parameter.code}`
+                      : "Parameter minimum"}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={optimizerMinValue}
+                    onChange={(event) => {
+                      setOptimizerMinValue(event.target.value);
+                      setOptimizationRun(null);
+                    }}
+                    disabled={!canEditTenantData || !workspace.parameter}
+                    placeholder="Optional"
+                  />
+                </label>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={runOptimizer}
+                  disabled={!canRunOptimizer}
+                >
+                  <Settings2 size={17} />
+                  Optimize
+                </button>
+              </div>
+              {optimizationRun ? (
+                <>
+                  <div className="optimizerStats">
+                    <div>
+                      <span>Status</span>
+                      <strong>{optimizationRun.status}</strong>
+                    </div>
+                    <div>
+                      <span>Price</span>
+                      <strong>
+                        {optimizationRun.calculation?.price_total == null
+                          ? "-"
+                          : `${optimizationRun.calculation.price_total.toFixed(2)} ${
+                              optimizationRun.calculation.currency
+                            }/kg`}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Lines</span>
+                      <strong>{optimizationRun.items.length}</strong>
+                    </div>
+                  </div>
+                  {optimizerFeedbackMessages.length ? (
+                    <div className="optimizerMessages">
+                      {optimizerFeedbackMessages.map((item, index) => (
+                        <div key={`${item}-${index}`}>
+                          <AlertTriangle size={15} />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
             </div>
             <div className="formulaLines">
               {workspace.formulaLines.length === 0 ? (
