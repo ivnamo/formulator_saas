@@ -54,6 +54,24 @@ El modo determinista ya ejecuta tools reales para pasar de requisitos a candidat
 
 El resultado puede estar `ready` para un solver posterior o `blocked` si faltan candidatos, cobertura tecnica o precios necesarios.
 
+## META-014
+
+`OptimizationAgent` incorpora el primer solver determinista:
+
+- `solver = grid_v1`
+- paso de rejilla de 5 puntos porcentuales,
+- maximo 4 candidatos usados por rendimiento,
+- validacion con `formulia_core.calculate_formula`,
+- output `formula_candidates` con estado `draft`.
+
+Estados posibles:
+
+- `solved`: hay una propuesta draft que cumple las restricciones soportadas.
+- `infeasible`: hay cobertura, pero la rejilla no encuentra solucion.
+- `blocked`: faltan candidatos, parametros, precios o restricciones numericas.
+
+La UI muestra la propuesta, pero no la guarda automaticamente.
+
 ## Regla de seguridad funcional
 
-El supervisor solo planifica. Los pasos siguientes quedan marcados como `pending`, `blocked` o `required` hasta que existan tools deterministas reales para materias primas, optimizacion, calculo y revision humana.
+El supervisor propone borradores controlados. Ninguna formula queda guardada ni se considera final sin aplicarla al editor, recalcularla y pasar revision humana.
