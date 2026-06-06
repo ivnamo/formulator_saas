@@ -48,6 +48,21 @@ Run the API:
 .\.venv\Scripts\python -m uvicorn formulia_api.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+Configure the OpenAI-backed requirement parser:
+
+```powershell
+.\scripts\set-openai-api-key.ps1
+```
+
+The script prompts for `OPENAI_API_KEY`, writes it to ignored `.env.local`, and enables:
+
+```text
+REQUIREMENT_PARSER_PROVIDER=llm
+REQUIREMENT_PARSER_MODEL=gpt-5-nano
+```
+
+Restart the API after updating `.env.local`. Without that configuration, the parser stays in deterministic mode for local checks.
+
 Run the web app:
 
 ```powershell
