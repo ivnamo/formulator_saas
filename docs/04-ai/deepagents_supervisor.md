@@ -84,6 +84,18 @@ La UI puede aplicar una `formula_candidate` al editor manual:
 
 El boton principal del editor indica `Save & calculate` porque ese flujo si persiste una formula.
 
+## META-016
+
+Los drafts aplicados desde el optimizer requieren revision humana local antes de guardarse:
+
+- aplicar un draft crea una revision pendiente,
+- el usuario escribe notas de decision,
+- `Save & calculate` queda bloqueado hasta confirmar la revision,
+- cualquier cambio posterior en nombre, lineas o porcentajes vuelve a dejar la revision pendiente,
+- abrir otra formula, crear workspace o guardar una importacion limpia la revision local.
+
+Esta confirmacion no es una aprobacion regulatoria ni se persiste como workflow. Es solo un guardrail de UI para evitar guardar propuestas IA sin una accion humana explicita.
+
 ## Regla de seguridad funcional
 
 El supervisor propone borradores controlados. Ninguna formula queda guardada ni se considera final sin aplicarla al editor, recalcularla y pasar revision humana.
