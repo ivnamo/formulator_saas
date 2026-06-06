@@ -68,6 +68,16 @@ type OptimizerPayload = {
 
 type OptimizerPayloadResult = { payload: OptimizerPayload } | { error: string };
 
+type OptimizerParameterBounds = Array<{
+  code: string;
+  min_value?: number;
+  max_value?: number;
+}>;
+
+type OptimizerParameterBoundsResult =
+  | { bounds: OptimizerParameterBounds }
+  | { error: string };
+
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
   const [workspaceName, setWorkspaceName] = useState("Workspace Lab");
@@ -83,7 +93,8 @@ export default function Home() {
     parameterValue: "",
   });
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [optimizerMinValue, setOptimizerMinValue] = useState("20");
+  const [optimizerParameterMinValue, setOptimizerParameterMinValue] = useState("20");
+  const [optimizerParameterMaxValue, setOptimizerParameterMaxValue] = useState("");
   const [optimizerCandidates, setOptimizerCandidates] = useState<
     Record<string, OptimizerCandidateConfig>
   >({});
@@ -509,9 +520,9 @@ export default function Home() {
       setError("Create at least one raw material");
       return;
     }
-    const minValue = parseOptionalNumber(optimizerMinValue);
-    if (optimizerMinValue.trim() && minValue === null) {
-      setError("Enter a valid parameter minimum");
+    const parameterBounds = buildOptimizerParameterBounds();
+    if ("error" in parameterBounds) {
+      setError(parameterBounds.error);
       return;
     }
     const optimizerPayload = buildOptimizerPayload();
@@ -527,10 +538,7 @@ export default function Home() {
         body: JSON.stringify({
           objective: "minimize_price",
           ...optimizerPayload.payload,
-          parameter_bounds:
-            workspace.parameter && minValue !== null
-              ? [{ code: workspace.parameter.code, min_value: minValue }]
-              : [],
+          parameter_bounds: parameterBounds.bounds,
         }),
       });
       setOptimizationRun(optimization);
@@ -941,6 +949,35 @@ export default function Home() {
         candidate_raw_material_ids: candidateIds,
         raw_material_bounds: rawMaterialBounds,
       },
+    };
+  }
+
+  function buildOptimizerParameterBounds(): OptimizerParameterBoundsResult {
+    if (!workspace.parameter) {
+      return { bounds: [] };
+    }
+    const minValue = parseOptionalNumber(optimizerParameterMinValue);
+    const maxValue = parseOptionalNumber(optimizerParameterMaxValue);
+    if (optimizerParameterMinValue.trim() && minValue === null) {
+      return { error: "Enter a valid parameter minimum" };
+    }
+    if (optimizerParameterMaxValue.trim() && maxValue === null) {
+      return { error: "Enter a valid parameter maximum" };
+    }
+    if (minValue !== null && maxValue !== null && minValue > maxValue) {
+      return { error: "Parameter minimum cannot exceed maximum" };
+    }
+    if (minValue === null && maxValue === null) {
+      return { bounds: [] };
+    }
+    return {
+      bounds: [
+        {
+          code: workspace.parameter.code,
+          ...(minValue !== null ? { min_value: minValue } : {}),
+          ...(maxValue !== null ? { max_value: maxValue } : {}),
+        },
+      ],
     };
   }
 
@@ -1752,9 +1789,28 @@ export default function Home() {
                     type="number"
                     min={0}
                     step={0.1}
-                    value={optimizerMinValue}
+                    value={optimizerParameterMinValue}
                     onChange={(event) => {
-                      setOptimizerMinValue(event.target.value);
+                      setOptimizerParameterMinValue(event.target.value);
+                      setOptimizationRun(null);
+                    }}
+                    disabled={!canEditTenantData || !workspace.parameter}
+                    placeholder="Optional"
+                  />
+                </label>
+                <label>
+                  <span>
+                    {workspace.parameter
+                      ? `Maximum ${workspace.parameter.code}`
+                      : "Parameter maximum"}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={optimizerParameterMaxValue}
+                    onChange={(event) => {
+                      setOptimizerParameterMaxValue(event.target.value);
                       setOptimizationRun(null);
                     }}
                     disabled={!canEditTenantData || !workspace.parameter}
