@@ -58,6 +58,8 @@ from .schemas import (
     FormulaCreate,
     FormulaRead,
     FormulaUpdate,
+    OptimizationValidateRequest,
+    OptimizationValidationRead,
     ParameterCreate,
     ParameterRead,
     RawMaterialCreate,
@@ -371,6 +373,22 @@ def register_routes(app: FastAPI) -> None:
             "left": left,
             "right": right,
             "delta": _formula_comparison_delta(left, right),
+        }
+
+    @app.post("/api/v1/optimizations/validate", response_model=OptimizationValidationRead)
+    def validate_optimization(
+        payload: OptimizationValidateRequest,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        issues = _optimization_validation_issues(session, tenant.tenant_id, payload)
+        return {
+            "status": "invalid" if issues else "valid",
+            "objective": payload.objective,
+            "candidate_count": len(set(payload.candidate_raw_material_ids)),
+            "raw_material_bound_count": len(payload.raw_material_bounds),
+            "parameter_bound_count": len(payload.parameter_bounds),
+            "issues": issues,
         }
 
     @app.get("/api/v1/formulas/{formula_id}", response_model=FormulaRead)
@@ -765,6 +783,104 @@ def _parameter_deltas(
             }
         )
     return deltas
+
+
+def _optimization_validation_issues(
+    session: Session,
+    tenant_id: uuid.UUID,
+    payload: OptimizationValidateRequest,
+) -> list[dict[str, str]]:
+    issues: list[dict[str, str]] = []
+    candidate_ids = set(payload.candidate_raw_material_ids)
+    bound_material_ids = {
+        bound.raw_material_id for bound in payload.raw_material_bounds
+    }
+    tenant_material_ids = _tenant_raw_material_ids(
+        session,
+        tenant_id,
+        candidate_ids | bound_material_ids,
+    )
+    active_parameter_codes = _active_parameter_codes(session, tenant_id)
+
+    for raw_material_id in sorted(candidate_ids - tenant_material_ids):
+        issues.append(
+            _validation_issue(
+                "candidate_not_found",
+                str(raw_material_id),
+                "Candidate raw material was not found for the active tenant",
+            )
+        )
+
+    for bound in payload.raw_material_bounds:
+        raw_material_id = str(bound.raw_material_id)
+        if bound.raw_material_id not in tenant_material_ids:
+            issues.append(
+                _validation_issue(
+                    "raw_material_bound_not_found",
+                    raw_material_id,
+                    "Raw material bound references a material outside the active tenant",
+                )
+            )
+        if _is_invalid_range(bound.min_percentage, bound.max_percentage):
+            issues.append(
+                _validation_issue(
+                    "raw_material_range_invalid",
+                    raw_material_id,
+                    "Raw material minimum percentage cannot exceed maximum percentage",
+                )
+            )
+
+    for bound in payload.parameter_bounds:
+        if bound.code not in active_parameter_codes:
+            issues.append(
+                _validation_issue(
+                    "parameter_not_found",
+                    bound.code,
+                    "Parameter bound references an inactive or unknown parameter",
+                )
+            )
+        if _is_invalid_range(bound.min_value, bound.max_value):
+            issues.append(
+                _validation_issue(
+                    "parameter_range_invalid",
+                    bound.code,
+                    "Parameter minimum value cannot exceed maximum value",
+                )
+            )
+
+    return issues
+
+
+def _tenant_raw_material_ids(
+    session: Session,
+    tenant_id: uuid.UUID,
+    raw_material_ids: set[uuid.UUID],
+) -> set[uuid.UUID]:
+    if not raw_material_ids:
+        return set()
+    return set(
+        session.exec(
+            select(RawMaterial.id).where(
+                RawMaterial.tenant_id == tenant_id,
+                RawMaterial.id.in_(raw_material_ids),
+            )
+        ).all()
+    )
+
+
+def _is_invalid_range(
+    minimum: float | None,
+    maximum: float | None,
+) -> bool:
+    return minimum is not None and maximum is not None and minimum > maximum
+
+
+def _validation_issue(code: str, target: str, message: str) -> dict[str, str]:
+    return {
+        "code": code,
+        "target": target,
+        "message": message,
+    }
 
 
 def _formula_export_lines(

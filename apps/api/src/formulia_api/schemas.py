@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -173,6 +174,44 @@ class CalculationRead(BaseModel):
     currency: str
     parameters: list[dict[str, Any]]
     warnings: list[dict[str, Any]]
+
+
+class OptimizationObjective(str, Enum):
+    minimize_price = "minimize_price"
+
+
+class OptimizationRawMaterialBound(BaseModel):
+    raw_material_id: uuid.UUID
+    min_percentage: float | None = Field(default=None, ge=0, le=100)
+    max_percentage: float | None = Field(default=None, ge=0, le=100)
+
+
+class OptimizationParameterBound(BaseModel):
+    code: str = Field(min_length=1)
+    min_value: float | None = None
+    max_value: float | None = None
+
+
+class OptimizationValidateRequest(BaseModel):
+    objective: OptimizationObjective = OptimizationObjective.minimize_price
+    candidate_raw_material_ids: list[uuid.UUID] = Field(min_length=1)
+    raw_material_bounds: list[OptimizationRawMaterialBound] = Field(default_factory=list)
+    parameter_bounds: list[OptimizationParameterBound] = Field(default_factory=list)
+
+
+class OptimizationValidationIssueRead(BaseModel):
+    code: str
+    target: str
+    message: str
+
+
+class OptimizationValidationRead(BaseModel):
+    status: str
+    objective: OptimizationObjective
+    candidate_count: int
+    raw_material_bound_count: int
+    parameter_bound_count: int
+    issues: list[OptimizationValidationIssueRead]
 
 
 class FormulaComparisonFormulaRead(BaseModel):

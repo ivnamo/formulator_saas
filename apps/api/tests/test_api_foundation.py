@@ -396,6 +396,138 @@ def test_formula_comparison_is_tenant_scoped_and_returns_deltas() -> None:
     assert forbidden.status_code == 404
 
 
+def test_optimization_validation_accepts_minimize_price_contract() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "active_content", "name": "Active Content", "unit": "% p/p"},
+    ).json()
+    active = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    carrier = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Carrier B", "code": "CAR-B"},
+    ).json()
+
+    response = client.post(
+        "/api/v1/optimizations/validate",
+        headers=headers,
+        json={
+            "objective": "minimize_price",
+            "candidate_raw_material_ids": [active["id"], carrier["id"]],
+            "raw_material_bounds": [
+                {
+                    "raw_material_id": active["id"],
+                    "min_percentage": 10,
+                    "max_percentage": 80,
+                }
+            ],
+            "parameter_bounds": [
+                {
+                    "code": parameter["code"],
+                    "min_value": 20,
+                    "max_value": 40,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "valid",
+        "objective": "minimize_price",
+        "candidate_count": 2,
+        "raw_material_bound_count": 1,
+        "parameter_bound_count": 1,
+        "issues": [],
+    }
+
+
+def test_optimization_validation_does_not_accept_other_tenant_materials() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+    foreign_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers_b,
+        json={"name": "Foreign Active", "code": "FOR-A"},
+    ).json()
+
+    response = client.post(
+        "/api/v1/optimizations/validate",
+        headers=headers_a,
+        json={
+            "objective": "minimize_price",
+            "candidate_raw_material_ids": [foreign_material["id"]],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "invalid"
+    assert response.json()["issues"] == [
+        {
+            "code": "candidate_not_found",
+            "target": foreign_material["id"],
+            "message": "Candidate raw material was not found for the active tenant",
+        }
+    ]
+
+
+def test_optimization_validation_reports_incoherent_ranges() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "active_content", "name": "Active Content", "unit": "% p/p"},
+    ).json()
+    active = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+
+    response = client.post(
+        "/api/v1/optimizations/validate",
+        headers=headers,
+        json={
+            "objective": "minimize_price",
+            "candidate_raw_material_ids": [active["id"]],
+            "raw_material_bounds": [
+                {
+                    "raw_material_id": active["id"],
+                    "min_percentage": 80,
+                    "max_percentage": 20,
+                }
+            ],
+            "parameter_bounds": [
+                {
+                    "code": parameter["code"],
+                    "min_value": 40,
+                    "max_value": 20,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "invalid"
+    assert [issue["code"] for issue in response.json()["issues"]] == [
+        "raw_material_range_invalid",
+        "parameter_range_invalid",
+    ]
+
+
 def test_persisted_formula_requires_active_tenant_parameters() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
