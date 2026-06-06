@@ -23,6 +23,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_010_excel_sheet_selection.md`](00-meta/meta_010_excel_sheet_selection.md)
 - [`00-meta/meta_011_excel_column_mapping.md`](00-meta/meta_011_excel_column_mapping.md)
 - [`00-meta/meta_012_formula_excel_export.md`](00-meta/meta_012_formula_excel_export.md)
+- [`00-meta/meta_013_raw_material_price_history.md`](00-meta/meta_013_raw_material_price_history.md)
 
 ## Producto
 
