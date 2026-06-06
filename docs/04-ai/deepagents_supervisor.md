@@ -96,6 +96,18 @@ Los drafts aplicados desde el optimizer requieren revision humana local antes de
 
 Esta confirmacion no es una aprobacion regulatoria ni se persiste como workflow. Es solo un guardrail de UI para evitar guardar propuestas IA sin una accion humana explicita.
 
+## META-017
+
+La revision humana local incluye comparacion pre-guardado:
+
+- al aplicar un draft se guarda un snapshot local de la propuesta original,
+- confirmar revision recalcula el editor actual con `POST /api/v1/formulas/calculate`,
+- la UI muestra precio, porcentaje total, numero de lineas y cambios por materia prima,
+- editar despues de confirmar limpia la comparacion y vuelve a bloquear el guardado,
+- guardar sigue siendo una accion posterior y explicita.
+
+La comparacion es un control de UI. No es versionado historico ni workflow persistido.
+
 ## Regla de seguridad funcional
 
 El supervisor propone borradores controlados. Ninguna formula queda guardada ni se considera final sin aplicarla al editor, recalcularla y pasar revision humana.
