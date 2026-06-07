@@ -201,6 +201,17 @@ La UI incluye una primera pantalla de incompatibilidades manuales:
 
 Un `blocker` todavia no bloquea el guardado. Se presenta como warning severo hasta que exista workflow de aprobacion/override.
 
+### META-027
+
+Los warnings de calculo distinguen visualmente severidad:
+
+- `blocker` usa foco de riesgo severo,
+- `warning` usa foco preventivo,
+- `info` usa foco informativo,
+- warnings legacy sin `severity` se tratan como `warning`.
+
+La UI mantiene el mensaje y la accion recomendada sin bloquear guardado automaticamente.
+
 ## ERP settings
 
 - crear conexión,
