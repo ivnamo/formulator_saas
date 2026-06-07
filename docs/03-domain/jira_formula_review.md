@@ -288,11 +288,25 @@ Decision MVP:
 - Usar `/rest/api/3` para Jira Cloud.
 - Usar Atlassian Document Format en `description`.
 - Usar OAuth 2.0 / 3LO como camino principal para Jira Cloud.
+- App OAuth registrada en Atlassian Developer Console:
+  - App ID: `262a5fcb-b418-46d1-9660-13c513ba3ec9`.
+  - Client ID: `IKEbZY7kAaSaBxF6VilwuWJxI4w8Y7A4`.
+  - Client Secret: solo local, nunca en chat, docs ni commits.
+- Scopes minimos esperados:
+  - `read:jira-work` para leer proyectos/issues.
+  - `write:jira-work` para crear issues y adjuntos.
+  - `read:jira-user` si se resuelven usuarios/asignaciones.
+- Callback local recomendado para pruebas: `http://localhost:3000/callback`.
 - Llamar con OAuth a `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/...`.
 - Leer `FORMULIA_JIRA_OAUTH_ACCESS_TOKEN` y `FORMULIA_JIRA_CLOUD_ID` desde `.env.local`.
 - Guardar `FORMULIA_JIRA_OAUTH_CLIENT_ID`, `FORMULIA_JIRA_OAUTH_CLIENT_SECRET` y `FORMULIA_JIRA_OAUTH_REDIRECT_URI` localmente solo para preparar el flujo 3LO.
 - Mantener Basic Auth con email + API token solo como fallback local/ad-hoc mediante `FORMULIA_JIRA_API_TOKEN`.
 - Dejar callback OAuth, refresh token automatico y cifrado de tokens para una fase posterior.
+
+Diferencia operativa:
+
+- API token personal: util para scripts rapidos y pruebas individuales; hereda permisos del usuario y no es el camino de produccion.
+- App OAuth 2.0: usa scopes concretos, tokens revocables y es el camino adecuado para integraciones de equipo, bots e integraciones ERP/CRM.
 
 ```http
 GET /integrations/jira

@@ -65,4 +65,12 @@ Esta meta introduce el cliente outbound de Jira y el endpoint de envio. Para no 
 
 ## Siguiente accion
 
-Implementar sincronizacion manual de estado Jira y mapeo configurable entre estados Jira e internos.
+Implementar el flujo OAuth 2.0 (3LO) completo:
+
+- Ruta/UI de callback para `http://localhost:3000/callback`.
+- Intercambio de authorization code por access token.
+- Obtencion de `cloudId` mediante `accessible-resources`.
+- Persistencia segura/cifrada de access token y refresh token.
+- Renovacion automatica con refresh token.
+
+Despues, implementar sincronizacion manual de estado Jira y mapeo configurable entre estados Jira e internos.
