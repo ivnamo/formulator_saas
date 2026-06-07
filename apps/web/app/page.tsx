@@ -23,6 +23,7 @@ import { useMemo, useState } from "react";
 import { apiUrl, request, userId } from "./workspace-api";
 import {
   aliasFromImportRow,
+  emptyJiraConnectionForm,
   emptyWorkspace,
   formatDateTime,
   makeLocalId,
@@ -44,6 +45,8 @@ import {
   type ExcelImportSheets,
   type FormulaCalculationHistory,
   type FormulaRead,
+  type JiraConnection,
+  type JiraConnectionTest,
   type MaterialForm,
   type RawMaterialAliasRead,
   type ParameterRead,
@@ -90,6 +93,8 @@ export default function Home() {
     message: "",
     recommendedAction: "",
   });
+  const [jiraConnections, setJiraConnections] = useState<JiraConnection[]>([]);
+  const [jiraConnectionForm, setJiraConnectionForm] = useState(emptyJiraConnectionForm);
   const [requirementText, setRequirementText] = useState(
     "Liquido barato con contenido activo minimo 12% y precio maximo 2 EUR/kg. Dame 2 alternativas.",
   );
@@ -236,6 +241,17 @@ export default function Home() {
     compatibilityRuleForm.materialAId !== compatibilityRuleForm.materialBId &&
     compatibilityRuleForm.message.trim().length > 0 &&
     !isBusy;
+  const activeJiraConnection = useMemo(
+    () => jiraConnections.find((connection) => connection.is_active) ?? jiraConnections[0] ?? null,
+    [jiraConnections],
+  );
+  const canSaveJiraConnection =
+    Boolean(workspace.tenant) &&
+    jiraConnectionForm.baseUrl.trim().length > 0 &&
+    jiraConnectionForm.defaultProjectKey.trim().length > 0 &&
+    jiraConnectionForm.defaultIssueType.trim().length > 0 &&
+    !isBusy;
+  const canTestJiraConnection = Boolean(activeJiraConnection) && !isBusy;
 
   async function createWorkspace() {
     await runAction("Creating workspace", async () => {
@@ -264,6 +280,8 @@ export default function Home() {
         message: "",
         recommendedAction: "",
       });
+      setJiraConnections([]);
+      setJiraConnectionForm(emptyJiraConnectionForm);
       setRequirementParse(null);
       setAgentPlan(null);
       setDraftReview(null);
@@ -477,6 +495,85 @@ export default function Home() {
       }));
       setResult(null);
       setMessage("Compatibility rule ready");
+    });
+  }
+
+  async function refreshJiraConnections(options: { silent?: boolean } = {}) {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    const loadConnections = async () => {
+      const connections = await request<JiraConnection[]>("/api/v1/integrations/jira", {
+        method: "GET",
+        headers,
+      });
+      setJiraConnections(connections);
+      const preferredConnection =
+        connections.find((connection) => connection.is_active) ?? connections[0] ?? null;
+      if (preferredConnection) {
+        setJiraConnectionForm(jiraConnectionFormFromRead(preferredConnection));
+      }
+      return connections;
+    };
+    if (options.silent) {
+      await loadConnections();
+      return;
+    }
+    await runAction("Refreshing integrations", async () => {
+      await loadConnections();
+      setMessage("Integrations refreshed");
+    });
+  }
+
+  async function saveJiraConnection() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (!canSaveJiraConnection) {
+      setError("Jira URL, project key and issue type are required");
+      return;
+    }
+
+    await runAction("Saving Jira connection", async () => {
+      const payload = buildJiraConnectionPayload(jiraConnectionForm);
+      const connection = activeJiraConnection
+        ? await request<JiraConnection>(`/api/v1/integrations/jira/${activeJiraConnection.id}`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify(payload),
+          })
+        : await request<JiraConnection>("/api/v1/integrations/jira", {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+          });
+      setJiraConnections((current) => [
+        connection,
+        ...current.filter((item) => item.id !== connection.id),
+      ]);
+      setJiraConnectionForm(jiraConnectionFormFromRead(connection));
+      setMessage("Jira connection saved");
+    });
+  }
+
+  async function testJiraConnection() {
+    if (!activeJiraConnection) {
+      setError("Save Jira connection first");
+      return;
+    }
+
+    await runAction("Testing Jira configuration", async () => {
+      const result = await request<JiraConnectionTest>(
+        `/api/v1/integrations/jira/${activeJiraConnection.id}/test`,
+        {
+          method: "POST",
+          headers,
+        },
+      );
+      await refreshJiraConnections({ silent: true });
+      setMessage(`${result.status}: ${result.message}`);
     });
   }
 
@@ -1164,6 +1261,33 @@ export default function Home() {
     setSelectedImportSheet("");
   }
 
+  function jiraConnectionFormFromRead(connection: JiraConnection) {
+    return {
+      baseUrl: connection.base_url,
+      authEmail: connection.auth_email ?? "",
+      apiToken: "",
+      defaultProjectKey: connection.default_project_key,
+      defaultIssueType: connection.default_issue_type,
+      defaultAssignee: connection.default_assignee ?? "",
+    };
+  }
+
+  function buildJiraConnectionPayload(form: typeof jiraConnectionForm) {
+    const payload: Record<string, unknown> = {
+      base_url: form.baseUrl.trim(),
+      auth_type: "api_token",
+      auth_email: form.authEmail.trim() || null,
+      default_project_key: form.defaultProjectKey.trim(),
+      default_issue_type: form.defaultIssueType.trim(),
+      default_assignee: form.defaultAssignee.trim() || null,
+      is_active: true,
+    };
+    if (form.apiToken.trim()) {
+      payload.api_token = form.apiToken.trim();
+    }
+    return payload;
+  }
+
   async function runAction(label: string, action: () => Promise<void>) {
     setStatus("working");
     setMessage(label);
@@ -1205,6 +1329,9 @@ export default function Home() {
           </a>
           <a className="navItem" href="#parameters">
             <Settings2 size={18} /> Parameters
+          </a>
+          <a className="navItem" href="#integrations">
+            <Settings2 size={18} /> Integrations
           </a>
           <a className="navItem" href="#import">
             <Upload size={18} /> Import
@@ -1305,6 +1432,151 @@ export default function Home() {
                 Save parameter
               </button>
             </div>
+          </section>
+
+          <section id="integrations" className="panel integrationPanel">
+            <div className="panelHeader">
+              <h2>Integrations</h2>
+              <span>
+                {activeJiraConnection ? activeJiraConnection.credential_status : "Jira pending"}
+              </span>
+            </div>
+            <div className="jiraForm">
+              <label>
+                <span>Jira URL</span>
+                <input
+                  value={jiraConnectionForm.baseUrl}
+                  onChange={(event) =>
+                    setJiraConnectionForm((current) => ({
+                      ...current,
+                      baseUrl: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Project key</span>
+                <input
+                  value={jiraConnectionForm.defaultProjectKey}
+                  onChange={(event) =>
+                    setJiraConnectionForm((current) => ({
+                      ...current,
+                      defaultProjectKey: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Issue type</span>
+                <input
+                  value={jiraConnectionForm.defaultIssueType}
+                  onChange={(event) =>
+                    setJiraConnectionForm((current) => ({
+                      ...current,
+                      defaultIssueType: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Auth email</span>
+                <input
+                  value={jiraConnectionForm.authEmail}
+                  onChange={(event) =>
+                    setJiraConnectionForm((current) => ({
+                      ...current,
+                      authEmail: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>API token</span>
+                <input
+                  type="password"
+                  value={jiraConnectionForm.apiToken}
+                  onChange={(event) =>
+                    setJiraConnectionForm((current) => ({
+                      ...current,
+                      apiToken: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <label>
+                <span>Assignee</span>
+                <input
+                  value={jiraConnectionForm.defaultAssignee}
+                  onChange={(event) =>
+                    setJiraConnectionForm((current) => ({
+                      ...current,
+                      defaultAssignee: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                />
+              </label>
+              <div className="integrationActions">
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={saveJiraConnection}
+                  disabled={!canSaveJiraConnection}
+                >
+                  <Save size={17} />
+                  Save Jira
+                </button>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={() => refreshJiraConnections()}
+                  disabled={!canEditTenantData}
+                >
+                  <RefreshCw size={17} />
+                  Refresh
+                </button>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={testJiraConnection}
+                  disabled={!canTestJiraConnection}
+                >
+                  <Check size={17} />
+                  Test
+                </button>
+              </div>
+            </div>
+            {activeJiraConnection ? (
+              <div className="jiraConnectionSummary">
+                <div>
+                  <span>Base URL</span>
+                  <strong>{activeJiraConnection.base_url}</strong>
+                </div>
+                <div>
+                  <span>Project</span>
+                  <strong>{activeJiraConnection.default_project_key}</strong>
+                </div>
+                <div>
+                  <span>Issue</span>
+                  <strong>{activeJiraConnection.default_issue_type}</strong>
+                </div>
+                <div>
+                  <span>Last test</span>
+                  <strong>{activeJiraConnection.last_test_status ?? "Pending"}</strong>
+                </div>
+                <div className="wide">
+                  <span>Message</span>
+                  <strong>{activeJiraConnection.last_test_message ?? "-"}</strong>
+                </div>
+              </div>
+            ) : (
+              <div className="empty">No Jira connection saved.</div>
+            )}
           </section>
 
           <section id="materials" className="panel materialPanel">

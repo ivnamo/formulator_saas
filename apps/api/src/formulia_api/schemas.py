@@ -179,6 +179,72 @@ class CompatibilityRuleRead(BaseModel):
     created_at: datetime
 
 
+def default_jira_status_mapping() -> dict[str, str]:
+    return {
+        "Pendiente de revision": "sent_to_jira",
+        "En revision laboratorio": "in_lab_review",
+        "Cambios solicitados": "changes_requested",
+        "Aprobada": "approved",
+        "Rechazada": "rejected",
+        "En pruebas": "in_testing",
+        "Validada": "validated",
+        "Cerrada": "closed",
+    }
+
+
+class JiraConnectionCreate(BaseModel):
+    base_url: str = Field(min_length=1)
+    auth_type: Literal["api_token", "oauth"] = "api_token"
+    auth_email: str | None = None
+    api_token: str | None = None
+    default_project_key: str = Field(min_length=1)
+    default_issue_type: str = Field(min_length=1)
+    default_assignee: str | None = None
+    field_mapping: dict[str, str] = Field(default_factory=dict)
+    status_mapping: dict[str, str] = Field(default_factory=default_jira_status_mapping)
+    is_active: bool = True
+
+
+class JiraConnectionUpdate(BaseModel):
+    base_url: str | None = None
+    auth_type: Literal["api_token", "oauth"] | None = None
+    auth_email: str | None = None
+    api_token: str | None = None
+    default_project_key: str | None = None
+    default_issue_type: str | None = None
+    default_assignee: str | None = None
+    field_mapping: dict[str, str] | None = None
+    status_mapping: dict[str, str] | None = None
+    is_active: bool | None = None
+
+
+class JiraConnectionRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    base_url: str
+    auth_type: str
+    auth_email: str | None
+    credential_status: str
+    default_project_key: str
+    default_issue_type: str
+    default_assignee: str | None
+    field_mapping: dict[str, str]
+    status_mapping: dict[str, str]
+    is_active: bool
+    last_test_status: str | None
+    last_test_message: str | None
+    last_tested_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class JiraConnectionTestRead(BaseModel):
+    connection_id: uuid.UUID
+    status: str
+    message: str
+    checked_at: datetime
+
+
 class FormulaCalculationHistoryRead(BaseModel):
     id: uuid.UUID
     formula_id: uuid.UUID

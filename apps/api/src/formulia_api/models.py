@@ -175,6 +175,28 @@ class CompatibilityRule(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class JiraConnection(SQLModel, table=True):
+    __tablename__ = "jira_connections"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    base_url: str
+    auth_type: str = "api_token"
+    auth_email: str | None = None
+    credential_status: str = "missing"
+    default_project_key: str
+    default_issue_type: str
+    default_assignee: str | None = None
+    field_mapping_json: dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON))
+    status_mapping_json: dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON))
+    is_active: bool = True
+    last_test_status: str | None = None
+    last_test_message: str | None = None
+    last_tested_at: datetime | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
 class AiRun(SQLModel, table=True):
     __tablename__ = "ai_runs"
 

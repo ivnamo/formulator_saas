@@ -136,6 +136,42 @@ export type CompatibilityRuleRead = {
   created_at: string;
 };
 
+export type JiraConnection = {
+  id: string;
+  tenant_id: string;
+  base_url: string;
+  auth_type: "api_token" | "oauth" | string;
+  auth_email: string | null;
+  credential_status: string;
+  default_project_key: string;
+  default_issue_type: string;
+  default_assignee: string | null;
+  field_mapping: Record<string, string>;
+  status_mapping: Record<string, string>;
+  is_active: boolean;
+  last_test_status: string | null;
+  last_test_message: string | null;
+  last_tested_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type JiraConnectionTest = {
+  connection_id: string;
+  status: string;
+  message: string;
+  checked_at: string;
+};
+
+export type JiraConnectionForm = {
+  baseUrl: string;
+  authEmail: string;
+  apiToken: string;
+  defaultProjectKey: string;
+  defaultIssueType: string;
+  defaultAssignee: string;
+};
+
 export type FormulaCalculationHistory = {
   id: string;
   formula_id: string;
@@ -337,6 +373,15 @@ export const emptyWorkspace: WorkspaceState = {
   formulaId: null,
   formulaName: "Manual Formula",
   formulaLines: [],
+};
+
+export const emptyJiraConnectionForm: JiraConnectionForm = {
+  baseUrl: "https://example.atlassian.net",
+  authEmail: "",
+  apiToken: "",
+  defaultProjectKey: "LAB",
+  defaultIssueType: "Revision de formula",
+  defaultAssignee: "",
 };
 
 export function parseOptionalNumber(value: string): number | null {

@@ -43,6 +43,7 @@ from .excel_import import (
     list_formula_xlsx_sheets,
     parse_formula_xlsx,
 )
+from .jira_integration import register_jira_routes
 from .local_env import load_local_env
 from .models import (
     AiRun,
@@ -116,6 +117,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     register_routes(app)
+    register_jira_routes(app)
     return app
 
 

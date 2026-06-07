@@ -301,6 +301,10 @@ label span {
   grid-column: span 1;
 }
 
+.integrationPanel {
+  grid-column: 1 / -1;
+}
+
 .formGrid,
 .materialForm {
   display: grid;
@@ -319,6 +323,56 @@ label span {
 .materialPanel,
 .compatibilityPanel {
   grid-column: 1;
+}
+
+.jiraForm {
+  display: grid;
+  grid-template-columns:
+    minmax(190px, 1fr) minmax(110px, 0.55fr) minmax(150px, 0.75fr)
+    minmax(170px, 0.85fr) minmax(150px, 0.75fr) minmax(140px, 0.7fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.integrationActions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.jiraConnectionSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.jiraConnectionSummary div {
+  min-width: 0;
+  min-height: 46px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.jiraConnectionSummary .wide {
+  grid-column: 1 / -1;
+}
+
+.jiraConnectionSummary span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.jiraConnectionSummary strong {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .libraryPanel {
@@ -1452,6 +1506,8 @@ label span {
   .formGrid.threeColumns,
   .materialForm,
   .compatibilityForm,
+  .jiraForm,
+  .jiraConnectionSummary,
   .importActions,
   .libraryActions,
   .comparisonConstraintBar,
@@ -1530,6 +1586,7 @@ label span {
 
   .formGrid,
   .aliasEditor,
+  .integrationActions,
   .agentCandidateRow,
   .comparisonHeader,
   .comparisonStats,
