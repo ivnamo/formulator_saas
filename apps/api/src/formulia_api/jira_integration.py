@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from io import BytesIO
 from typing import Any
 
@@ -9,7 +10,14 @@ from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 
 from .database import get_session
-from .jira_excel import JIRA_REVIEW_EXCEL_TYPE, build_jira_review_excel
+from .jira_client import (
+    JiraClientError,
+    JiraConfigurationError,
+    JiraIssueResult,
+    build_jira_issue_payload,
+    make_jira_client,
+)
+from .jira_excel import JIRA_REVIEW_EXCEL_TYPE, JiraReviewExcel, build_jira_review_excel
 from .models import (
     Formula,
     FormulaCalculationResult,
@@ -210,20 +218,7 @@ def register_jira_routes(app: FastAPI) -> None:
             response.status_code = 200
             return _formula_review_artifact_read(existing)
 
-        excel = build_jira_review_excel(review.snapshot_json, review.id)
-        artifact = FormulaReviewArtifact(
-            tenant_id=tenant.tenant_id,
-            review_request_id=review.id,
-            artifact_type=JIRA_REVIEW_EXCEL_TYPE,
-            file_name=excel.file_name,
-            content_type=excel.content_type,
-            checksum_sha256=excel.checksum_sha256,
-            size_bytes=excel.size_bytes,
-            content=excel.content,
-        )
-        session.add(artifact)
-        session.commit()
-        session.refresh(artifact)
+        artifact = _create_review_excel_artifact(session, tenant.tenant_id, review)
         return _formula_review_artifact_read(artifact)
 
     @app.get("/api/v1/formula-review-artifacts/{artifact_id}/download")
@@ -240,6 +235,65 @@ def register_jira_routes(app: FastAPI) -> None:
                 "Content-Disposition": f'attachment; filename="{artifact.file_name}"',
             },
         )
+
+    @app.post(
+        "/api/v1/formula-reviews/{review_id}/jira/send",
+        response_model=FormulaReviewRequestRead,
+    )
+    def send_formula_review_to_jira(
+        review_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        _require_formula_reviewer(tenant)
+        review = _get_formula_review_request(session, tenant.tenant_id, review_id)
+        if review.jira_issue_key:
+            raise HTTPException(status_code=409, detail="Formula review is already sent to Jira.")
+
+        connection = _get_jira_connection(
+            session,
+            tenant.tenant_id,
+            review.jira_connection_id,
+        )
+        artifact = _ensure_review_excel_artifact(session, tenant.tenant_id, review)
+        payload = build_jira_issue_payload(review.snapshot_json, connection)
+        try:
+            jira_client = make_jira_client(connection)
+            issue = jira_client.create_issue(payload)
+        except JiraConfigurationError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except JiraClientError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        sent_at = utc_now()
+        try:
+            jira_client.add_attachment(issue.key, _excel_from_artifact(artifact))
+        except JiraClientError:
+            _mark_review_jira_sent(
+                review,
+                issue,
+                sent_at=sent_at,
+                sent_by_user_id=tenant.user_id,
+                review_status="partial_failure",
+                jira_status="attachment_failed",
+            )
+            session.add(review)
+            session.commit()
+            session.refresh(review)
+            return _formula_review_request_read(review)
+
+        _mark_review_jira_sent(
+            review,
+            issue,
+            sent_at=sent_at,
+            sent_by_user_id=tenant.user_id,
+            review_status="sent_to_jira",
+            jira_status=issue.status,
+        )
+        session.add(review)
+        session.commit()
+        session.refresh(review)
+        return _formula_review_request_read(review)
 
 
 def _require_integration_admin(tenant: TenantContext) -> None:
@@ -332,7 +386,10 @@ def _new_jira_connection(
         base_url=_normalize_jira_base_url(payload.base_url),
         auth_type=payload.auth_type,
         auth_email=_clean_optional(payload.auth_email),
-        credential_status=_credential_status_from_token(payload.api_token),
+        credential_status=_credential_status_from_token(
+            payload.api_token,
+            auth_type=payload.auth_type,
+        ),
         default_project_key=_normalize_project_key(payload.default_project_key),
         default_issue_type=_clean_required(payload.default_issue_type, "Issue type"),
         default_assignee=_clean_optional(payload.default_assignee),
@@ -351,12 +408,15 @@ def _apply_jira_connection_update(
         connection.base_url = _normalize_jira_base_url(updates["base_url"])
     if "auth_type" in updates and updates["auth_type"] is not None:
         connection.auth_type = updates["auth_type"]
+        if connection.auth_type == "oauth" and "api_token" not in updates:
+            connection.credential_status = "external"
     if "auth_email" in updates:
         connection.auth_email = _clean_optional(updates["auth_email"])
     if "api_token" in updates:
         connection.credential_status = _credential_status_from_token(
             updates["api_token"],
             current_status=connection.credential_status,
+            auth_type=connection.auth_type,
         )
     if "default_project_key" in updates and updates["default_project_key"] is not None:
         connection.default_project_key = _normalize_project_key(updates["default_project_key"])
@@ -395,6 +455,23 @@ def _deactivate_other_jira_connections(
 
 def _jira_connection_test_result(connection: JiraConnection) -> tuple[str, str]:
     missing_fields = []
+    if connection.auth_type == "oauth":
+        if not connection.default_project_key:
+            missing_fields.append("project key")
+        if not connection.default_issue_type:
+            missing_fields.append("issue type")
+        if not connection.base_url:
+            missing_fields.append("base URL")
+        if missing_fields:
+            return (
+                "configuration_error",
+                f"Missing Jira configuration: {', '.join(missing_fields)}.",
+            )
+        return (
+            "ready_for_oauth",
+            "Jira OAuth settings are saved; live token validation is handled during send.",
+        )
+
     if connection.credential_status != "configured":
         missing_fields.append("API token")
     if not connection.auth_email and connection.auth_type == "api_token":
@@ -449,6 +526,67 @@ def _existing_review_artifact(
             FormulaReviewArtifact.artifact_type == JIRA_REVIEW_EXCEL_TYPE,
         )
     ).first()
+
+
+def _ensure_review_excel_artifact(
+    session: Session,
+    tenant_id: uuid.UUID,
+    review: FormulaReviewRequest,
+) -> FormulaReviewArtifact:
+    existing = _existing_review_artifact(session, tenant_id, review.id)
+    if existing is not None:
+        return existing
+    return _create_review_excel_artifact(session, tenant_id, review)
+
+
+def _create_review_excel_artifact(
+    session: Session,
+    tenant_id: uuid.UUID,
+    review: FormulaReviewRequest,
+) -> FormulaReviewArtifact:
+    excel = build_jira_review_excel(review.snapshot_json, review.id)
+    artifact = FormulaReviewArtifact(
+        tenant_id=tenant_id,
+        review_request_id=review.id,
+        artifact_type=JIRA_REVIEW_EXCEL_TYPE,
+        file_name=excel.file_name,
+        content_type=excel.content_type,
+        checksum_sha256=excel.checksum_sha256,
+        size_bytes=excel.size_bytes,
+        content=excel.content,
+    )
+    session.add(artifact)
+    session.commit()
+    session.refresh(artifact)
+    return artifact
+
+
+def _excel_from_artifact(artifact: FormulaReviewArtifact) -> JiraReviewExcel:
+    return JiraReviewExcel(
+        file_name=artifact.file_name,
+        content_type=artifact.content_type,
+        checksum_sha256=artifact.checksum_sha256,
+        size_bytes=artifact.size_bytes,
+        content=artifact.content,
+    )
+
+
+def _mark_review_jira_sent(
+    review: FormulaReviewRequest,
+    issue: JiraIssueResult,
+    *,
+    sent_at: datetime,
+    sent_by_user_id: uuid.UUID,
+    review_status: str,
+    jira_status: str,
+) -> None:
+    review.jira_issue_key = issue.key
+    review.jira_issue_url = issue.url
+    review.jira_status = jira_status
+    review.review_status = review_status
+    review.sent_by_user_id = sent_by_user_id
+    review.sent_at = sent_at
+    review.last_sync_at = sent_at
 
 
 def _formula_items(
@@ -585,7 +723,10 @@ def _clean_mapping(mapping: dict[str, str]) -> dict[str, str]:
 def _credential_status_from_token(
     token: str | None,
     current_status: str = "missing",
+    auth_type: str = "api_token",
 ) -> str:
+    if auth_type == "oauth":
+        return "external"
     if token is None:
         return current_status
     return "configured" if token.strip() else "missing"

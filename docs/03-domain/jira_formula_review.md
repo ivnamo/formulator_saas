@@ -281,6 +281,19 @@ Tablas o entidades orientativas:
 
 ## API propuesta
 
+Referencia base: Jira Cloud Platform REST API v3 (`https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/`).
+
+Decision MVP:
+
+- Usar `/rest/api/3` para Jira Cloud.
+- Usar Atlassian Document Format en `description`.
+- Usar OAuth 2.0 / 3LO como camino principal para Jira Cloud.
+- Llamar con OAuth a `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/...`.
+- Leer `FORMULIA_JIRA_OAUTH_ACCESS_TOKEN` y `FORMULIA_JIRA_CLOUD_ID` desde `.env.local`.
+- Guardar `FORMULIA_JIRA_OAUTH_CLIENT_ID`, `FORMULIA_JIRA_OAUTH_CLIENT_SECRET` y `FORMULIA_JIRA_OAUTH_REDIRECT_URI` localmente solo para preparar el flujo 3LO.
+- Mantener Basic Auth con email + API token solo como fallback local/ad-hoc mediante `FORMULIA_JIRA_API_TOKEN`.
+- Dejar callback OAuth, refresh token automatico y cifrado de tokens para una fase posterior.
+
 ```http
 GET /integrations/jira
 POST /integrations/jira

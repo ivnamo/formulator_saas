@@ -207,6 +207,7 @@ export type FormulaReviewArtifact = {
 };
 
 export type JiraConnectionForm = {
+  authType: "api_token" | "oauth";
   baseUrl: string;
   authEmail: string;
   apiToken: string;
@@ -419,6 +420,7 @@ export const emptyWorkspace: WorkspaceState = {
 };
 
 export const emptyJiraConnectionForm: JiraConnectionForm = {
+  authType: "oauth",
   baseUrl: "https://example.atlassian.net",
   authEmail: "",
   apiToken: "",

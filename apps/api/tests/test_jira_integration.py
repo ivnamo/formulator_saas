@@ -6,12 +6,48 @@ from openpyxl import load_workbook
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine
 
+from formulia_api import jira_integration
+from formulia_api.jira_client import JiraAttachmentResult, JiraClientError, JiraIssueResult
 from formulia_api.main import create_app
 from formulia_api.models import TenantMember
 
 
 USER_A = "10000000-0000-0000-0000-000000000001"
 USER_B = "20000000-0000-0000-0000-000000000001"
+
+
+class FakeJiraClient:
+    def __init__(self, *, fail_attachment: bool = False) -> None:
+        self.fail_attachment = fail_attachment
+        self.created_payloads: list[dict] = []
+        self.attachments: list[dict] = []
+
+    def create_issue(self, payload: dict) -> JiraIssueResult:
+        self.created_payloads.append(payload)
+        return JiraIssueResult(
+            key="LAB-321",
+            url="https://example.atlassian.net/browse/LAB-321",
+        )
+
+    def add_attachment(self, issue_key: str, artifact: object) -> JiraAttachmentResult:
+        if self.fail_attachment:
+            raise JiraClientError("Attachment upload failed.")
+        self.attachments.append(
+            {
+                "issue_key": issue_key,
+                "file_name": getattr(artifact, "file_name"),
+                "content_type": getattr(artifact, "content_type"),
+                "size_bytes": getattr(artifact, "size_bytes"),
+            }
+        )
+        return JiraAttachmentResult(
+            attachment_id="10001",
+            file_name=getattr(artifact, "file_name"),
+        )
+
+
+def use_fake_jira_client(monkeypatch, fake: FakeJiraClient) -> None:
+    monkeypatch.setattr(jira_integration, "make_jira_client", lambda connection: fake)
 
 
 def make_client() -> TestClient:
@@ -62,6 +98,26 @@ def create_jira_connection(client: TestClient, tenant_id: str, user_id: str = US
             "api_token": "secret-token",
             "default_project_key": "LAB",
             "default_issue_type": "Revision de formula",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def create_oauth_jira_connection(
+    client: TestClient,
+    tenant_id: str,
+    user_id: str = USER_A,
+) -> dict:
+    response = client.post(
+        "/api/v1/integrations/jira",
+        headers=headers(user_id, tenant_id),
+        json={
+            "base_url": "https://example.atlassian.net",
+            "auth_type": "oauth",
+            "default_project_key": "LAB",
+            "default_issue_type": "Revision de formula",
+            "field_mapping": {"formula_name": "customfield_10010"},
         },
     )
     assert response.status_code == 201
@@ -302,6 +358,117 @@ def test_formula_jira_review_excel_artifact_is_generated_and_downloadable() -> N
         for row in workbook["Calculo"].iter_rows(min_row=2, max_col=7)
     ]
     assert any(row[0] == "Validation" and row[1] == "missing_price" for row in calculation_rows)
+
+
+def test_formula_jira_review_can_be_sent_to_jira_with_excel_attachment(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient()
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    connection = create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    request_headers = headers(USER_A, tenant_id)
+
+    client.post(
+        f"/api/v1/formulas/{formula['id']}/calculate",
+        headers=request_headers,
+    )
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=request_headers,
+        json={"notes": "Enviar con OAuth."},
+    ).json()
+
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=request_headers,
+    )
+    listed_artifacts = client.get(
+        f"/api/v1/formula-reviews/{review['id']}/artifacts",
+        headers=request_headers,
+    )
+
+    assert connection["auth_type"] == "oauth"
+    assert connection["credential_status"] == "external"
+    assert sent.status_code == 200
+    sent_review = sent.json()
+    assert sent_review["review_status"] == "sent_to_jira"
+    assert sent_review["jira_issue_key"] == "LAB-321"
+    assert sent_review["jira_issue_url"] == "https://example.atlassian.net/browse/LAB-321"
+    assert sent_review["jira_status"] == "created"
+    assert sent_review["sent_by_user_id"] == USER_A
+    assert sent_review["sent_at"] is not None
+
+    assert len(fake_jira.created_payloads) == 1
+    fields = fake_jira.created_payloads[0]["fields"]
+    assert fields["project"] == {"key": "LAB"}
+    assert fields["issuetype"] == {"name": "Revision de formula"}
+    assert fields["summary"] == review["snapshot"]["jira"]["issue_summary"]
+    assert fields["description"]["type"] == "doc"
+    assert fields["labels"] == ["formulia", "formula-review"]
+    assert fields["customfield_10010"] == "Review Formula"
+
+    assert len(fake_jira.attachments) == 1
+    assert fake_jira.attachments[0]["issue_key"] == "LAB-321"
+    assert fake_jira.attachments[0]["file_name"].endswith(".xlsx")
+    assert fake_jira.attachments[0]["size_bytes"] > 0
+    assert listed_artifacts.status_code == 200
+    assert len(listed_artifacts.json()) == 1
+
+
+def test_formula_jira_review_send_avoids_duplicate_issue(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient()
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={},
+    ).json()
+
+    first_send = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=headers(USER_A, tenant_id),
+    )
+    duplicate_send = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=headers(USER_A, tenant_id),
+    )
+
+    assert first_send.status_code == 200
+    assert duplicate_send.status_code == 409
+    assert duplicate_send.json()["detail"] == "Formula review is already sent to Jira."
+    assert len(fake_jira.created_payloads) == 1
+
+
+def test_formula_jira_review_send_marks_partial_failure_when_attachment_fails(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient(fail_attachment=True)
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={},
+    ).json()
+
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=headers(USER_A, tenant_id),
+    )
+
+    assert sent.status_code == 200
+    sent_review = sent.json()
+    assert sent_review["review_status"] == "partial_failure"
+    assert sent_review["jira_issue_key"] == "LAB-321"
+    assert sent_review["jira_status"] == "attachment_failed"
+    assert len(fake_jira.created_payloads) == 1
+    assert fake_jira.attachments == []
 
 
 def test_formula_jira_review_request_requires_active_connection() -> None:

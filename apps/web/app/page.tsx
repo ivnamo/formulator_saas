@@ -8,6 +8,7 @@ import {
   Check,
   Database,
   Download,
+  ExternalLink,
   FileSpreadsheet,
   FlaskConical,
   FolderOpen,
@@ -17,6 +18,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Send,
   Settings2,
   Trash2,
   Upload,
@@ -50,6 +52,7 @@ import {
   type FormulaRead,
   type FormulaReviewRequest,
   type JiraConnection,
+  type JiraConnectionForm,
   type JiraConnectionTest,
   type MaterialForm,
   type RawMaterialAliasRead,
@@ -663,6 +666,27 @@ export default function Home() {
       link.remove();
       URL.revokeObjectURL(blobUrl);
       setMessage("Jira Excel downloaded");
+    });
+  }
+
+  async function sendJiraReviewToJira(reviewId: string) {
+    await runAction("Sending Jira review", async () => {
+      const review = await request<FormulaReviewRequest>(
+        `/api/v1/formula-reviews/${reviewId}/jira/send`,
+        {
+          method: "POST",
+          headers,
+        },
+      );
+      setFormulaReviewRequests((current) =>
+        current.map((item) => (item.id === review.id ? review : item)),
+      );
+      await loadFormulaReviewRequests(review.formula_id);
+      setMessage(
+        review.review_status === "partial_failure"
+          ? "Jira issue created; Excel attachment failed"
+          : "Jira issue created",
+      );
     });
   }
 
@@ -1375,8 +1399,9 @@ export default function Home() {
     setSelectedImportSheet("");
   }
 
-  function jiraConnectionFormFromRead(connection: JiraConnection) {
+  function jiraConnectionFormFromRead(connection: JiraConnection): JiraConnectionForm {
     return {
+      authType: connection.auth_type === "oauth" ? "oauth" : "api_token",
       baseUrl: connection.base_url,
       authEmail: connection.auth_email ?? "",
       apiToken: "",
@@ -1389,14 +1414,14 @@ export default function Home() {
   function buildJiraConnectionPayload(form: typeof jiraConnectionForm) {
     const payload: Record<string, unknown> = {
       base_url: form.baseUrl.trim(),
-      auth_type: "api_token",
+      auth_type: form.authType,
       auth_email: form.authEmail.trim() || null,
       default_project_key: form.defaultProjectKey.trim(),
       default_issue_type: form.defaultIssueType.trim(),
       default_assignee: form.defaultAssignee.trim() || null,
       is_active: true,
     };
-    if (form.apiToken.trim()) {
+    if (form.authType === "api_token" && form.apiToken.trim()) {
       payload.api_token = form.apiToken.trim();
     }
     return payload;
@@ -1557,6 +1582,22 @@ export default function Home() {
             </div>
             <div className="jiraForm">
               <label>
+                <span>Auth</span>
+                <select
+                  value={jiraConnectionForm.authType}
+                  onChange={(event) =>
+                    setJiraConnectionForm((current) => ({
+                      ...current,
+                      authType: event.target.value === "api_token" ? "api_token" : "oauth",
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                >
+                  <option value="oauth">OAuth 3LO</option>
+                  <option value="api_token">API token</option>
+                </select>
+              </label>
+              <label>
                 <span>Jira URL</span>
                 <input
                   value={jiraConnectionForm.baseUrl}
@@ -1619,7 +1660,7 @@ export default function Home() {
                       apiToken: event.target.value,
                     }))
                   }
-                  disabled={!canEditTenantData}
+                  disabled={!canEditTenantData || jiraConnectionForm.authType === "oauth"}
                 />
               </label>
               <label>
@@ -2915,7 +2956,11 @@ export default function Home() {
                           </strong>
                           {review.snapshot.jira?.project_key ?? "-"} - v{review.formula_version} -{" "}
                           {formatDateTime(review.created_at)}
-                          <small>{excelArtifact?.file_name ?? "Excel pending"}</small>
+                          <small>
+                            {review.jira_issue_key
+                              ? `${review.jira_issue_key} - ${excelArtifact?.file_name ?? "Excel pending"}`
+                              : (excelArtifact?.file_name ?? "Excel pending")}
+                          </small>
                         </span>
                         <div className="jiraReviewActions">
                           <button
@@ -2939,6 +2984,29 @@ export default function Home() {
                             >
                               <Download size={16} />
                             </button>
+                          ) : null}
+                          {!review.jira_issue_key ? (
+                            <button
+                              className="iconButton"
+                              type="button"
+                              onClick={() => sendJiraReviewToJira(review.id)}
+                              disabled={isBusy}
+                              title="Send to Jira"
+                              aria-label="Send review to Jira"
+                            >
+                              <Send size={16} />
+                            </button>
+                          ) : review.jira_issue_url ? (
+                            <a
+                              className="iconButton"
+                              href={review.jira_issue_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Open Jira issue"
+                              aria-label="Open Jira issue"
+                            >
+                              <ExternalLink size={16} />
+                            </a>
                           ) : null}
                         </div>
                       </div>
