@@ -1,6 +1,8 @@
+from io import BytesIO
 import uuid
 
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine
 
@@ -229,6 +231,79 @@ def test_formula_jira_review_request_captures_snapshot() -> None:
     assert [item["id"] for item in listed.json()] == [review["id"]]
 
 
+def test_formula_jira_review_excel_artifact_is_generated_and_downloadable() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    request_headers = headers(USER_A, tenant_id)
+
+    calculation = client.post(
+        f"/api/v1/formulas/{formula['id']}/calculate",
+        headers=request_headers,
+    )
+    created_review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=request_headers,
+        json={"notes": "Preparar paquete Excel."},
+    )
+    review = created_review.json()
+
+    generated = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/artifacts/excel",
+        headers=request_headers,
+    )
+    repeated = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/artifacts/excel",
+        headers=request_headers,
+    )
+    listed = client.get(
+        f"/api/v1/formula-reviews/{review['id']}/artifacts",
+        headers=request_headers,
+    )
+
+    assert calculation.status_code == 200
+    assert created_review.status_code == 201
+    assert generated.status_code == 201
+    assert repeated.status_code == 200
+    artifact = generated.json()
+    assert artifact["id"] == repeated.json()["id"]
+    assert artifact["artifact_type"] == "jira_review_xlsx"
+    assert artifact["file_name"].endswith(".xlsx")
+    assert artifact["size_bytes"] > 0
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()] == [artifact["id"]]
+
+    downloaded = client.get(
+        f"/api/v1/formula-review-artifacts/{artifact['id']}/download",
+        headers=request_headers,
+    )
+
+    assert downloaded.status_code == 200
+    assert artifact["file_name"] in downloaded.headers["content-disposition"]
+
+    workbook = load_workbook(BytesIO(downloaded.content), data_only=True)
+    assert workbook.sheetnames == ["Resumen", "Composicion", "Calculo", "Metadatos"]
+
+    summary = {
+        row[0].value: row[1].value
+        for row in workbook["Resumen"].iter_rows(min_row=2, max_col=2)
+    }
+    assert summary["Formula name"] == "Review Formula"
+    assert summary["Jira project"] == "LAB"
+    assert summary["Notes"] == "Preparar paquete Excel."
+
+    composition = workbook["Composicion"]
+    assert composition["C2"].value == "Material A"
+    assert composition["D2"].value == 100
+
+    calculation_rows = [
+        [cell.value for cell in row]
+        for row in workbook["Calculo"].iter_rows(min_row=2, max_col=7)
+    ]
+    assert any(row[0] == "Validation" and row[1] == "missing_price" for row in calculation_rows)
+
+
 def test_formula_jira_review_request_requires_active_connection() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
@@ -264,3 +339,33 @@ def test_formula_jira_review_requests_are_tenant_scoped() -> None:
 
     assert cross_create.status_code == 404
     assert cross_list.status_code == 404
+
+
+def test_formula_jira_review_artifacts_are_tenant_scoped() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    create_jira_connection(client, tenant_a, USER_A)
+    create_jira_connection(client, tenant_b, USER_B)
+    formula = create_formula(client, tenant_a, USER_A)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_a),
+        json={},
+    ).json()
+    artifact = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/artifacts/excel",
+        headers=headers(USER_A, tenant_a),
+    ).json()
+
+    cross_list = client.get(
+        f"/api/v1/formula-reviews/{review['id']}/artifacts",
+        headers=headers(USER_B, tenant_b),
+    )
+    cross_download = client.get(
+        f"/api/v1/formula-review-artifacts/{artifact['id']}/download",
+        headers=headers(USER_B, tenant_b),
+    )
+
+    assert cross_list.status_code == 404
+    assert cross_download.status_code == 404

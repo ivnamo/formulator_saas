@@ -1372,7 +1372,7 @@ label span {
 
 .jiraReviewRow {
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-columns: 104px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   min-height: 42px;
@@ -1395,6 +1395,18 @@ label span {
 
 .jiraReviewRow strong {
   color: var(--text);
+}
+
+.jiraReviewRow small {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.jiraReviewActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .draftComparison {
@@ -1703,6 +1715,10 @@ label span {
   .jiraReviewHeader {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .jiraReviewActions {
+    justify-content: flex-start;
   }
 
   .draftReviewHeader,

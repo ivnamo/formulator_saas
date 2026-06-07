@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import uuid
+from io import BytesIO
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 
 from .database import get_session
+from .jira_excel import JIRA_REVIEW_EXCEL_TYPE, build_jira_review_excel
 from .models import (
     Formula,
     FormulaCalculationResult,
     FormulaItem,
+    FormulaReviewArtifact,
     FormulaReviewRequest,
     JiraConnection,
     RawMaterial,
@@ -18,6 +22,7 @@ from .models import (
 )
 from .schemas import (
     FormulaJiraReviewCreate,
+    FormulaReviewArtifactRead,
     FormulaReviewRequestRead,
     JiraConnectionCreate,
     JiraConnectionRead,
@@ -167,6 +172,75 @@ def register_jira_routes(app: FastAPI) -> None:
         session.refresh(review)
         return _formula_review_request_read(review)
 
+    @app.get(
+        "/api/v1/formula-reviews/{review_id}/artifacts",
+        response_model=list[FormulaReviewArtifactRead],
+    )
+    def list_formula_review_artifacts(
+        review_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        _get_formula_review_request(session, tenant.tenant_id, review_id)
+        artifacts = session.exec(
+            select(FormulaReviewArtifact)
+            .where(
+                FormulaReviewArtifact.tenant_id == tenant.tenant_id,
+                FormulaReviewArtifact.review_request_id == review_id,
+            )
+            .order_by(FormulaReviewArtifact.created_at.desc())
+        ).all()
+        return [_formula_review_artifact_read(artifact) for artifact in artifacts]
+
+    @app.post(
+        "/api/v1/formula-reviews/{review_id}/artifacts/excel",
+        response_model=FormulaReviewArtifactRead,
+        status_code=201,
+    )
+    def create_formula_review_excel_artifact(
+        review_id: uuid.UUID,
+        response: Response,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        _require_formula_reviewer(tenant)
+        review = _get_formula_review_request(session, tenant.tenant_id, review_id)
+        existing = _existing_review_artifact(session, tenant.tenant_id, review.id)
+        if existing is not None:
+            response.status_code = 200
+            return _formula_review_artifact_read(existing)
+
+        excel = build_jira_review_excel(review.snapshot_json, review.id)
+        artifact = FormulaReviewArtifact(
+            tenant_id=tenant.tenant_id,
+            review_request_id=review.id,
+            artifact_type=JIRA_REVIEW_EXCEL_TYPE,
+            file_name=excel.file_name,
+            content_type=excel.content_type,
+            checksum_sha256=excel.checksum_sha256,
+            size_bytes=excel.size_bytes,
+            content=excel.content,
+        )
+        session.add(artifact)
+        session.commit()
+        session.refresh(artifact)
+        return _formula_review_artifact_read(artifact)
+
+    @app.get("/api/v1/formula-review-artifacts/{artifact_id}/download")
+    def download_formula_review_artifact(
+        artifact_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> StreamingResponse:
+        artifact = _get_formula_review_artifact(session, tenant.tenant_id, artifact_id)
+        return StreamingResponse(
+            BytesIO(artifact.content),
+            media_type=artifact.content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{artifact.file_name}"',
+            },
+        )
+
 
 def _require_integration_admin(tenant: TenantContext) -> None:
     if tenant.role not in {"owner", "admin"}:
@@ -215,6 +289,38 @@ def _get_formula(session: Session, tenant_id: uuid.UUID, formula_id: uuid.UUID) 
     if formula is None:
         raise HTTPException(status_code=404, detail="Formula not found.")
     return formula
+
+
+def _get_formula_review_request(
+    session: Session,
+    tenant_id: uuid.UUID,
+    review_id: uuid.UUID,
+) -> FormulaReviewRequest:
+    review = session.exec(
+        select(FormulaReviewRequest).where(
+            FormulaReviewRequest.id == review_id,
+            FormulaReviewRequest.tenant_id == tenant_id,
+        )
+    ).first()
+    if review is None:
+        raise HTTPException(status_code=404, detail="Formula review request not found.")
+    return review
+
+
+def _get_formula_review_artifact(
+    session: Session,
+    tenant_id: uuid.UUID,
+    artifact_id: uuid.UUID,
+) -> FormulaReviewArtifact:
+    artifact = session.exec(
+        select(FormulaReviewArtifact).where(
+            FormulaReviewArtifact.id == artifact_id,
+            FormulaReviewArtifact.tenant_id == tenant_id,
+        )
+    ).first()
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="Formula review artifact not found.")
+    return artifact
 
 
 def _new_jira_connection(
@@ -322,6 +428,27 @@ def _formula_review_request_read(request: FormulaReviewRequest) -> dict[str, Any
         **request.model_dump(mode="json"),
         "snapshot": request.snapshot_json,
     }
+
+
+def _formula_review_artifact_read(artifact: FormulaReviewArtifact) -> dict[str, Any]:
+    return artifact.model_dump(
+        mode="json",
+        exclude={"content"},
+    )
+
+
+def _existing_review_artifact(
+    session: Session,
+    tenant_id: uuid.UUID,
+    review_id: uuid.UUID,
+) -> FormulaReviewArtifact | None:
+    return session.exec(
+        select(FormulaReviewArtifact).where(
+            FormulaReviewArtifact.tenant_id == tenant_id,
+            FormulaReviewArtifact.review_request_id == review_id,
+            FormulaReviewArtifact.artifact_type == JIRA_REVIEW_EXCEL_TYPE,
+        )
+    ).first()
 
 
 def _formula_items(

@@ -7,6 +7,8 @@ import {
   Calculator,
   Check,
   Database,
+  Download,
+  FileSpreadsheet,
   FlaskConical,
   FolderOpen,
   History,
@@ -44,6 +46,7 @@ import {
   type ExcelImportPreviewRow,
   type ExcelImportSheets,
   type FormulaCalculationHistory,
+  type FormulaReviewArtifact,
   type FormulaRead,
   type FormulaReviewRequest,
   type JiraConnection,
@@ -87,6 +90,9 @@ export default function Home() {
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
   const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
   const [formulaReviewRequests, setFormulaReviewRequests] = useState<FormulaReviewRequest[]>([]);
+  const [formulaReviewArtifacts, setFormulaReviewArtifacts] = useState<
+    Record<string, FormulaReviewArtifact[]>
+  >({});
   const [compatibilityRules, setCompatibilityRules] = useState<CompatibilityRuleRead[]>([]);
   const [compatibilityRuleForm, setCompatibilityRuleForm] = useState({
     materialAId: "",
@@ -281,6 +287,7 @@ export default function Home() {
       setFormulas([]);
       setCalculationHistory([]);
       setFormulaReviewRequests([]);
+      setFormulaReviewArtifacts({});
       setCompatibilityRules([]);
       setCompatibilityRuleForm({
         materialAId: "",
@@ -613,7 +620,49 @@ export default function Home() {
         review,
         ...current.filter((item) => item.id !== review.id),
       ]);
+      setFormulaReviewArtifacts((current) => ({ ...current, [review.id]: [] }));
       setMessage("Jira review prepared");
+    });
+  }
+
+  async function generateJiraReviewExcel(reviewId: string) {
+    await runAction("Generating Jira Excel", async () => {
+      const artifact = await request<FormulaReviewArtifact>(
+        `/api/v1/formula-reviews/${reviewId}/artifacts/excel`,
+        {
+          method: "POST",
+          headers,
+        },
+      );
+      setFormulaReviewArtifacts((current) => ({
+        ...current,
+        [reviewId]: [
+          artifact,
+          ...(current[reviewId] ?? []).filter((item) => item.id !== artifact.id),
+        ],
+      }));
+      setMessage("Jira Excel ready");
+    });
+  }
+
+  async function downloadJiraReviewArtifact(artifact: FormulaReviewArtifact) {
+    await runAction("Downloading Jira Excel", async () => {
+      const response = await fetch(
+        `${apiUrl}/api/v1/formula-review-artifacts/${artifact.id}/download`,
+        { method: "GET", headers: uploadHeaders },
+      );
+      if (!response.ok) {
+        throw new Error(`API ${response.status}: ${await response.text()}`);
+      }
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = artifact.file_name;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+      setMessage("Jira Excel downloaded");
     });
   }
 
@@ -969,6 +1018,7 @@ export default function Home() {
       }));
       setResult(null);
       setDraftReview(null);
+      setFormulaReviewArtifacts({});
       resetImportState();
       await loadCalculationHistory(formula.id);
       await loadFormulaReviewRequests(formula.id);
@@ -990,6 +1040,20 @@ export default function Home() {
       { method: "GET", headers },
     );
     setFormulaReviewRequests(reviews);
+    await loadFormulaReviewArtifacts(reviews);
+  }
+
+  async function loadFormulaReviewArtifacts(reviews: FormulaReviewRequest[]) {
+    const entries = await Promise.all(
+      reviews.map(async (review) => {
+        const artifacts = await request<FormulaReviewArtifact[]>(
+          `/api/v1/formula-reviews/${review.id}/artifacts`,
+          { method: "GET", headers },
+        );
+        return [review.id, artifacts] as const;
+      }),
+    );
+    setFormulaReviewArtifacts(Object.fromEntries(entries));
   }
 
   async function parseRequirements() {
@@ -2837,18 +2901,49 @@ export default function Home() {
                 <div className="jiraReviewEmpty">No Jira review prepared for this formula.</div>
               ) : (
                 <div className="jiraReviewList">
-                  {formulaReviewRequests.map((review) => (
-                    <div className="jiraReviewRow" key={review.id}>
-                      <code>{review.review_status}</code>
-                      <span>
-                        <strong>
-                          {review.snapshot.jira?.issue_summary ?? "Formula review"}
-                        </strong>
-                        {review.snapshot.jira?.project_key ?? "-"} - v{review.formula_version} -{" "}
-                        {formatDateTime(review.created_at)}
-                      </span>
-                    </div>
-                  ))}
+                  {formulaReviewRequests.map((review) => {
+                    const excelArtifact =
+                      (formulaReviewArtifacts[review.id] ?? []).find(
+                        (artifact) => artifact.artifact_type === "jira_review_xlsx",
+                      ) ?? null;
+                    return (
+                      <div className="jiraReviewRow" key={review.id}>
+                        <code>{review.review_status}</code>
+                        <span>
+                          <strong>
+                            {review.snapshot.jira?.issue_summary ?? "Formula review"}
+                          </strong>
+                          {review.snapshot.jira?.project_key ?? "-"} - v{review.formula_version} -{" "}
+                          {formatDateTime(review.created_at)}
+                          <small>{excelArtifact?.file_name ?? "Excel pending"}</small>
+                        </span>
+                        <div className="jiraReviewActions">
+                          <button
+                            className="iconButton"
+                            type="button"
+                            onClick={() => generateJiraReviewExcel(review.id)}
+                            disabled={isBusy}
+                            title="Generate Excel"
+                            aria-label="Generate Jira review Excel"
+                          >
+                            <FileSpreadsheet size={16} />
+                          </button>
+                          {excelArtifact ? (
+                            <button
+                              className="iconButton"
+                              type="button"
+                              onClick={() => downloadJiraReviewArtifact(excelArtifact)}
+                              disabled={isBusy}
+                              title="Download Excel"
+                              aria-label="Download Jira review Excel"
+                            >
+                              <Download size={16} />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

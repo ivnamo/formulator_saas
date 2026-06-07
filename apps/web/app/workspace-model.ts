@@ -194,6 +194,18 @@ export type FormulaReviewRequest = {
   created_at: string;
 };
 
+export type FormulaReviewArtifact = {
+  id: string;
+  tenant_id: string;
+  review_request_id: string;
+  artifact_type: string;
+  file_name: string;
+  content_type: string;
+  checksum_sha256: string;
+  size_bytes: number;
+  created_at: string;
+};
+
 export type JiraConnectionForm = {
   baseUrl: string;
   authEmail: string;

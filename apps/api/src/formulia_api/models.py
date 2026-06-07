@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Any
 
-from sqlalchemy import Column
+from sqlalchemy import Column, LargeBinary
 from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
 
@@ -213,6 +213,21 @@ class FormulaReviewRequest(SQLModel, table=True):
     sent_at: datetime | None = None
     last_sync_at: datetime | None = None
     snapshot_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class FormulaReviewArtifact(SQLModel, table=True):
+    __tablename__ = "formula_review_artifacts"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    review_request_id: uuid.UUID = Field(index=True, foreign_key="formula_review_requests.id")
+    artifact_type: str = Field(default="jira_review_xlsx", index=True)
+    file_name: str
+    content_type: str
+    checksum_sha256: str
+    size_bytes: int
+    content: bytes = Field(sa_column=Column(LargeBinary))
     created_at: datetime = Field(default_factory=utc_now)
 
 

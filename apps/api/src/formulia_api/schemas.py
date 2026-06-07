@@ -266,6 +266,18 @@ class FormulaReviewRequestRead(BaseModel):
     created_at: datetime
 
 
+class FormulaReviewArtifactRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    review_request_id: uuid.UUID
+    artifact_type: str
+    file_name: str
+    content_type: str
+    checksum_sha256: str
+    size_bytes: int
+    created_at: datetime
+
+
 class FormulaCalculationHistoryRead(BaseModel):
     id: uuid.UUID
     formula_id: uuid.UUID
