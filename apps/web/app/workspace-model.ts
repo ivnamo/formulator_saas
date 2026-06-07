@@ -163,6 +163,19 @@ export type JiraConnectionTest = {
   checked_at: string;
 };
 
+export type JiraOAuthAuthorize = {
+  authorization_url: string;
+  state: string;
+};
+
+export type JiraOAuthCallbackResult = {
+  status: string;
+  cloud_id: string;
+  site_url: string;
+  expires_at: number;
+  scope: string | null;
+};
+
 export type FormulaReviewRequest = {
   id: string;
   tenant_id: string;
@@ -424,8 +437,8 @@ export const emptyJiraConnectionForm: JiraConnectionForm = {
   baseUrl: "https://example.atlassian.net",
   authEmail: "",
   apiToken: "",
-  defaultProjectKey: "LAB",
-  defaultIssueType: "Revision de formula",
+  defaultProjectKey: "ID",
+  defaultIssueType: "Calidad",
   defaultAssignee: "",
 };
 

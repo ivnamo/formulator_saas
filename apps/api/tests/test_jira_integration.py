@@ -8,6 +8,7 @@ from sqlmodel import SQLModel, Session, create_engine
 
 from formulia_api import jira_integration
 from formulia_api.jira_client import JiraAttachmentResult, JiraClientError, JiraIssueResult
+from formulia_api.jira_oauth import JiraOAuthCallbackResult
 from formulia_api.main import create_app
 from formulia_api.models import TenantMember
 
@@ -180,6 +181,61 @@ def test_owner_configures_and_tests_jira_connection() -> None:
 
     assert tested.status_code == 200
     assert tested.json()["status"] == "ready_for_client"
+
+
+def test_jira_oauth_authorize_url_requires_admin_and_returns_redirect(monkeypatch) -> None:
+    monkeypatch.setenv("FORMULIA_JIRA_OAUTH_CLIENT_ID", "client-id")
+    monkeypatch.setenv("FORMULIA_JIRA_OAUTH_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("FORMULIA_JIRA_OAUTH_REDIRECT_URI", "http://localhost:3000/callback")
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    add_member(client, tenant_id, USER_B, "formulator")
+
+    authorized = client.get(
+        "/api/v1/integrations/jira/oauth/authorize-url",
+        headers=headers(USER_A, tenant_id),
+    )
+    forbidden = client.get(
+        "/api/v1/integrations/jira/oauth/authorize-url",
+        headers=headers(USER_B, tenant_id),
+    )
+
+    assert authorized.status_code == 200
+    assert authorized.json()["authorization_url"].startswith(
+        "https://auth.atlassian.com/authorize?"
+    )
+    assert authorized.json()["state"]
+    assert forbidden.status_code == 403
+
+
+def test_jira_oauth_callback_route_completes_exchange(monkeypatch) -> None:
+    client = make_client()
+
+    def fake_complete(code: str, state: str) -> JiraOAuthCallbackResult:
+        assert code == "authorization-code"
+        assert state == "signed-state"
+        return JiraOAuthCallbackResult(
+            cloud_id="cloud-123",
+            site_url="https://example.atlassian.net",
+            expires_at=1234567890,
+            scope="read:issue:jira write:issue:jira offline_access",
+        )
+
+    monkeypatch.setattr(jira_integration.jira_oauth, "complete_jira_oauth_callback", fake_complete)
+
+    response = client.post(
+        "/api/v1/integrations/jira/oauth/callback",
+        json={"code": "authorization-code", "state": "signed-state"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "connected",
+        "cloud_id": "cloud-123",
+        "site_url": "https://example.atlassian.net",
+        "expires_at": 1234567890,
+        "scope": "read:issue:jira write:issue:jira offline_access",
+    }
 
 
 def test_jira_connections_are_tenant_scoped() -> None:

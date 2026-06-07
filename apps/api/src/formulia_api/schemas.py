@@ -245,6 +245,24 @@ class JiraConnectionTestRead(BaseModel):
     checked_at: datetime
 
 
+class JiraOAuthAuthorizeRead(BaseModel):
+    authorization_url: str
+    state: str
+
+
+class JiraOAuthCallbackCreate(BaseModel):
+    code: str = Field(min_length=1)
+    state: str = Field(min_length=1)
+
+
+class JiraOAuthCallbackRead(BaseModel):
+    status: str
+    cloud_id: str
+    site_url: str
+    expires_at: int
+    scope: str | None = None
+
+
 class FormulaJiraReviewCreate(BaseModel):
     notes: str | None = None
 

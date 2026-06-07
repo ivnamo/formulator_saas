@@ -9,6 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 
+from . import jira_oauth
 from .database import get_session
 from .jira_client import (
     JiraClientError,
@@ -35,12 +36,48 @@ from .schemas import (
     JiraConnectionCreate,
     JiraConnectionRead,
     JiraConnectionTestRead,
+    JiraOAuthAuthorizeRead,
+    JiraOAuthCallbackCreate,
+    JiraOAuthCallbackRead,
     JiraConnectionUpdate,
 )
 from .tenant import TenantContext, require_tenant_context
 
 
 def register_jira_routes(app: FastAPI) -> None:
+    @app.get(
+        "/api/v1/integrations/jira/oauth/authorize-url",
+        response_model=JiraOAuthAuthorizeRead,
+    )
+    def get_jira_oauth_authorize_url(
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, str]:
+        _require_integration_admin(tenant)
+        try:
+            authorization_url, state = jira_oauth.build_jira_oauth_authorization_url(tenant)
+        except jira_oauth.JiraOAuthError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return {"authorization_url": authorization_url, "state": state}
+
+    @app.post(
+        "/api/v1/integrations/jira/oauth/callback",
+        response_model=JiraOAuthCallbackRead,
+    )
+    def complete_jira_oauth_callback(
+        payload: JiraOAuthCallbackCreate,
+    ) -> dict[str, Any]:
+        try:
+            result = jira_oauth.complete_jira_oauth_callback(payload.code, payload.state)
+        except jira_oauth.JiraOAuthError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            "status": "connected",
+            "cloud_id": result.cloud_id,
+            "site_url": result.site_url,
+            "expires_at": result.expires_at,
+            "scope": result.scope,
+        }
+
     @app.get("/api/v1/integrations/jira", response_model=list[JiraConnectionRead])
     def list_jira_connections(
         session: Session = Depends(get_session),

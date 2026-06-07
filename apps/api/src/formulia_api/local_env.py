@@ -12,7 +12,10 @@ LOCAL_ENV_NAMES = {
     "FORMULIA_JIRA_OAUTH_ACCESS_TOKEN",
     "FORMULIA_JIRA_OAUTH_CLIENT_ID",
     "FORMULIA_JIRA_OAUTH_CLIENT_SECRET",
+    "FORMULIA_JIRA_OAUTH_EXPIRES_AT",
     "FORMULIA_JIRA_OAUTH_REDIRECT_URI",
+    "FORMULIA_JIRA_OAUTH_REFRESH_TOKEN",
+    "FORMULIA_JIRA_SITE_URL",
     "OPENAI_API_KEY",
     "REQUIREMENT_PARSER_MODEL",
     "REQUIREMENT_PARSER_PROVIDER",
@@ -38,3 +41,38 @@ def _load_env_file(path: Path) -> None:
         name = name.strip()
         if name in LOCAL_ENV_NAMES and name not in os.environ:
             os.environ[name] = value.strip().strip('"').strip("'")
+
+
+def save_local_env_values(
+    values: dict[str, str],
+    workspace_root: Path | None = None,
+    target_name: str = ".env.local",
+) -> Path:
+    root = workspace_root or Path(__file__).resolve().parents[4]
+    path = root / target_name
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    cleaned_values = {
+        name: value
+        for name, value in values.items()
+        if name in LOCAL_ENV_NAMES and value.strip()
+    }
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    for name, value in cleaned_values.items():
+        pattern = f"{name}="
+        replacement = f"{name}={value.strip()}"
+        updated = False
+        next_lines = []
+        for line in lines:
+            if line.strip().startswith(pattern):
+                next_lines.append(replacement)
+                updated = True
+            else:
+                next_lines.append(line)
+        if not updated:
+            next_lines.append(replacement)
+        lines = next_lines
+        os.environ[name] = value.strip()
+
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path

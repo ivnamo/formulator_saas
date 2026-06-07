@@ -292,16 +292,18 @@ Decision MVP:
   - App ID: `262a5fcb-b418-46d1-9660-13c513ba3ec9`.
   - Client ID: `IKEbZY7kAaSaBxF6VilwuWJxI4w8Y7A4`.
   - Client Secret: solo local, nunca en chat, docs ni commits.
-- Scopes minimos esperados:
-  - `read:jira-work` para leer proyectos/issues.
-  - `write:jira-work` para crear issues y adjuntos.
-  - `read:jira-user` si se resuelven usuarios/asignaciones.
+- Scopes esperados:
+  - `read:issue:jira`, `read:issue-meta:jira`, `read:issue-details:jira` y relacionados para leer issues, campos, estados y proyectos.
+  - `write:issue:jira`, `write:comment:jira` y `write:attachment:jira` para crear issues, comentarios y adjuntos.
+  - `read:user:jira`, `read:comment:jira`, `read:attachment:jira`, `read:label:jira`, `read:priority:jira`.
+  - `offline_access` para recibir refresh token y renovar el access token local.
 - Callback local recomendado para pruebas: `http://localhost:3000/callback`.
 - Llamar con OAuth a `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/...`.
-- Leer `FORMULIA_JIRA_OAUTH_ACCESS_TOKEN` y `FORMULIA_JIRA_CLOUD_ID` desde `.env.local`.
-- Guardar `FORMULIA_JIRA_OAUTH_CLIENT_ID`, `FORMULIA_JIRA_OAUTH_CLIENT_SECRET` y `FORMULIA_JIRA_OAUTH_REDIRECT_URI` localmente solo para preparar el flujo 3LO.
+- Guardar `FORMULIA_JIRA_OAUTH_CLIENT_ID`, `FORMULIA_JIRA_OAUTH_CLIENT_SECRET`, `FORMULIA_JIRA_OAUTH_REDIRECT_URI`, `FORMULIA_JIRA_SITE_URL` y `FORMULIA_JIRA_CLOUD_ID` localmente.
+- Intercambiar `code` en `POST /api/v1/integrations/jira/oauth/callback` y guardar `FORMULIA_JIRA_OAUTH_ACCESS_TOKEN`, `FORMULIA_JIRA_OAUTH_REFRESH_TOKEN` y expiracion en `.env.local`.
+- Refrescar automaticamente el access token antes de enviar una revision a Jira si esta caducado.
 - Mantener Basic Auth con email + API token solo como fallback local/ad-hoc mediante `FORMULIA_JIRA_API_TOKEN`.
-- Dejar callback OAuth, refresh token automatico y cifrado de tokens para una fase posterior.
+- Dejar persistencia cifrada multi-tenant para una fase posterior.
 
 Diferencia operativa:
 

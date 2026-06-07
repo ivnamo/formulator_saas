@@ -11,6 +11,7 @@ from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
 from .jira_excel import JiraReviewExcel
+from .jira_oauth import JiraOAuthError, get_jira_cloud_id, get_valid_jira_oauth_access_token
 from .models import JiraConnection
 
 
@@ -176,12 +177,11 @@ class AtlassianOAuthJiraClient(AtlassianJiraClient):
 
 def make_jira_client(connection: JiraConnection) -> JiraClient:
     if connection.auth_type == "oauth":
-        access_token = os.getenv("FORMULIA_JIRA_OAUTH_ACCESS_TOKEN", "").strip()
-        cloud_id = os.getenv("FORMULIA_JIRA_CLOUD_ID", "").strip()
-        if not access_token:
-            raise JiraConfigurationError(
-                "FORMULIA_JIRA_OAUTH_ACCESS_TOKEN is required to send reviews to Jira."
-            )
+        try:
+            access_token = get_valid_jira_oauth_access_token()
+        except JiraOAuthError as exc:
+            raise JiraConfigurationError(str(exc)) from exc
+        cloud_id = get_jira_cloud_id()
         if not cloud_id:
             raise JiraConfigurationError(
                 "FORMULIA_JIRA_CLOUD_ID is required to send reviews to Jira."

@@ -53,6 +53,7 @@ import {
   type FormulaReviewRequest,
   type JiraConnection,
   type JiraConnectionForm,
+  type JiraOAuthAuthorize,
   type JiraConnectionTest,
   type MaterialForm,
   type RawMaterialAliasRead,
@@ -263,6 +264,8 @@ export default function Home() {
     jiraConnectionForm.defaultIssueType.trim().length > 0 &&
     !isBusy;
   const canTestJiraConnection = Boolean(activeJiraConnection) && !isBusy;
+  const canAuthorizeJiraOAuth =
+    Boolean(workspace.tenant) && jiraConnectionForm.authType === "oauth" && !isBusy;
   const canPrepareJiraReview =
     Boolean(workspace.tenant) &&
     Boolean(workspace.formulaId) &&
@@ -593,6 +596,28 @@ export default function Home() {
       );
       await refreshJiraConnections({ silent: true });
       setMessage(`${result.status}: ${result.message}`);
+    });
+  }
+
+  async function authorizeJiraOAuth() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (jiraConnectionForm.authType !== "oauth") {
+      setError("Switch Jira authentication to OAuth first");
+      return;
+    }
+
+    await runAction("Opening Jira authorization", async () => {
+      const authorization = await request<JiraOAuthAuthorize>(
+        "/api/v1/integrations/jira/oauth/authorize-url",
+        {
+          method: "GET",
+          headers,
+        },
+      );
+      window.location.href = authorization.authorization_url;
     });
   }
 
@@ -1703,6 +1728,15 @@ export default function Home() {
                 >
                   <Check size={17} />
                   Test
+                </button>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={authorizeJiraOAuth}
+                  disabled={!canAuthorizeJiraOAuth}
+                >
+                  <ExternalLink size={17} />
+                  Authorize OAuth
                 </button>
               </div>
             </div>

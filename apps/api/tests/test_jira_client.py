@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from formulia_api import jira_client
 from formulia_api.jira_client import AtlassianOAuthJiraClient
+from formulia_api.models import JiraConnection
 
 
 class FakeHttpResponse:
@@ -44,3 +45,22 @@ def test_oauth_jira_client_uses_cloud_api_base_and_bearer_token(monkeypatch) -> 
     }
     assert result.key == "LAB-123"
     assert result.url == "https://example.atlassian.net/browse/LAB-123"
+
+
+def test_make_jira_client_uses_refreshable_oauth_access_token(monkeypatch) -> None:
+    monkeypatch.setattr(jira_client, "get_valid_jira_oauth_access_token", lambda: "fresh-token")
+    monkeypatch.setattr(jira_client, "get_jira_cloud_id", lambda: "cloud-123")
+
+    client = jira_client.make_jira_client(
+        JiraConnection(
+            tenant_id="10000000-0000-0000-0000-000000000001",
+            base_url="https://example.atlassian.net",
+            auth_type="oauth",
+            default_project_key="LAB",
+            default_issue_type="Revision de formula",
+        )
+    )
+
+    assert isinstance(client, AtlassianOAuthJiraClient)
+    assert client.base_url == "https://api.atlassian.com/ex/jira/cloud-123"
+    assert client.api_token == "fresh-token"
