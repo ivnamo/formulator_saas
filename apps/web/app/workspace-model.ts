@@ -163,6 +163,37 @@ export type JiraConnectionTest = {
   checked_at: string;
 };
 
+export type FormulaReviewRequest = {
+  id: string;
+  tenant_id: string;
+  formula_id: string;
+  formula_version: number;
+  jira_connection_id: string;
+  review_status: string;
+  jira_issue_key: string | null;
+  jira_issue_url: string | null;
+  jira_status: string | null;
+  sent_by_user_id: string | null;
+  sent_at: string | null;
+  last_sync_at: string | null;
+  snapshot: {
+    formula?: {
+      name?: string;
+      version?: number;
+      total_price?: number | null;
+      currency?: string;
+    };
+    jira?: {
+      project_key?: string;
+      issue_type?: string;
+      issue_summary?: string;
+    };
+    items?: Array<{ name?: string; percentage?: number }>;
+    notes?: string | null;
+  };
+  created_at: string;
+};
+
 export type JiraConnectionForm = {
   baseUrl: string;
   authEmail: string;

@@ -245,6 +245,27 @@ class JiraConnectionTestRead(BaseModel):
     checked_at: datetime
 
 
+class FormulaJiraReviewCreate(BaseModel):
+    notes: str | None = None
+
+
+class FormulaReviewRequestRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    formula_id: uuid.UUID
+    formula_version: int
+    jira_connection_id: uuid.UUID
+    review_status: str
+    jira_issue_key: str | None
+    jira_issue_url: str | None
+    jira_status: str | None
+    sent_by_user_id: uuid.UUID | None
+    sent_at: datetime | None
+    last_sync_at: datetime | None
+    snapshot: dict[str, Any]
+    created_at: datetime
+
+
 class FormulaCalculationHistoryRead(BaseModel):
     id: uuid.UUID
     formula_id: uuid.UUID

@@ -45,6 +45,7 @@ import {
   type ExcelImportSheets,
   type FormulaCalculationHistory,
   type FormulaRead,
+  type FormulaReviewRequest,
   type JiraConnection,
   type JiraConnectionTest,
   type MaterialForm,
@@ -85,6 +86,7 @@ export default function Home() {
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
   const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
+  const [formulaReviewRequests, setFormulaReviewRequests] = useState<FormulaReviewRequest[]>([]);
   const [compatibilityRules, setCompatibilityRules] = useState<CompatibilityRuleRead[]>([]);
   const [compatibilityRuleForm, setCompatibilityRuleForm] = useState({
     materialAId: "",
@@ -252,6 +254,12 @@ export default function Home() {
     jiraConnectionForm.defaultIssueType.trim().length > 0 &&
     !isBusy;
   const canTestJiraConnection = Boolean(activeJiraConnection) && !isBusy;
+  const canPrepareJiraReview =
+    Boolean(workspace.tenant) &&
+    Boolean(workspace.formulaId) &&
+    Boolean(activeJiraConnection) &&
+    result !== null &&
+    !isBusy;
 
   async function createWorkspace() {
     await runAction("Creating workspace", async () => {
@@ -272,6 +280,7 @@ export default function Home() {
       setResult(null);
       setFormulas([]);
       setCalculationHistory([]);
+      setFormulaReviewRequests([]);
       setCompatibilityRules([]);
       setCompatibilityRuleForm({
         materialAId: "",
@@ -574,6 +583,37 @@ export default function Home() {
       );
       await refreshJiraConnections({ silent: true });
       setMessage(`${result.status}: ${result.message}`);
+    });
+  }
+
+  async function prepareJiraReview() {
+    if (!workspace.tenant || !workspace.formulaId) {
+      setError("Save the formula before preparing Jira review");
+      return;
+    }
+    if (!activeJiraConnection) {
+      setError("Configure Jira before preparing review");
+      return;
+    }
+    if (result === null) {
+      setError("Save and calculate before preparing Jira review");
+      return;
+    }
+
+    await runAction("Preparing Jira review", async () => {
+      const review = await request<FormulaReviewRequest>(
+        `/api/v1/formulas/${workspace.formulaId}/reviews/jira`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({}),
+        },
+      );
+      setFormulaReviewRequests((current) => [
+        review,
+        ...current.filter((item) => item.id !== review.id),
+      ]);
+      setMessage("Jira review prepared");
     });
   }
 
@@ -887,6 +927,7 @@ export default function Home() {
       setSavedFormulaComparison(null);
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
+      await loadFormulaReviewRequests(formula.id);
       setMessage("Calculation complete");
     });
   }
@@ -930,6 +971,7 @@ export default function Home() {
       setDraftReview(null);
       resetImportState();
       await loadCalculationHistory(formula.id);
+      await loadFormulaReviewRequests(formula.id);
       setMessage("Formula opened");
     });
   }
@@ -940,6 +982,14 @@ export default function Home() {
       { method: "GET", headers },
     );
     setCalculationHistory(history);
+  }
+
+  async function loadFormulaReviewRequests(formulaId: string) {
+    const reviews = await request<FormulaReviewRequest[]>(
+      `/api/v1/formulas/${formulaId}/reviews`,
+      { method: "GET", headers },
+    );
+    setFormulaReviewRequests(reviews);
   }
 
   async function parseRequirements() {
@@ -2767,6 +2817,41 @@ export default function Home() {
                 ) : null}
               </div>
             ) : null}
+            <div className="jiraReviewBox">
+              <div className="jiraReviewHeader">
+                <div>
+                  <span>Jira review</span>
+                  <strong>{activeJiraConnection ? "Configured" : "Not configured"}</strong>
+                </div>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={prepareJiraReview}
+                  disabled={!canPrepareJiraReview}
+                >
+                  <Check size={16} />
+                  Prepare
+                </button>
+              </div>
+              {formulaReviewRequests.length === 0 ? (
+                <div className="jiraReviewEmpty">No Jira review prepared for this formula.</div>
+              ) : (
+                <div className="jiraReviewList">
+                  {formulaReviewRequests.map((review) => (
+                    <div className="jiraReviewRow" key={review.id}>
+                      <code>{review.review_status}</code>
+                      <span>
+                        <strong>
+                          {review.snapshot.jira?.issue_summary ?? "Formula review"}
+                        </strong>
+                        {review.snapshot.jira?.project_key ?? "-"} - v{review.formula_version} -{" "}
+                        {formatDateTime(review.created_at)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="formulaLines">
               {workspace.formulaLines.length === 0 ? (
                 <div className="empty">Add materials to build a formula.</div>

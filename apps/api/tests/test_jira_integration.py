@@ -50,6 +50,41 @@ def add_member(client: TestClient, tenant_id: str, user_id: str, role: str) -> N
         session.commit()
 
 
+def create_jira_connection(client: TestClient, tenant_id: str, user_id: str = USER_A) -> dict:
+    response = client.post(
+        "/api/v1/integrations/jira",
+        headers=headers(user_id, tenant_id),
+        json={
+            "base_url": "https://example.atlassian.net",
+            "auth_email": "lab@example.com",
+            "api_token": "secret-token",
+            "default_project_key": "LAB",
+            "default_issue_type": "Revision de formula",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def create_formula(client: TestClient, tenant_id: str, user_id: str = USER_A) -> dict:
+    request_headers = headers(user_id, tenant_id)
+    material = client.post(
+        "/api/v1/raw-materials",
+        headers=request_headers,
+        json={"name": "Material A", "code": "MAT-A"},
+    ).json()
+    formula_response = client.post(
+        "/api/v1/formulas",
+        headers=request_headers,
+        json={
+            "name": "Review Formula",
+            "items": [{"raw_material_id": material["id"], "percentage": 100}],
+        },
+    )
+    assert formula_response.status_code == 201
+    return formula_response.json()
+
+
 def test_owner_configures_and_tests_jira_connection() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
@@ -150,3 +185,82 @@ def test_only_owner_or_admin_can_mutate_jira_connection() -> None:
     assert listed.json()[0]["id"] == created["id"]
     assert forbidden_patch.status_code == 403
     assert forbidden_test.status_code == 403
+
+
+def test_formula_jira_review_request_captures_snapshot() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    connection = create_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+
+    created = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={"notes": "Priorizar revision de estabilidad."},
+    )
+    listed = client.get(
+        f"/api/v1/formulas/{formula['id']}/reviews",
+        headers=headers(USER_A, tenant_id),
+    )
+
+    assert created.status_code == 201
+    review = created.json()
+    assert review["tenant_id"] == tenant_id
+    assert review["formula_id"] == formula["id"]
+    assert review["formula_version"] == 1
+    assert review["jira_connection_id"] == connection["id"]
+    assert review["review_status"] == "ready_for_jira"
+    assert review["jira_issue_key"] is None
+    assert review["snapshot"]["formula"]["name"] == "Review Formula"
+    assert review["snapshot"]["items"] == [
+        {
+            "raw_material_id": formula["items"][0]["raw_material_id"],
+            "code": "MAT-A",
+            "name": "Material A",
+            "percentage": 100.0,
+            "quantity": None,
+            "unit": None,
+            "order_index": 0,
+        }
+    ]
+    assert review["snapshot"]["jira"]["project_key"] == "LAB"
+    assert review["snapshot"]["notes"] == "Priorizar revision de estabilidad."
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()] == [review["id"]]
+
+
+def test_formula_jira_review_request_requires_active_connection() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    formula = create_formula(client, tenant_id)
+
+    response = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Active Jira connection is required."
+
+
+def test_formula_jira_review_requests_are_tenant_scoped() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    create_jira_connection(client, tenant_a, USER_A)
+    create_jira_connection(client, tenant_b, USER_B)
+    formula = create_formula(client, tenant_a, USER_A)
+
+    cross_create = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_B, tenant_b),
+        json={},
+    )
+    cross_list = client.get(
+        f"/api/v1/formulas/{formula['id']}/reviews",
+        headers=headers(USER_B, tenant_b),
+    )
+
+    assert cross_create.status_code == 404
+    assert cross_list.status_code == 404

@@ -197,6 +197,25 @@ class JiraConnection(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class FormulaReviewRequest(SQLModel, table=True):
+    __tablename__ = "formula_review_requests"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    formula_id: uuid.UUID = Field(index=True, foreign_key="formulas.id")
+    formula_version: int
+    jira_connection_id: uuid.UUID = Field(index=True, foreign_key="jira_connections.id")
+    review_status: str = Field(default="ready_for_jira", index=True)
+    jira_issue_key: str | None = None
+    jira_issue_url: str | None = None
+    jira_status: str | None = None
+    sent_by_user_id: uuid.UUID | None = None
+    sent_at: datetime | None = None
+    last_sync_at: datetime | None = None
+    snapshot_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class AiRun(SQLModel, table=True):
     __tablename__ = "ai_runs"
 

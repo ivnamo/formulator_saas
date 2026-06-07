@@ -7,8 +7,18 @@ from fastapi import Depends, FastAPI, HTTPException
 from sqlmodel import Session, select
 
 from .database import get_session
-from .models import JiraConnection, utc_now
+from .models import (
+    Formula,
+    FormulaCalculationResult,
+    FormulaItem,
+    FormulaReviewRequest,
+    JiraConnection,
+    RawMaterial,
+    utc_now,
+)
 from .schemas import (
+    FormulaJiraReviewCreate,
+    FormulaReviewRequestRead,
     JiraConnectionCreate,
     JiraConnectionRead,
     JiraConnectionTestRead,
@@ -96,10 +106,76 @@ def register_jira_routes(app: FastAPI) -> None:
             "checked_at": checked_at,
         }
 
+    @app.get(
+        "/api/v1/formulas/{formula_id}/reviews",
+        response_model=list[FormulaReviewRequestRead],
+    )
+    def list_formula_review_requests(
+        formula_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        _get_formula(session, tenant.tenant_id, formula_id)
+        requests = session.exec(
+            select(FormulaReviewRequest)
+            .where(
+                FormulaReviewRequest.tenant_id == tenant.tenant_id,
+                FormulaReviewRequest.formula_id == formula_id,
+            )
+            .order_by(FormulaReviewRequest.created_at.desc())
+        ).all()
+        return [_formula_review_request_read(request) for request in requests]
+
+    @app.post(
+        "/api/v1/formulas/{formula_id}/reviews/jira",
+        response_model=FormulaReviewRequestRead,
+        status_code=201,
+    )
+    def create_formula_jira_review_request(
+        formula_id: uuid.UUID,
+        payload: FormulaJiraReviewCreate,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        _require_formula_reviewer(tenant)
+        formula = _get_formula(session, tenant.tenant_id, formula_id)
+        connection = _get_active_jira_connection(session, tenant.tenant_id)
+        items = _formula_items(session, tenant.tenant_id, formula.id)
+        if not items:
+            raise HTTPException(
+                status_code=400,
+                detail="Formula needs at least one line before Jira review.",
+            )
+        review = FormulaReviewRequest(
+            tenant_id=tenant.tenant_id,
+            formula_id=formula.id,
+            formula_version=formula.version,
+            jira_connection_id=connection.id,
+            review_status="ready_for_jira",
+            sent_by_user_id=tenant.user_id,
+            snapshot_json=_formula_jira_snapshot(
+                session,
+                tenant.tenant_id,
+                formula,
+                items,
+                connection,
+                notes=payload.notes,
+            ),
+        )
+        session.add(review)
+        session.commit()
+        session.refresh(review)
+        return _formula_review_request_read(review)
+
 
 def _require_integration_admin(tenant: TenantContext) -> None:
     if tenant.role not in {"owner", "admin"}:
         raise HTTPException(status_code=403, detail="Admin role is required.")
+
+
+def _require_formula_reviewer(tenant: TenantContext) -> None:
+    if tenant.role not in {"owner", "admin", "formulator"}:
+        raise HTTPException(status_code=403, detail="Formula review role is required.")
 
 
 def _get_jira_connection(
@@ -116,6 +192,29 @@ def _get_jira_connection(
     if connection is None:
         raise HTTPException(status_code=404, detail="Jira connection not found.")
     return connection
+
+
+def _get_active_jira_connection(session: Session, tenant_id: uuid.UUID) -> JiraConnection:
+    connection = session.exec(
+        select(JiraConnection)
+        .where(
+            JiraConnection.tenant_id == tenant_id,
+            JiraConnection.is_active.is_(True),
+        )
+        .order_by(JiraConnection.created_at.desc())
+    ).first()
+    if connection is None:
+        raise HTTPException(status_code=409, detail="Active Jira connection is required.")
+    return connection
+
+
+def _get_formula(session: Session, tenant_id: uuid.UUID, formula_id: uuid.UUID) -> Formula:
+    formula = session.exec(
+        select(Formula).where(Formula.id == formula_id, Formula.tenant_id == tenant_id)
+    ).first()
+    if formula is None:
+        raise HTTPException(status_code=404, detail="Formula not found.")
+    return formula
 
 
 def _new_jira_connection(
@@ -215,6 +314,111 @@ def _jira_connection_read(connection: JiraConnection) -> dict[str, Any]:
         **connection.model_dump(mode="json"),
         "field_mapping": connection.field_mapping_json,
         "status_mapping": connection.status_mapping_json,
+    }
+
+
+def _formula_review_request_read(request: FormulaReviewRequest) -> dict[str, Any]:
+    return {
+        **request.model_dump(mode="json"),
+        "snapshot": request.snapshot_json,
+    }
+
+
+def _formula_items(
+    session: Session,
+    tenant_id: uuid.UUID,
+    formula_id: uuid.UUID,
+) -> list[FormulaItem]:
+    return session.exec(
+        select(FormulaItem)
+        .where(
+            FormulaItem.tenant_id == tenant_id,
+            FormulaItem.formula_id == formula_id,
+        )
+        .order_by(FormulaItem.order_index)
+    ).all()
+
+
+def _formula_jira_snapshot(
+    session: Session,
+    tenant_id: uuid.UUID,
+    formula: Formula,
+    items: list[FormulaItem],
+    connection: JiraConnection,
+    *,
+    notes: str | None,
+) -> dict[str, Any]:
+    materials_by_id = _materials_by_id(session, tenant_id, [item.raw_material_id for item in items])
+    latest_calculation = _latest_calculation(session, tenant_id, formula.id)
+    issue_summary = f"Revision formula - F-{str(formula.id)[:8]} - {formula.name}"
+    return {
+        "formula": {
+            "id": str(formula.id),
+            "name": formula.name,
+            "version": formula.version,
+            "status": formula.status,
+            "objective": formula.objective,
+            "total_price": formula.total_price,
+            "currency": formula.currency,
+        },
+        "items": [
+            _snapshot_item(item, materials_by_id.get(item.raw_material_id))
+            for item in items
+        ],
+        "latest_calculation": latest_calculation.result_json if latest_calculation else None,
+        "jira": {
+            "connection_id": str(connection.id),
+            "base_url": connection.base_url,
+            "project_key": connection.default_project_key,
+            "issue_type": connection.default_issue_type,
+            "assignee": connection.default_assignee,
+            "issue_summary": issue_summary,
+        },
+        "notes": _clean_optional(notes),
+        "snapshot_type": "jira_formula_review_v1",
+    }
+
+
+def _materials_by_id(
+    session: Session,
+    tenant_id: uuid.UUID,
+    material_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, RawMaterial]:
+    if not material_ids:
+        return {}
+    materials = session.exec(
+        select(RawMaterial).where(
+            RawMaterial.tenant_id == tenant_id,
+            RawMaterial.id.in_(material_ids),
+        )
+    ).all()
+    return {material.id: material for material in materials}
+
+
+def _latest_calculation(
+    session: Session,
+    tenant_id: uuid.UUID,
+    formula_id: uuid.UUID,
+) -> FormulaCalculationResult | None:
+    return session.exec(
+        select(FormulaCalculationResult)
+        .where(
+            FormulaCalculationResult.tenant_id == tenant_id,
+            FormulaCalculationResult.formula_id == formula_id,
+        )
+        .order_by(FormulaCalculationResult.calculated_at.desc())
+    ).first()
+
+
+def _snapshot_item(item: FormulaItem, material: RawMaterial | None) -> dict[str, Any]:
+    return {
+        "raw_material_id": str(item.raw_material_id),
+        "code": material.code if material else None,
+        "name": material.name if material else "Unknown material",
+        "percentage": item.percentage,
+        "quantity": item.quantity,
+        "unit": item.unit,
+        "order_index": item.order_index,
     }
 
 

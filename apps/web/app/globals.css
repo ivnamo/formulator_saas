@@ -1324,6 +1324,79 @@ label span {
   width: auto;
 }
 
+.jiraReviewBox {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.jiraReviewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.jiraReviewHeader div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.jiraReviewHeader span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.jiraReviewHeader strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.jiraReviewHeader .secondaryButton {
+  width: auto;
+}
+
+.jiraReviewEmpty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.jiraReviewList {
+  display: grid;
+}
+
+.jiraReviewRow {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.jiraReviewRow code {
+  color: var(--teal-dark);
+  font-weight: 800;
+}
+
+.jiraReviewRow span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.jiraReviewRow strong {
+  color: var(--text);
+}
+
 .draftComparison {
   display: grid;
   gap: 8px;
@@ -1597,6 +1670,7 @@ label span {
   .constraintEvaluationHeader,
   .draftComparisonStats,
   .draftLineChanges div,
+  .jiraReviewRow,
   .agentFormulaStats,
   .agentFormulaItems div,
   .agentToolSummary,
@@ -1626,6 +1700,11 @@ label span {
     flex-direction: column;
   }
 
+  .jiraReviewHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .draftReviewHeader,
   .draftReviewActions {
     flex-direction: column;
@@ -1636,6 +1715,10 @@ label span {
   }
 
   .draftReviewActions .secondaryButton {
+    width: auto;
+  }
+
+  .jiraReviewHeader .secondaryButton {
     width: auto;
   }
 
