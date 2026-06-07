@@ -1093,6 +1093,25 @@ export default function Home() {
       : `${candidate.price_total.toFixed(2)} ${candidate.currency}/kg`;
   }
 
+  function normalizeWarningSeverity(
+    warning: CalculationResult["warnings"][number],
+  ): "blocker" | "warning" | "info" {
+    if (
+      warning.severity === "blocker" ||
+      warning.severity === "warning" ||
+      warning.severity === "info"
+    ) {
+      return warning.severity;
+    }
+    if (warning.code.endsWith("_blocker")) {
+      return "blocker";
+    }
+    if (warning.code.endsWith("_info")) {
+      return "info";
+    }
+    return "warning";
+  }
+
   function formatResultPrice(resultValue: CalculationResult | null): string {
     return resultValue?.price_total == null
       ? "-"
@@ -2558,20 +2577,24 @@ export default function Home() {
             </div>
             <div className="warningList">
               {result?.warnings.length ? (
-                result.warnings.map((warning) => (
-                  <div
-                    key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}`}
-                  >
-                    <AlertTriangle size={16} />
-                    <span>
-                      <strong>{warning.severity ?? warning.code}</strong>
-                      {warning.message}
-                      {warning.recommended_action ? (
-                        <small>{warning.recommended_action}</small>
-                      ) : null}
-                    </span>
-                  </div>
-                ))
+                result.warnings.map((warning) => {
+                  const severity = normalizeWarningSeverity(warning);
+                  return (
+                    <div
+                      data-severity={severity}
+                      key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}`}
+                    >
+                      <AlertTriangle size={16} />
+                      <span>
+                        <strong>{severity}</strong>
+                        {warning.message}
+                        {warning.recommended_action ? (
+                          <small>{warning.recommended_action}</small>
+                        ) : null}
+                      </span>
+                    </div>
+                  );
+                })
               ) : (
                 <div>No warnings</div>
               )}
