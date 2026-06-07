@@ -172,3 +172,20 @@ La IA debe:
 - Webhooks.
 - Feature flags.
 - Límites de uso.
+
+## 11. Revision de formulas con Jira
+
+El usuario puede enviar una formula/version a Jira para revision del laboratorio.
+
+El sistema debe:
+
+- Crear un snapshot inmutable de la version enviada.
+- Generar un Excel tecnico desde ese snapshot.
+- Crear un ticket en el proyecto Jira configurado.
+- Adjuntar el Excel al ticket.
+- Guardar issue key, URL, estado y fecha de envio.
+- Mostrar el estado Jira dentro de la ficha de formula.
+- Sincronizar cambios de estado desde Jira.
+- Permitir nueva version si Jira marca cambios solicitados.
+
+El detalle funcional vive en [`../03-domain/jira_formula_review.md`](../03-domain/jira_formula_review.md).

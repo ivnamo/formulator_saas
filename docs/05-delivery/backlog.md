@@ -49,6 +49,11 @@
 - REST connector.
 - SAP/OData connector skeleton.
 - Staging review.
+- Jira connector para revision de formulas.
+- Configuracion de proyecto, issue type y campos Jira por tenant.
+- Enviar snapshot de formula a Jira con Excel adjunto.
+- Mostrar issue key, URL y estado Jira en la ficha de formula.
+- Sincronizar estados Jira: pendiente, en revision, cambios solicitados, aprobada, rechazada, validada.
 
 ## P5 - IA avanzada
 
