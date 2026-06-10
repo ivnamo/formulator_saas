@@ -407,6 +407,9 @@ def register_routes(app: FastAPI) -> None:
             tenant_id=tenant.tenant_id,
             name=payload.name,
             objective=payload.objective,
+            jira_project_id=_formula_jira_project_id(payload.jira_project_id, payload.name),
+            jira_issue_type=payload.jira_issue_type,
+            jira_product_type=payload.jira_product_type,
             created_by=tenant.user_id,
         )
         session.add(formula)
@@ -432,6 +435,11 @@ def register_routes(app: FastAPI) -> None:
     ) -> dict[str, Any]:
         formula = _get_formula(session, tenant.tenant_id, formula_id)
         updates = payload.model_dump(exclude_unset=True, exclude={"items"})
+        if "jira_project_id" in updates:
+            updates["jira_project_id"] = _formula_jira_project_id(
+                updates["jira_project_id"],
+                updates.get("name") or formula.name,
+            )
         for key, value in updates.items():
             setattr(formula, key, value)
         formula.updated_at = utc_now()
@@ -701,6 +709,9 @@ def register_routes(app: FastAPI) -> None:
         formula = Formula(
             tenant_id=tenant.tenant_id,
             name=payload.name,
+            jira_project_id=_formula_jira_project_id(payload.jira_project_id, payload.name),
+            jira_issue_type=payload.jira_issue_type,
+            jira_product_type=payload.jira_product_type,
             created_by=tenant.user_id,
         )
         session.add(formula)
@@ -803,6 +814,17 @@ def _formula_read(session: Session, formula: Formula) -> dict[str, Any]:
         **_model_dict(formula),
         "items": [_model_dict(item) for item in items],
     }
+
+
+def _formula_jira_project_id(value: str | None, formula_name: str) -> str:
+    cleaned = (value or "").strip()
+    if cleaned:
+        return cleaned.upper()
+    name_parts = formula_name.split()
+    first_token = "".join(
+        character for character in (name_parts[0] if name_parts else "").upper() if character.isalnum()
+    )
+    return first_token or "FORMULA"
 
 
 def _calculate(

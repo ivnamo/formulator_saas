@@ -1326,6 +1326,12 @@ label span {
   background: var(--teal);
 }
 
+.formulaMetaGrid {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr);
+  gap: 10px;
+}
+
 .formulaSummary,
 .resultStats {
   display: grid;
@@ -1675,6 +1681,7 @@ label span {
   .compatibilityForm,
   .jiraForm,
   .jiraConnectionSummary,
+  .formulaMetaGrid,
   .importActions,
   .libraryActions,
   .comparisonConstraintBar,

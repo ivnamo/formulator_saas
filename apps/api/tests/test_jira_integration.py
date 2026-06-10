@@ -4,13 +4,18 @@ import uuid
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import SQLModel, Session, create_engine, select
 
 from formulia_api import jira_integration
-from formulia_api.jira_client import JiraAttachmentResult, JiraClientError, JiraIssueResult
+from formulia_api.jira_client import (
+    JiraAttachmentResult,
+    JiraClientError,
+    JiraConnectionCheckResult,
+    JiraIssueResult,
+)
 from formulia_api.jira_oauth import JiraOAuthCallbackResult
 from formulia_api.main import create_app
-from formulia_api.models import TenantMember
+from formulia_api.models import IntegrationEvent, TenantMember
 
 
 USER_A = "10000000-0000-0000-0000-000000000001"
@@ -117,7 +122,7 @@ def create_oauth_jira_connection(
             "base_url": "https://example.atlassian.net",
             "auth_type": "oauth",
             "default_project_key": "LAB",
-            "default_issue_type": "Revision de formula",
+            "default_issue_type": "Calidad",
             "field_mapping": {"formula_name": "customfield_10010"},
         },
     )
@@ -137,6 +142,9 @@ def create_formula(client: TestClient, tenant_id: str, user_id: str = USER_A) ->
         headers=request_headers,
         json={
             "name": "Review Formula",
+            "jira_project_id": "FLOWER",
+            "jira_issue_type": "Calidad",
+            "jira_product_type": "Nuevo",
             "items": [{"raw_material_id": material["id"], "percentage": 100}],
         },
     )
@@ -144,7 +152,15 @@ def create_formula(client: TestClient, tenant_id: str, user_id: str = USER_A) ->
     return formula_response.json()
 
 
-def test_owner_configures_and_tests_jira_connection() -> None:
+def test_owner_configures_and_tests_jira_connection(monkeypatch) -> None:
+    monkeypatch.setattr(
+        jira_integration,
+        "check_jira_connection",
+        lambda connection: JiraConnectionCheckResult(
+            status="ready_for_client",
+            message="Connected to Jira as Lab User; project LAB is ready.",
+        ),
+    )
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
 
@@ -166,6 +182,7 @@ def test_owner_configures_and_tests_jira_connection() -> None:
     assert created.status_code == 201
     connection = created.json()
     assert "api_token" not in connection
+    assert "credential_json" not in connection
     assert connection["base_url"] == "https://example.atlassian.net"
     assert connection["auth_email"] == "lab@example.com"
     assert connection["credential_status"] == "configured"
@@ -181,6 +198,7 @@ def test_owner_configures_and_tests_jira_connection() -> None:
 
     assert tested.status_code == 200
     assert tested.json()["status"] == "ready_for_client"
+    assert "Connected to Jira" in tested.json()["message"]
 
 
 def test_jira_oauth_authorize_url_requires_admin_and_returns_redirect(monkeypatch) -> None:
@@ -338,6 +356,9 @@ def test_formula_jira_review_request_captures_snapshot() -> None:
         }
     ]
     assert review["snapshot"]["jira"]["project_key"] == "LAB"
+    assert review["snapshot"]["formula"]["jira_project_id"] == "FLOWER"
+    assert review["snapshot"]["formula"]["jira_issue_type"] == "Calidad"
+    assert review["snapshot"]["formula"]["jira_product_type"] == "Nuevo"
     assert review["snapshot"]["notes"] == "Priorizar revision de estabilidad."
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()] == [review["id"]]
@@ -458,11 +479,14 @@ def test_formula_jira_review_can_be_sent_to_jira_with_excel_attachment(monkeypat
     assert len(fake_jira.created_payloads) == 1
     fields = fake_jira.created_payloads[0]["fields"]
     assert fields["project"] == {"key": "LAB"}
-    assert fields["issuetype"] == {"name": "Revision de formula"}
+    assert fields["issuetype"] == {"name": "Calidad"}
     assert fields["summary"] == review["snapshot"]["jira"]["issue_summary"]
+    assert fields["reporter"] == {"accountId": "712020:d8d35c01-546b-498f-aa7f-dbe2c966820c"}
     assert fields["description"]["type"] == "doc"
     assert fields["labels"] == ["formulia", "formula-review"]
     assert fields["customfield_10010"] == "Review Formula"
+    assert fields["customfield_10658"] == "FLOWER"
+    assert fields["customfield_10856"] == {"value": "Nuevo"}
 
     assert len(fake_jira.attachments) == 1
     assert fake_jira.attachments[0]["issue_key"] == "LAB-321"
@@ -525,6 +549,68 @@ def test_formula_jira_review_send_marks_partial_failure_when_attachment_fails(mo
     assert sent_review["jira_status"] == "attachment_failed"
     assert len(fake_jira.created_payloads) == 1
     assert fake_jira.attachments == []
+
+
+def test_formula_jira_review_retry_attachment_after_partial_failure(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient(fail_attachment=True)
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={},
+    ).json()
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=headers(USER_A, tenant_id),
+    )
+    assert sent.status_code == 200
+    assert sent.json()["review_status"] == "partial_failure"
+
+    fake_jira.fail_attachment = False
+    retried = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/retry-attachment",
+        headers=headers(USER_A, tenant_id),
+    )
+
+    assert retried.status_code == 200
+    retried_review = retried.json()
+    assert retried_review["review_status"] == "sent_to_jira"
+    assert retried_review["jira_status"] == "created"
+    assert len(fake_jira.created_payloads) == 1
+    assert len(fake_jira.attachments) == 1
+    assert fake_jira.attachments[0]["issue_key"] == "LAB-321"
+
+
+def test_jira_send_records_integration_events(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient()
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={},
+    ).json()
+
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=headers(USER_A, tenant_id),
+    )
+
+    assert sent.status_code == 200
+    with Session(client.app.state.engine) as session:
+        events = session.exec(
+            select(IntegrationEvent).where(IntegrationEvent.tenant_id == uuid.UUID(tenant_id))
+        ).all()
+    assert [(event.event_type, event.status) for event in events] == [
+        ("jira_review_send", "success")
+    ]
 
 
 def test_formula_jira_review_request_requires_active_connection() -> None:

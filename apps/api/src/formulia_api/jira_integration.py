@@ -12,10 +12,12 @@ from sqlmodel import Session, select
 from . import jira_oauth
 from .database import get_session
 from .jira_client import (
+    JIRA_API_TOKEN_CREDENTIAL_KEY,
     JiraClientError,
     JiraConfigurationError,
     JiraIssueResult,
     build_jira_issue_payload,
+    check_jira_connection,
     make_jira_client,
 )
 from .jira_excel import JIRA_REVIEW_EXCEL_TYPE, JiraReviewExcel, build_jira_review_excel
@@ -25,6 +27,7 @@ from .models import (
     FormulaItem,
     FormulaReviewArtifact,
     FormulaReviewRequest,
+    IntegrationEvent,
     JiraConnection,
     RawMaterial,
     utc_now,
@@ -42,6 +45,9 @@ from .schemas import (
     JiraConnectionUpdate,
 )
 from .tenant import TenantContext, require_tenant_context
+
+JIRA_FORMULA_ISSUE_TYPES = {"Calidad", "PoC", "Prototipo"}
+JIRA_PRODUCT_TYPES = {"Nuevo", "Mod A", "Mod B", "Mod C"}
 
 
 def register_jira_routes(app: FastAPI) -> None:
@@ -148,6 +154,20 @@ def register_jira_routes(app: FastAPI) -> None:
         connection.last_tested_at = checked_at
         connection.updated_at = checked_at
         session.add(connection)
+        _record_integration_event(
+            session,
+            tenant.tenant_id,
+            entity_type="jira_connection",
+            entity_id=connection.id,
+            event_type="connection_test",
+            status="success" if status == "ready_for_client" else "error",
+            payload_summary={
+                "test_status": status,
+                "project_key": connection.default_project_key,
+                "issue_type": connection.default_issue_type,
+            },
+            error_message=None if status == "ready_for_client" else message,
+        )
         session.commit()
         return {
             "connection_id": connection.id,
@@ -196,6 +216,7 @@ def register_jira_routes(app: FastAPI) -> None:
                 status_code=400,
                 detail="Formula needs at least one line before Jira review.",
             )
+        _validate_formula_jira_ready(formula)
         review = FormulaReviewRequest(
             tenant_id=tenant.tenant_id,
             formula_id=formula.id,
@@ -292,20 +313,43 @@ def register_jira_routes(app: FastAPI) -> None:
             tenant.tenant_id,
             review.jira_connection_id,
         )
+        _validate_review_snapshot_jira_ready(review.snapshot_json)
         artifact = _ensure_review_excel_artifact(session, tenant.tenant_id, review)
         payload = build_jira_issue_payload(review.snapshot_json, connection)
         try:
             jira_client = make_jira_client(connection)
             issue = jira_client.create_issue(payload)
         except JiraConfigurationError as exc:
+            _record_integration_event(
+                session,
+                tenant.tenant_id,
+                entity_type="formula_review_request",
+                entity_id=review.id,
+                event_type="jira_issue_create",
+                status="error",
+                payload_summary={"formula_id": str(review.formula_id)},
+                error_message=str(exc),
+            )
+            session.commit()
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except JiraClientError as exc:
+            _record_integration_event(
+                session,
+                tenant.tenant_id,
+                entity_type="formula_review_request",
+                entity_id=review.id,
+                event_type="jira_issue_create",
+                status="error",
+                payload_summary={"formula_id": str(review.formula_id)},
+                error_message=str(exc),
+            )
+            session.commit()
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
         sent_at = utc_now()
         try:
             jira_client.add_attachment(issue.key, _excel_from_artifact(artifact))
-        except JiraClientError:
+        except JiraClientError as exc:
             _mark_review_jira_sent(
                 review,
                 issue,
@@ -313,6 +357,20 @@ def register_jira_routes(app: FastAPI) -> None:
                 sent_by_user_id=tenant.user_id,
                 review_status="partial_failure",
                 jira_status="attachment_failed",
+            )
+            _record_integration_event(
+                session,
+                tenant.tenant_id,
+                entity_type="formula_review_request",
+                entity_id=review.id,
+                event_type="jira_attachment_upload",
+                status="error",
+                payload_summary={
+                    "jira_issue_key": issue.key,
+                    "artifact_id": str(artifact.id),
+                    "file_name": artifact.file_name,
+                },
+                error_message=str(exc),
             )
             session.add(review)
             session.commit()
@@ -326,6 +384,103 @@ def register_jira_routes(app: FastAPI) -> None:
             sent_by_user_id=tenant.user_id,
             review_status="sent_to_jira",
             jira_status=issue.status,
+        )
+        _record_integration_event(
+            session,
+            tenant.tenant_id,
+            entity_type="formula_review_request",
+            entity_id=review.id,
+            event_type="jira_review_send",
+            status="success",
+            payload_summary={
+                "jira_issue_key": issue.key,
+                "jira_issue_url": issue.url,
+                "artifact_id": str(artifact.id),
+                "file_name": artifact.file_name,
+            },
+        )
+        session.add(review)
+        session.commit()
+        session.refresh(review)
+        return _formula_review_request_read(review)
+
+    @app.post(
+        "/api/v1/formula-reviews/{review_id}/jira/retry-attachment",
+        response_model=FormulaReviewRequestRead,
+    )
+    def retry_formula_review_jira_attachment(
+        review_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        _require_formula_reviewer(tenant)
+        review = _get_formula_review_request(session, tenant.tenant_id, review_id)
+        if not review.jira_issue_key:
+            raise HTTPException(
+                status_code=409,
+                detail="Jira issue is required before retrying the Excel attachment.",
+            )
+        if review.review_status != "partial_failure" or review.jira_status != "attachment_failed":
+            raise HTTPException(
+                status_code=409,
+                detail="Only reviews with failed Jira attachments can be retried.",
+            )
+
+        connection = _get_jira_connection(session, tenant.tenant_id, review.jira_connection_id)
+        artifact = _ensure_review_excel_artifact(session, tenant.tenant_id, review)
+        try:
+            jira_client = make_jira_client(connection)
+            jira_client.add_attachment(review.jira_issue_key, _excel_from_artifact(artifact))
+        except JiraConfigurationError as exc:
+            _record_integration_event(
+                session,
+                tenant.tenant_id,
+                entity_type="formula_review_request",
+                entity_id=review.id,
+                event_type="jira_attachment_retry",
+                status="error",
+                payload_summary={
+                    "jira_issue_key": review.jira_issue_key,
+                    "artifact_id": str(artifact.id),
+                },
+                error_message=str(exc),
+            )
+            session.commit()
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except JiraClientError as exc:
+            _record_integration_event(
+                session,
+                tenant.tenant_id,
+                entity_type="formula_review_request",
+                entity_id=review.id,
+                event_type="jira_attachment_retry",
+                status="error",
+                payload_summary={
+                    "jira_issue_key": review.jira_issue_key,
+                    "artifact_id": str(artifact.id),
+                    "file_name": artifact.file_name,
+                },
+                error_message=str(exc),
+            )
+            session.commit()
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        checked_at = utc_now()
+        review.review_status = "sent_to_jira"
+        review.jira_status = "created"
+        review.last_sync_at = checked_at
+        _record_integration_event(
+            session,
+            tenant.tenant_id,
+            entity_type="formula_review_request",
+            entity_id=review.id,
+            event_type="jira_attachment_retry",
+            status="success",
+            payload_summary={
+                "jira_issue_key": review.jira_issue_key,
+                "artifact_id": str(artifact.id),
+                "file_name": artifact.file_name,
+            },
         )
         session.add(review)
         session.commit()
@@ -341,6 +496,68 @@ def _require_integration_admin(tenant: TenantContext) -> None:
 def _require_formula_reviewer(tenant: TenantContext) -> None:
     if tenant.role not in {"owner", "admin", "formulator"}:
         raise HTTPException(status_code=403, detail="Formula review role is required.")
+
+
+def _validate_formula_jira_ready(formula: Formula) -> None:
+    _validate_jira_formula_fields(
+        jira_project_id=formula.jira_project_id,
+        jira_issue_type=formula.jira_issue_type,
+        jira_product_type=formula.jira_product_type,
+    )
+
+
+def _validate_review_snapshot_jira_ready(snapshot: dict[str, Any]) -> None:
+    formula = snapshot.get("formula") if isinstance(snapshot.get("formula"), dict) else {}
+    _validate_jira_formula_fields(
+        jira_project_id=formula.get("jira_project_id"),
+        jira_issue_type=formula.get("jira_issue_type"),
+        jira_product_type=formula.get("jira_product_type"),
+    )
+
+
+def _validate_jira_formula_fields(
+    *,
+    jira_project_id: Any,
+    jira_issue_type: Any,
+    jira_product_type: Any,
+) -> None:
+    project_id = str(jira_project_id or "").strip()
+    issue_type = str(jira_issue_type or "").strip()
+    product_type = str(jira_product_type or "").strip()
+    if not project_id:
+        raise HTTPException(status_code=400, detail="ProyectoID is required before sending to Jira.")
+    if issue_type not in JIRA_FORMULA_ISSUE_TYPES:
+        raise HTTPException(status_code=400, detail="Unsupported Jira activity for formula review.")
+    if issue_type in {"Calidad", "Prototipo"} and product_type not in JIRA_PRODUCT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Tipo producto must be Nuevo, Mod A, Mod B or Mod C before sending to Jira.",
+        )
+
+
+def _record_integration_event(
+    session: Session,
+    tenant_id: uuid.UUID,
+    *,
+    entity_type: str,
+    entity_id: uuid.UUID,
+    event_type: str,
+    status: str,
+    payload_summary: dict[str, Any] | None = None,
+    error_message: str | None = None,
+) -> None:
+    session.add(
+        IntegrationEvent(
+            tenant_id=tenant_id,
+            integration_type="jira",
+            entity_type=entity_type,
+            entity_id=entity_id,
+            event_type=event_type,
+            status=status,
+            payload_summary=payload_summary or {},
+            error_message=error_message,
+        )
+    )
 
 
 def _get_jira_connection(
@@ -427,6 +644,7 @@ def _new_jira_connection(
             payload.api_token,
             auth_type=payload.auth_type,
         ),
+        credential_json=_jira_credential_json(payload.api_token, auth_type=payload.auth_type),
         default_project_key=_normalize_project_key(payload.default_project_key),
         default_issue_type=_clean_required(payload.default_issue_type, "Issue type"),
         default_assignee=_clean_optional(payload.default_assignee),
@@ -455,6 +673,7 @@ def _apply_jira_connection_update(
             current_status=connection.credential_status,
             auth_type=connection.auth_type,
         )
+        _set_jira_api_token(connection, updates["api_token"])
     if "default_project_key" in updates and updates["default_project_key"] is not None:
         connection.default_project_key = _normalize_project_key(updates["default_project_key"])
     if "default_issue_type" in updates and updates["default_issue_type"] is not None:
@@ -504,10 +723,7 @@ def _jira_connection_test_result(connection: JiraConnection) -> tuple[str, str]:
                 "configuration_error",
                 f"Missing Jira configuration: {', '.join(missing_fields)}.",
             )
-        return (
-            "ready_for_oauth",
-            "Jira OAuth settings are saved; live token validation is handled during send.",
-        )
+        return _live_jira_connection_test_result(connection)
 
     if connection.credential_status != "configured":
         missing_fields.append("API token")
@@ -523,15 +739,23 @@ def _jira_connection_test_result(connection: JiraConnection) -> tuple[str, str]:
             "configuration_error",
             f"Missing Jira configuration: {', '.join(missing_fields)}.",
         )
-    return (
-        "ready_for_client",
-        "Jira settings are complete; live Atlassian API testing is not implemented yet.",
-    )
+    return _live_jira_connection_test_result(connection)
+
+
+def _live_jira_connection_test_result(connection: JiraConnection) -> tuple[str, str]:
+    try:
+        result = check_jira_connection(connection)
+    except JiraConfigurationError as exc:
+        return "configuration_error", str(exc)
+    except JiraClientError as exc:
+        return "connection_error", str(exc)
+    return result.status, result.message
 
 
 def _jira_connection_read(connection: JiraConnection) -> dict[str, Any]:
     return {
         **connection.model_dump(mode="json"),
+        "credential_json": {},
         "field_mapping": connection.field_mapping_json,
         "status_mapping": connection.status_mapping_json,
     }
@@ -652,7 +876,7 @@ def _formula_jira_snapshot(
 ) -> dict[str, Any]:
     materials_by_id = _materials_by_id(session, tenant_id, [item.raw_material_id for item in items])
     latest_calculation = _latest_calculation(session, tenant_id, formula.id)
-    issue_summary = f"Revision formula - F-{str(formula.id)[:8]} - {formula.name}"
+    issue_summary = f"{formula.jira_issue_type.upper()} - {formula.jira_project_id or str(formula.id)[:8]} - {formula.name}"
     return {
         "formula": {
             "id": str(formula.id),
@@ -660,6 +884,9 @@ def _formula_jira_snapshot(
             "version": formula.version,
             "status": formula.status,
             "objective": formula.objective,
+            "jira_project_id": formula.jira_project_id,
+            "jira_issue_type": formula.jira_issue_type,
+            "jira_product_type": formula.jira_product_type,
             "total_price": formula.total_price,
             "currency": formula.currency,
         },
@@ -672,7 +899,7 @@ def _formula_jira_snapshot(
             "connection_id": str(connection.id),
             "base_url": connection.base_url,
             "project_key": connection.default_project_key,
-            "issue_type": connection.default_issue_type,
+            "issue_type": formula.jira_issue_type or connection.default_issue_type,
             "assignee": connection.default_assignee,
             "issue_summary": issue_summary,
         },
@@ -755,6 +982,23 @@ def _clean_mapping(mapping: dict[str, str]) -> dict[str, str]:
         for key, value in mapping.items()
         if key.strip() and value.strip()
     }
+
+
+def _jira_credential_json(token: str | None, *, auth_type: str) -> dict[str, str]:
+    if auth_type != "api_token":
+        return {}
+    cleaned = _clean_optional(token)
+    return {JIRA_API_TOKEN_CREDENTIAL_KEY: cleaned} if cleaned else {}
+
+
+def _set_jira_api_token(connection: JiraConnection, token: str | None) -> None:
+    cleaned = _clean_optional(token)
+    credentials = dict(connection.credential_json or {})
+    if cleaned:
+        credentials[JIRA_API_TOKEN_CREDENTIAL_KEY] = cleaned
+    else:
+        credentials.pop(JIRA_API_TOKEN_CREDENTIAL_KEY, None)
+    connection.credential_json = credentials
 
 
 def _credential_status_from_token(

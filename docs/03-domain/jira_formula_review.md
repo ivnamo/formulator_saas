@@ -302,8 +302,23 @@ Decision MVP:
 - Guardar `FORMULIA_JIRA_OAUTH_CLIENT_ID`, `FORMULIA_JIRA_OAUTH_CLIENT_SECRET`, `FORMULIA_JIRA_OAUTH_REDIRECT_URI`, `FORMULIA_JIRA_SITE_URL` y `FORMULIA_JIRA_CLOUD_ID` localmente.
 - Intercambiar `code` en `POST /api/v1/integrations/jira/oauth/callback` y guardar `FORMULIA_JIRA_OAUTH_ACCESS_TOKEN`, `FORMULIA_JIRA_OAUTH_REFRESH_TOKEN` y expiracion en `.env.local`.
 - Refrescar automaticamente el access token antes de enviar una revision a Jira si esta caducado.
-- Mantener Basic Auth con email + API token solo como fallback local/ad-hoc mediante `FORMULIA_JIRA_API_TOKEN`.
+- Mantener Basic Auth con email + API token; el token debe persistirse en la conexion Jira y `FORMULIA_JIRA_API_TOKEN` queda solo como fallback local/ad-hoc.
 - Dejar persistencia cifrada multi-tenant para una fase posterior.
+
+Configuracion Atlantica Agricola para pruebas con API token:
+
+- Site Jira: `https://atlanticaagricola.atlassian.net`.
+- Proyecto Jira: `ID` (`I+D+i - Desarrollo`).
+- Informador fijo: Iván Navarro (`accountId`: `712020:d8d35c01-546b-498f-aa7f-dbe2c966820c`).
+- Tipos de issue disponibles para el flujo:
+  - `PoC`: solo requiere resumen, proyecto, tipo e informador.
+  - `Prototipo`: requiere tambien `ProyectoID` y `Tipo producto`.
+  - `Calidad`: requiere tambien `ProyectoID` y `Tipo producto`.
+- `ProyectoID` (`customfield_10658`) no es el project key de Jira. Es un identificador funcional de formula o conjunto de formulas, por ejemplo `FLOWER`, y pertenece a la formula.
+- `Tipo producto` (`customfield_10856`) es un selector Jira. Valores vistos en el tenant: `Nuevo`, `Mod A`, `Mod B`, `Mod C`.
+- La conexion Jira queda como configuracion de admin: URL, email de autenticacion, API token/OAuth, proyecto Jira (`ID`), assignee por defecto y mapeos tecnicos. El API token de pruebas se guarda en la conexion (`jira_connections.credential_json`) y no se devuelve al frontend.
+- El test de conexion debe hacer una llamada real de solo lectura a Jira para validar usuario autenticado, proyecto y tipo de issue disponible antes de enviar formulas.
+- La integracion envia estos campos obligatorios al crear issues `Calidad` o `Prototipo`; para `PoC` no envia `ProyectoID` ni `Tipo producto`.
 
 Diferencia operativa:
 
@@ -324,6 +339,10 @@ GET /integrations/jira/{id}/fields
 POST /formulas/{formula_id}/reviews/jira
 GET /formulas/{formula_id}/reviews
 GET /formula-reviews/{review_id}
+POST /formula-reviews/{review_id}/artifacts/excel
+GET /formula-review-artifacts/{artifact_id}/download
+POST /formula-reviews/{review_id}/jira/send
+POST /formula-reviews/{review_id}/jira/retry-attachment
 POST /formula-reviews/{review_id}/sync
 POST /formula-reviews/{review_id}/resend-version
 ```

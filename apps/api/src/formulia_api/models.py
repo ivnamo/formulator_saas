@@ -128,6 +128,9 @@ class Formula(SQLModel, table=True):
     version: int = 1
     status: str = "draft"
     objective: str | None = None
+    jira_project_id: str | None = Field(default=None, index=True)
+    jira_issue_type: str = "Calidad"
+    jira_product_type: str = "Nuevo"
     total_price: float | None = None
     currency: str = "EUR"
     created_by: uuid.UUID | None = None
@@ -184,6 +187,7 @@ class JiraConnection(SQLModel, table=True):
     auth_type: str = "api_token"
     auth_email: str | None = None
     credential_status: str = "missing"
+    credential_json: dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON))
     default_project_key: str
     default_issue_type: str
     default_assignee: str | None = None
@@ -228,6 +232,21 @@ class FormulaReviewArtifact(SQLModel, table=True):
     checksum_sha256: str
     size_bytes: int
     content: bytes = Field(sa_column=Column(LargeBinary))
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class IntegrationEvent(SQLModel, table=True):
+    __tablename__ = "integration_events"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    integration_type: str = Field(index=True)
+    entity_type: str = Field(index=True)
+    entity_id: uuid.UUID = Field(index=True)
+    event_type: str = Field(index=True)
+    status: str = Field(index=True)
+    payload_summary: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    error_message: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
 
 

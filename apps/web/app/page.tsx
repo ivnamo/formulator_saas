@@ -229,6 +229,7 @@ export default function Home() {
   const canCalculate =
     Boolean(workspace.tenant) &&
     workspace.formulaLines.length > 0 &&
+    workspace.formulaJiraProjectId.trim().length > 0 &&
     !hasPendingDraftReview &&
     !isBusy;
   const canCompareSavedFormulas =
@@ -242,6 +243,7 @@ export default function Home() {
     Boolean(importPreview) &&
     importPreview?.rows.length !== 0 &&
     importPreview?.pending_rows === 0 &&
+    workspace.formulaJiraProjectId.trim().length > 0 &&
     !isBusy;
   const canParseRequirements =
     Boolean(workspace.tenant) && requirementText.trim().length >= 3 && !isBusy;
@@ -269,6 +271,7 @@ export default function Home() {
   const canPrepareJiraReview =
     Boolean(workspace.tenant) &&
     Boolean(workspace.formulaId) &&
+    workspace.formulaJiraProjectId.trim().length > 0 &&
     Boolean(activeJiraConnection) &&
     result !== null &&
     !isBusy;
@@ -653,6 +656,56 @@ export default function Home() {
     });
   }
 
+  async function sendCurrentFormulaToJira() {
+    if (!workspace.tenant || !workspace.formulaId) {
+      setError("Save and calculate the formula before sending to Jira");
+      return;
+    }
+    if (!activeJiraConnection) {
+      setError("Configure Jira before sending");
+      return;
+    }
+    if (result === null) {
+      setError("Calculate before sending to Jira");
+      return;
+    }
+    if (!workspace.formulaJiraProjectId.trim()) {
+      setError("ProyectoID is required before sending to Jira");
+      return;
+    }
+
+    await runAction("Sending formula to Jira", async () => {
+      const existingDraftReview = formulaReviewRequests.find((review) => !review.jira_issue_key);
+      const review =
+        existingDraftReview ??
+        (await request<FormulaReviewRequest>(
+          `/api/v1/formulas/${workspace.formulaId}/reviews/jira`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({}),
+          },
+        ));
+      const sentReview = await request<FormulaReviewRequest>(
+        `/api/v1/formula-reviews/${review.id}/jira/send`,
+        {
+          method: "POST",
+          headers,
+        },
+      );
+      setFormulaReviewRequests((current) => [
+        sentReview,
+        ...current.filter((item) => item.id !== sentReview.id),
+      ]);
+      await loadFormulaReviewRequests(sentReview.formula_id);
+      setMessage(
+        sentReview.review_status === "partial_failure"
+          ? "Jira issue created; Excel attachment failed"
+          : "Jira issue created",
+      );
+    });
+  }
+
   async function generateJiraReviewExcel(reviewId: string) {
     await runAction("Generating Jira Excel", async () => {
       const artifact = await request<FormulaReviewArtifact>(
@@ -712,6 +765,23 @@ export default function Home() {
           ? "Jira issue created; Excel attachment failed"
           : "Jira issue created",
       );
+    });
+  }
+
+  async function retryJiraReviewAttachment(reviewId: string) {
+    await runAction("Retrying Jira Excel attachment", async () => {
+      const review = await request<FormulaReviewRequest>(
+        `/api/v1/formula-reviews/${reviewId}/jira/retry-attachment`,
+        {
+          method: "POST",
+          headers,
+        },
+      );
+      setFormulaReviewRequests((current) =>
+        current.map((item) => (item.id === review.id ? review : item)),
+      );
+      await loadFormulaReviewRequests(review.formula_id);
+      setMessage("Jira Excel attachment retried");
     });
   }
 
@@ -985,6 +1055,10 @@ export default function Home() {
       setError("Add at least one formula line");
       return;
     }
+    if (!workspace.formulaJiraProjectId.trim()) {
+      setError("ProyectoID is required before saving a formula");
+      return;
+    }
     if (hasPendingDraftReview) {
       setError("Confirm draft review before saving");
       return;
@@ -998,6 +1072,9 @@ export default function Home() {
       }));
       const payload = {
         name: workspace.formulaName.trim() || "Manual Formula",
+        jira_project_id: workspace.formulaJiraProjectId.trim(),
+        jira_issue_type: workspace.formulaJiraIssueType,
+        jira_product_type: workspace.formulaJiraProductType,
         items,
       };
       const formula = workspace.formulaId
@@ -1019,6 +1096,17 @@ export default function Home() {
         ...current,
         formulaId: formula.id,
         formulaName: formula.name,
+        formulaJiraProjectId: formula.jira_project_id ?? "",
+        formulaJiraIssueType:
+          formula.jira_issue_type === "PoC" || formula.jira_issue_type === "Prototipo"
+            ? formula.jira_issue_type
+            : "Calidad",
+        formulaJiraProductType:
+          formula.jira_product_type === "Mod A" ||
+          formula.jira_product_type === "Mod B" ||
+          formula.jira_product_type === "Mod C"
+            ? formula.jira_product_type
+            : "Nuevo",
       }));
       setResult(calculation);
       setDraftReview(null);
@@ -1059,6 +1147,17 @@ export default function Home() {
         ...current,
         formulaId: formula.id,
         formulaName: formula.name,
+        formulaJiraProjectId: formula.jira_project_id ?? "",
+        formulaJiraIssueType:
+          formula.jira_issue_type === "PoC" || formula.jira_issue_type === "Prototipo"
+            ? formula.jira_issue_type
+            : "Calidad",
+        formulaJiraProductType:
+          formula.jira_product_type === "Mod A" ||
+          formula.jira_product_type === "Mod B" ||
+          formula.jira_product_type === "Mod C"
+            ? formula.jira_product_type
+            : "Nuevo",
         formulaLines: formula.items.map((item) => ({
           localId: makeLocalId(),
           rawMaterialId: item.raw_material_id,
@@ -1270,6 +1369,9 @@ export default function Home() {
         headers,
         body: JSON.stringify({
           name: `${workspace.tenant?.name ?? "Imported"} Excel Formula`,
+          jira_project_id: workspace.formulaJiraProjectId.trim(),
+          jira_issue_type: workspace.formulaJiraIssueType,
+          jira_product_type: workspace.formulaJiraProductType,
           rows: importPreview.rows.map((row) => ({
             raw_material_id: row.raw_material_id,
             percentage: row.percentage,
@@ -1280,6 +1382,17 @@ export default function Home() {
         ...current,
         formulaId: formula.id,
         formulaName: formula.name,
+        formulaJiraProjectId: formula.jira_project_id ?? "",
+        formulaJiraIssueType:
+          formula.jira_issue_type === "PoC" || formula.jira_issue_type === "Prototipo"
+            ? formula.jira_issue_type
+            : "Calidad",
+        formulaJiraProductType:
+          formula.jira_product_type === "Mod A" ||
+          formula.jira_product_type === "Mod B" ||
+          formula.jira_product_type === "Mod C"
+            ? formula.jira_product_type
+            : "Nuevo",
         formulaLines: formula.items.map((item) => ({
           localId: makeLocalId(),
           rawMaterialId: item.raw_material_id,
@@ -2845,6 +2958,68 @@ export default function Home() {
                 disabled={isBusy}
               />
             </label>
+            <div className="formulaMetaGrid">
+              <label>
+                <span>ProyectoID</span>
+                <input
+                  placeholder="FLOWER"
+                  value={workspace.formulaJiraProjectId}
+                  onChange={(event) => {
+                    setWorkspace((current) => ({
+                      ...current,
+                      formulaJiraProjectId: event.target.value,
+                    }));
+                    markDraftReviewPending();
+                  }}
+                  disabled={isBusy}
+                />
+              </label>
+              <label>
+                <span>Jira activity</span>
+                <select
+                  value={workspace.formulaJiraIssueType}
+                  onChange={(event) => {
+                    setWorkspace((current) => ({
+                      ...current,
+                      formulaJiraIssueType:
+                        event.target.value === "PoC" || event.target.value === "Prototipo"
+                          ? event.target.value
+                          : "Calidad",
+                    }));
+                    markDraftReviewPending();
+                  }}
+                  disabled={isBusy}
+                >
+                  <option value="Calidad">Calidad</option>
+                  <option value="Prototipo">Prototipo</option>
+                  <option value="PoC">PoC</option>
+                </select>
+              </label>
+              <label>
+                <span>Tipo producto</span>
+                <select
+                  value={workspace.formulaJiraProductType}
+                  onChange={(event) => {
+                    setWorkspace((current) => ({
+                      ...current,
+                      formulaJiraProductType:
+                        event.target.value === "Mod A" ||
+                        event.target.value === "Mod B" ||
+                        event.target.value === "Mod C"
+                          ? event.target.value
+                          : "Nuevo",
+                    }));
+                    markDraftReviewPending();
+                  }}
+                  disabled={isBusy || workspace.formulaJiraIssueType === "PoC"}
+                >
+                  <option value="Nuevo">Nuevo</option>
+                  <option value="Mod A">Mod A</option>
+                  <option value="Mod B">Mod B</option>
+                  <option value="Mod C">Mod C</option>
+                </select>
+              </label>
+            </div>
             <div className="formulaMeter" aria-label="Formula percentage total">
               <div style={{ width: `${Math.min(Math.max(totalPercentage, 0), 100)}%` }} />
             </div>
@@ -2965,11 +3140,11 @@ export default function Home() {
                 <button
                   className="secondaryButton"
                   type="button"
-                  onClick={prepareJiraReview}
+                  onClick={sendCurrentFormulaToJira}
                   disabled={!canPrepareJiraReview}
                 >
-                  <Check size={16} />
-                  Prepare
+                  <Send size={16} />
+                  Send to Jira
                 </button>
               </div>
               {formulaReviewRequests.length === 0 ? (
@@ -3030,18 +3205,34 @@ export default function Home() {
                             >
                               <Send size={16} />
                             </button>
-                          ) : review.jira_issue_url ? (
-                            <a
-                              className="iconButton"
-                              href={review.jira_issue_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Open Jira issue"
-                              aria-label="Open Jira issue"
-                            >
-                              <ExternalLink size={16} />
-                            </a>
-                          ) : null}
+                          ) : (
+                            <>
+                              {review.review_status === "partial_failure" ? (
+                                <button
+                                  className="iconButton"
+                                  type="button"
+                                  onClick={() => retryJiraReviewAttachment(review.id)}
+                                  disabled={isBusy}
+                                  title="Retry Excel attachment"
+                                  aria-label="Retry Jira Excel attachment"
+                                >
+                                  <RefreshCw size={16} />
+                                </button>
+                              ) : null}
+                              {review.jira_issue_url ? (
+                                <a
+                                  className="iconButton"
+                                  href={review.jira_issue_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Open Jira issue"
+                                  aria-label="Open Jira issue"
+                                >
+                                  <ExternalLink size={16} />
+                                </a>
+                              ) : null}
+                            </>
+                          )}
                         </div>
                       </div>
                     );

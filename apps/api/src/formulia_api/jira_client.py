@@ -14,6 +14,13 @@ from .jira_excel import JiraReviewExcel
 from .jira_oauth import JiraOAuthError, get_jira_cloud_id, get_valid_jira_oauth_access_token
 from .models import JiraConnection
 
+ATLANTICA_JIRA_REPORTER_ACCOUNT_ID = "712020:d8d35c01-546b-498f-aa7f-dbe2c966820c"
+JIRA_PROJECT_ID_FIELD_ID = "customfield_10658"
+JIRA_PRODUCT_TYPE_FIELD_ID = "customfield_10856"
+DEFAULT_JIRA_PRODUCT_TYPE = "Nuevo"
+JIRA_FORMULA_REVIEW_ISSUE_TYPES = {"Calidad", "Prototipo"}
+JIRA_API_TOKEN_CREDENTIAL_KEY = "api_token"
+
 
 class JiraClientError(RuntimeError):
     pass
@@ -37,8 +44,20 @@ class JiraAttachmentResult:
     status: str = "attached"
 
 
+@dataclass(frozen=True)
+class JiraConnectionCheckResult:
+    status: str
+    message: str
+
+
 class JiraClient(Protocol):
     def create_issue(self, payload: dict[str, Any]) -> JiraIssueResult:
+        ...
+
+    def get_current_user(self) -> dict[str, Any]:
+        ...
+
+    def get_project(self, project_key: str) -> dict[str, Any]:
         ...
 
     def add_attachment(
@@ -79,6 +98,12 @@ class AtlassianJiraClient:
             url=f"{self.browse_base_url}/browse/{key}",
             status="created",
         )
+
+    def get_current_user(self) -> dict[str, Any]:
+        return self._json_get("/rest/api/3/myself")
+
+    def get_project(self, project_key: str) -> dict[str, Any]:
+        return self._json_get(f"/rest/api/3/project/{project_key}")
 
     def add_attachment(
         self,
@@ -126,12 +151,24 @@ class AtlassianJiraClient:
             raise JiraClientError("Jira returned an unexpected JSON response.")
         return parsed
 
+    def _json_get(self, path: str) -> dict[str, Any]:
+        response = self._request(
+            path,
+            method="GET",
+            body=None,
+            headers={"Accept": "application/json"},
+        )
+        parsed = _json_response(response)
+        if not isinstance(parsed, dict):
+            raise JiraClientError("Jira returned an unexpected JSON response.")
+        return parsed
+
     def _request(
         self,
         path: str,
         *,
         method: str,
-        body: bytes,
+        body: bytes | None,
         headers: dict[str, str],
     ) -> bytes:
         request = Request(
@@ -196,9 +233,12 @@ def make_jira_client(connection: JiraConnection) -> JiraClient:
         raise JiraConfigurationError("Only Jira API token authentication is supported.")
     if not connection.auth_email:
         raise JiraConfigurationError("Jira auth email is required.")
-    api_token = os.getenv("FORMULIA_JIRA_API_TOKEN", "").strip()
+    api_token = (
+        connection.credential_json.get(JIRA_API_TOKEN_CREDENTIAL_KEY)
+        or os.getenv("FORMULIA_JIRA_API_TOKEN", "")
+    ).strip()
     if not api_token:
-        raise JiraConfigurationError("FORMULIA_JIRA_API_TOKEN is required to send reviews to Jira.")
+        raise JiraConfigurationError("Jira API token is required to send reviews to Jira.")
     return AtlassianJiraClient(
         base_url=connection.base_url,
         auth_email=connection.auth_email,
@@ -206,20 +246,48 @@ def make_jira_client(connection: JiraConnection) -> JiraClient:
     )
 
 
+def check_jira_connection(connection: JiraConnection) -> JiraConnectionCheckResult:
+    client = make_jira_client(connection)
+    current_user = client.get_current_user()
+    project = client.get_project(connection.default_project_key)
+    issue_types = [
+        str(issue_type.get("name") or "")
+        for issue_type in _sequence(project.get("issueTypes"))
+        if isinstance(issue_type, dict)
+    ]
+    if connection.default_issue_type not in issue_types:
+        return JiraConnectionCheckResult(
+            status="configuration_error",
+            message=(
+                f"Jira project {connection.default_project_key} is reachable, but issue type "
+                f"{connection.default_issue_type!r} is not available."
+            ),
+        )
+    display_name = current_user.get("displayName") or current_user.get("emailAddress") or "Jira user"
+    project_name = project.get("name") or connection.default_project_key
+    return JiraConnectionCheckResult(
+        status="ready_for_client",
+        message=f"Connected to Jira as {display_name}; project {connection.default_project_key} ({project_name}) is ready.",
+    )
+
+
 def build_jira_issue_payload(snapshot: dict[str, Any], connection: JiraConnection) -> dict[str, Any]:
     jira = _mapping(snapshot.get("jira"))
     formula = _mapping(snapshot.get("formula"))
     summary = str(jira.get("issue_summary") or formula.get("name") or "Formula review")
+    issue_type = str(jira.get("issue_type") or connection.default_issue_type)
     fields: dict[str, Any] = {
         "project": {"key": connection.default_project_key},
-        "issuetype": {"name": connection.default_issue_type},
+        "issuetype": {"name": issue_type},
         "summary": summary,
         "description": _adf_document(snapshot),
         "labels": ["formulia", "formula-review"],
     }
+    fields["reporter"] = {"accountId": ATLANTICA_JIRA_REPORTER_ACCOUNT_ID}
     if connection.default_assignee:
         fields["assignee"] = {"accountId": connection.default_assignee}
     fields.update(_mapped_custom_fields(snapshot, connection.field_mapping_json))
+    fields.update(_required_formula_review_fields(snapshot, issue_type))
     return {"fields": fields}
 
 
@@ -229,6 +297,7 @@ def _mapped_custom_fields(
 ) -> dict[str, Any]:
     values = {
         "formula_id": _mapping(snapshot.get("formula")).get("id"),
+        "formula_short_id": _formula_short_id(snapshot),
         "formula_name": _mapping(snapshot.get("formula")).get("name"),
         "formula_version": _mapping(snapshot.get("formula")).get("version"),
         "formula_status": _mapping(snapshot.get("formula")).get("status"),
@@ -239,6 +308,22 @@ def _mapped_custom_fields(
         jira_field: values[formulia_field]
         for formulia_field, jira_field in field_mapping.items()
         if formulia_field in values and values[formulia_field] is not None
+    }
+
+
+def _required_formula_review_fields(
+    snapshot: dict[str, Any],
+    issue_type: str,
+) -> dict[str, Any]:
+    if issue_type not in JIRA_FORMULA_REVIEW_ISSUE_TYPES:
+        return {}
+
+    formula = _mapping(snapshot.get("formula"))
+    project_id = str(formula.get("jira_project_id") or "").strip()
+    product_type = str(formula.get("jira_product_type") or DEFAULT_JIRA_PRODUCT_TYPE).strip()
+    return {
+        JIRA_PROJECT_ID_FIELD_ID: project_id or _formula_short_id(snapshot),
+        JIRA_PRODUCT_TYPE_FIELD_ID: {"value": product_type},
     }
 
 
@@ -292,6 +377,11 @@ def _formula_cost(snapshot: dict[str, Any]) -> Any:
     calculation = _mapping(snapshot.get("latest_calculation"))
     formula = _mapping(snapshot.get("formula"))
     return calculation.get("price_total") or formula.get("total_price")
+
+
+def _formula_short_id(snapshot: dict[str, Any]) -> str:
+    formula_id = str(_mapping(snapshot.get("formula")).get("id") or "")
+    return formula_id[:8] if formula_id else "unknown"
 
 
 def _multipart_file_body(boundary: str, artifact: JiraReviewExcel) -> bytes:

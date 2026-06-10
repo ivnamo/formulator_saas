@@ -32,6 +32,9 @@ export type WorkspaceState = {
   rawMaterials: RawMaterial[];
   formulaId: string | null;
   formulaName: string;
+  formulaJiraProjectId: string;
+  formulaJiraIssueType: "Calidad" | "PoC" | "Prototipo";
+  formulaJiraProductType: "Nuevo" | "Mod A" | "Mod B" | "Mod C";
   formulaLines: FormulaLine[];
 };
 
@@ -96,6 +99,9 @@ export type FormulaRead = {
   version: number;
   status: string;
   objective: string | null;
+  jira_project_id: string | null;
+  jira_issue_type: string;
+  jira_product_type: string;
   total_price: number | null;
   currency: string;
   items: Array<{
@@ -193,6 +199,9 @@ export type FormulaReviewRequest = {
     formula?: {
       name?: string;
       version?: number;
+      jira_project_id?: string | null;
+      jira_issue_type?: string;
+      jira_product_type?: string;
       total_price?: number | null;
       currency?: string;
     };
@@ -429,6 +438,9 @@ export const emptyWorkspace: WorkspaceState = {
   rawMaterials: [],
   formulaId: null,
   formulaName: "Manual Formula",
+  formulaJiraProjectId: "",
+  formulaJiraIssueType: "Calidad",
+  formulaJiraProductType: "Nuevo",
   formulaLines: [],
 };
 
