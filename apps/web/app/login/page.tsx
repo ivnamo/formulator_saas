@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Loader2, LogIn } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 import { getSupabaseBrowserClient } from "../supabase-client";
 
-type LoginMode = "idle" | "working" | "sent" | "error";
+type LoginMode = "idle" | "working" | "error";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -33,31 +33,6 @@ export default function LoginPage() {
     }
     const next = new URLSearchParams(window.location.search).get("next") ?? "/";
     window.location.href = next;
-  }
-
-  async function signInWithEmail() {
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail.includes("@")) {
-      setStatus("error");
-      setMessage("Introduce un email valido.");
-      return;
-    }
-
-    setStatus("working");
-    const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      setStatus("error");
-      setMessage(error.message);
-      return;
-    }
-    setStatus("sent");
-    setMessage("Revisa tu email para entrar en FormulIA.");
   }
 
   return (
@@ -109,15 +84,6 @@ export default function LoginPage() {
           >
             {status === "working" ? <Loader2 className="spin" size={17} /> : <LogIn size={17} />}
             Entrar
-          </button>
-          <button
-            className="secondaryButton"
-            type="button"
-            onClick={signInWithEmail}
-            disabled={status === "working"}
-          >
-            <KeyRound size={17} />
-            Enviar enlace
           </button>
         </div>
         <div className="statusLine" data-state={status === "error" ? "error" : "idle"}>

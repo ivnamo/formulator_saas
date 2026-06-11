@@ -19,12 +19,14 @@ class TenantRead(BaseModel):
     name: str
     slug: str
     status: str
+    role: str | None = None
 
 
 class TenantInvitationCreate(BaseModel):
     email: str = Field(min_length=3)
     role: Literal["owner", "admin", "formulator", "formulador", "viewer"] = "formulator"
     expires_at: datetime | None = None
+    send_link: bool = False
 
 
 class TenantInvitationRead(BaseModel):
@@ -40,6 +42,7 @@ class TenantInvitationRead(BaseModel):
     expires_at: datetime | None
     created_at: datetime
     accepted_at: datetime | None
+    email_delivery_status: str | None = None
 
 
 class ParameterCreate(BaseModel):

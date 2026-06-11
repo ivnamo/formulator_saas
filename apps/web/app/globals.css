@@ -397,6 +397,47 @@ label span {
   grid-template-columns: minmax(120px, 0.9fr) minmax(150px, 1fr) minmax(90px, 0.7fr) auto;
 }
 
+.inviteFormGrid {
+  grid-template-columns: minmax(180px, 1fr) minmax(110px, 0.45fr) auto;
+}
+
+.invitationList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.invitationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fbfcfb;
+}
+
+.invitationRow span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.invitationRow strong {
+  color: var(--text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.invitationRow code {
+  color: var(--blue);
+  font-size: 12px;
+}
+
 .materialPanel,
 .compatibilityPanel {
   grid-column: 1 / -1;

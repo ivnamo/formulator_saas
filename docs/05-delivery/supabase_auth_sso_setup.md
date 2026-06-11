@@ -18,6 +18,7 @@ The root `.env.local` must contain:
 ```text
 SUPABASE_URL=...
 SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 DATABASE_URL=...
@@ -28,7 +29,11 @@ FORMULIA_DB_SCHEMA=formulia
 
 ## Invite a User
 
-Use the script from the repo root:
+Admins invite users from `Configuracion > Invitaciones` once logged in as `owner` or `admin`. The public login screen does not expose magic-link sending.
+
+The backend sends Supabase invite links with the service-role key, so `SUPABASE_SERVICE_ROLE_KEY` must be configured server-side. Never expose it as a `NEXT_PUBLIC_*` variable.
+
+For local or scripted invitation records, use the script from the repo root:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\invite_tenant_user.py user@example.com --tenant-slug atlantica-agricola --role formulator
@@ -87,8 +92,8 @@ Yes, if Ivan provides the exact Atlantica email address and that email is invite
 That path is not SSO. It only requires:
 
 - the email invitation in `tenant_invitations`,
-- Supabase Auth email/magic-link enabled,
+- Supabase Auth email/password or admin invitation enabled,
 - the app callback URL allowed in Supabase Auth URL configuration,
-- access to the mailbox to click the magic link.
+- access to the mailbox if the admin sends an invitation link.
 
 For true SSO through the Atlantica Microsoft account, wait for the Entra admin checklist above.

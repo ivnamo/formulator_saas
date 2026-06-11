@@ -67,6 +67,7 @@ import {
   type RequirementConstraint,
   type RequirementParse,
   type Status,
+  type TenantInvitationRead,
   type TenantRead,
   type WorkspaceState,
 } from "./workspace-model";
@@ -125,6 +126,10 @@ const VIEW_DESCRIPTIONS: Record<WorkspaceView, string> = {
   compatibility: "Gestiona reglas manuales de compatibilidad.",
   ai: "Convierte requisitos en restricciones y borradores revisables.",
 };
+
+function isTenantAdminRole(role?: string | null) {
+  return role === "owner" || role === "admin";
+}
 
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
@@ -192,6 +197,11 @@ export default function Home() {
   const [activeView, setActiveView] = useState<WorkspaceView>("formula");
   const [session, setSession] = useState<Session | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [tenantInvitations, setTenantInvitations] = useState<TenantInvitationRead[]>([]);
+  const [invitationForm, setInvitationForm] = useState({
+    email: "",
+    role: "formulator",
+  });
 
   const authHeaders = useMemo(
     () => ({
@@ -326,6 +336,7 @@ export default function Home() {
   );
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
+  const canManageTenantUsers = isTenantAdminRole(workspace.tenant?.role) && !isBusy;
   const hasPendingDraftReview = draftReview !== null && draftReview.status !== "confirmed";
   const canConfirmDraftReview =
     draftReview !== null &&
@@ -413,6 +424,7 @@ export default function Home() {
         recommendedAction: "",
       });
       setJiraConnections([]);
+      setTenantInvitations([]);
       setJiraConnectionForm(emptyJiraConnectionForm);
       setJiraMetadata(null);
       setRequirementParse(null);
@@ -455,7 +467,7 @@ export default function Home() {
         return;
       }
       const tenantHeaders = { ...baseHeaders, "X-Tenant-Id": tenant.id };
-      const [parameters, materials] = await Promise.all([
+      const [parameters, materials, invitations] = await Promise.all([
         request<ParameterRead[]>("/api/v1/parameters", {
           method: "GET",
           headers: tenantHeaders,
@@ -464,6 +476,12 @@ export default function Home() {
           method: "GET",
           headers: tenantHeaders,
         }),
+        isTenantAdminRole(tenant.role)
+          ? request<TenantInvitationRead[]>("/api/v1/tenant-invitations", {
+              method: "GET",
+              headers: tenantHeaders,
+            })
+          : Promise.resolve([]),
       ]);
 
       setWorkspace({
@@ -481,6 +499,7 @@ export default function Home() {
       setFormulaReviewArtifacts({});
       setCompatibilityRules([]);
       setJiraConnections([]);
+      setTenantInvitations(invitations);
       setJiraMetadata(null);
       setRequirementParse(null);
       setAgentPlan(null);
@@ -497,6 +516,40 @@ export default function Home() {
   async function signOut() {
     await getSupabaseBrowserClient().auth.signOut();
     window.location.href = "/login";
+  }
+
+  async function createTenantInvitation() {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (!isTenantAdminRole(workspace.tenant.role)) {
+      setError("Only tenant admins can send invitation links");
+      return;
+    }
+    const email = invitationForm.email.trim().toLowerCase();
+    if (!email.includes("@")) {
+      setError("Invitation email is invalid");
+      return;
+    }
+
+    await runAction("Sending invitation link", async () => {
+      const invitation = await request<TenantInvitationRead>("/api/v1/tenant-invitations", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          email,
+          role: invitationForm.role,
+          send_link: true,
+        }),
+      });
+      setTenantInvitations((current) => {
+        const rest = current.filter((item) => item.id !== invitation.id);
+        return [invitation, ...rest];
+      });
+      setInvitationForm((current) => ({ ...current, email: "" }));
+      setMessage(`Invitation link sent to ${invitation.email}`);
+    });
   }
 
   async function createParameter() {
@@ -1976,6 +2029,73 @@ export default function Home() {
               </button>
             </div>
           </section>
+
+          {isTenantAdminRole(workspace.tenant?.role) ? (
+            <section className="panel setupPanel" hidden={activeView !== "settings"}>
+              <div className="panelHeader">
+                <h2>Invitaciones</h2>
+                <span>Admin only</span>
+              </div>
+              <div className="formGrid inviteFormGrid">
+                <label>
+                  <span>Email</span>
+                  <input
+                    autoComplete="email"
+                    inputMode="email"
+                    value={invitationForm.email}
+                    onChange={(event) =>
+                      setInvitationForm((current) => ({
+                        ...current,
+                        email: event.target.value,
+                      }))
+                    }
+                    disabled={!canManageTenantUsers}
+                  />
+                </label>
+                <label>
+                  <span>Rol</span>
+                  <select
+                    value={invitationForm.role}
+                    onChange={(event) =>
+                      setInvitationForm((current) => ({
+                        ...current,
+                        role: event.target.value,
+                      }))
+                    }
+                    disabled={!canManageTenantUsers}
+                  >
+                    <option value="formulator">Formulator</option>
+                    <option value="viewer">Viewer</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={createTenantInvitation}
+                  disabled={!canManageTenantUsers || !invitationForm.email.trim()}
+                >
+                  <Send size={17} />
+                  Enviar enlace
+                </button>
+              </div>
+              <div className="invitationList">
+                {tenantInvitations.length === 0 ? (
+                  <div className="empty">No tenant invitations yet.</div>
+                ) : (
+                  tenantInvitations.map((invitation) => (
+                    <div className="invitationRow" key={invitation.id}>
+                      <span>
+                        <strong>{invitation.email}</strong>
+                        {invitation.role}
+                      </span>
+                      <code>{invitation.status}</code>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          ) : null}
 
           <section id="parameters" className="panel setupPanel" hidden={activeView !== "settings"}>
             <div className="panelHeader">

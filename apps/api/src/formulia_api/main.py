@@ -102,6 +102,7 @@ from .tenant import (
     normalize_tenant_role,
     require_tenant_admin,
     require_tenant_context,
+    send_supabase_invite_email,
 )
 
 
@@ -145,24 +146,31 @@ def register_routes(app: FastAPI) -> None:
     def list_tenants(
         session: Session = Depends(get_session),
         user: User = Depends(get_current_user),
-    ) -> list[Tenant]:
+    ) -> list[dict[str, Any]]:
         memberships = session.exec(
             select(TenantMember).where(
                 TenantMember.user_id == user.id,
                 TenantMember.status == "active",
             )
         ).all()
-        tenant_ids = [membership.tenant_id for membership in memberships]
+        roles_by_tenant_id = {
+            membership.tenant_id: membership.role for membership in memberships
+        }
+        tenant_ids = list(roles_by_tenant_id)
         if not tenant_ids:
             return []
-        return session.exec(select(Tenant).where(Tenant.id.in_(tenant_ids))).all()
+        tenants = session.exec(select(Tenant).where(Tenant.id.in_(tenant_ids))).all()
+        return [
+            _tenant_read(tenant, roles_by_tenant_id.get(tenant.id))
+            for tenant in tenants
+        ]
 
     @app.post("/api/v1/tenants", response_model=TenantRead, status_code=201)
     def create_tenant(
         payload: TenantCreate,
         session: Session = Depends(get_session),
         user: User = Depends(get_current_user),
-    ) -> Tenant:
+    ) -> dict[str, Any]:
         tenant = Tenant(name=payload.name, slug=payload.slug)
         session.add(tenant)
         session.commit()
@@ -176,7 +184,7 @@ def register_routes(app: FastAPI) -> None:
             )
         )
         session.commit()
-        return tenant
+        return _tenant_read(tenant, "owner")
 
     @app.get("/api/v1/tenant-invitations", response_model=list[TenantInvitationRead])
     def list_tenant_invitations(
@@ -197,7 +205,7 @@ def register_routes(app: FastAPI) -> None:
         payload: TenantInvitationCreate,
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
-    ) -> TenantInvitation:
+    ) -> dict[str, Any]:
         require_tenant_admin(tenant)
         email = normalize_email(payload.email)
         role = normalize_tenant_role(payload.role)
@@ -227,7 +235,11 @@ def register_routes(app: FastAPI) -> None:
         session.add(invitation)
         session.commit()
         session.refresh(invitation)
-        return invitation
+        email_delivery_status = None
+        if payload.send_link:
+            send_supabase_invite_email(email)
+            email_delivery_status = "sent"
+        return _tenant_invitation_read(invitation, email_delivery_status)
 
     @app.get("/api/v1/parameters", response_model=list[ParameterRead])
     def list_parameters(
@@ -1165,6 +1177,35 @@ def _core_raw_material(
 
 def _model_dict(model: Any) -> dict[str, Any]:
     return model.model_dump(mode="json")
+
+
+def _tenant_read(tenant: Tenant, role: str | None) -> dict[str, Any]:
+    return {
+        "id": tenant.id,
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "status": tenant.status,
+        "role": role,
+    }
+
+
+def _tenant_invitation_read(
+    invitation: TenantInvitation,
+    email_delivery_status: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "id": invitation.id,
+        "tenant_id": invitation.tenant_id,
+        "email": invitation.email,
+        "role": invitation.role,
+        "status": invitation.status,
+        "invited_by": invitation.invited_by,
+        "accepted_by": invitation.accepted_by,
+        "expires_at": invitation.expires_at,
+        "created_at": invitation.created_at,
+        "accepted_at": invitation.accepted_at,
+        "email_delivery_status": email_delivery_status,
+    }
 
 
 def _normalize(value: str) -> str:

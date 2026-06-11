@@ -33,6 +33,7 @@ def create_tenant(client: TestClient, user_id: str, slug: str = "tenant-a") -> s
         json={"name": slug.title(), "slug": slug},
     )
     assert response.status_code == 201
+    assert response.json()["role"] == "owner"
     return response.json()["id"]
 
 
@@ -91,6 +92,7 @@ def test_supabase_invitation_creates_membership(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()[0]["slug"] == "atlantica-agricola"
+    assert response.json()[0]["role"] == "owner"
     with Session(engine) as session:
         membership = session.exec(
             select(TenantMember).where(
@@ -134,3 +136,39 @@ def test_only_tenant_admin_can_create_invitations(monkeypatch) -> None:
     assert created.status_code == 201
     assert created.json()["email"] == "formulator@example.com"
     assert created.json()["role"] == "formulator"
+
+
+def test_tenant_admin_can_send_supabase_invite_link(monkeypatch) -> None:
+    client, _engine = make_client(monkeypatch)
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key")
+    monkeypatch.setenv("FORMULIA_AUTH_REDIRECT_URL", "https://app.example.com/auth/callback")
+    tenant_id = create_tenant(client, USER_A)
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        status_code = 200
+
+    def fake_post(url, headers, json, timeout):  # noqa: ANN001
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["json"] = json
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr("formulia_api.tenant.httpx.post", fake_post)
+
+    response = client.post(
+        "/api/v1/tenant-invitations",
+        headers={"X-User-Id": USER_A, "X-Tenant-Id": tenant_id},
+        json={"email": "new-user@example.com", "role": "viewer", "send_link": True},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["email_delivery_status"] == "sent"
+    assert captured["url"] == "https://example.supabase.co/auth/v1/invite"
+    assert captured["headers"]["Authorization"] == "Bearer service-role-key"
+    assert captured["json"] == {
+        "email": "new-user@example.com",
+        "data": {"source": "formulia"},
+        "redirect_to": "https://app.example.com/auth/callback",
+    }

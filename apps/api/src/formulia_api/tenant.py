@@ -102,6 +102,36 @@ def normalize_tenant_role(role: str) -> str:
     raise HTTPException(status_code=400, detail="Tenant role is invalid.")
 
 
+def send_supabase_invite_email(email: str) -> None:
+    service_role_key = _supabase_service_role_key()
+    payload: dict[str, object] = {
+        "email": email,
+        "data": {"source": "formulia"},
+    }
+    redirect_to = _auth_redirect_url()
+    if redirect_to:
+        payload["redirect_to"] = redirect_to
+
+    try:
+        response = httpx.post(
+            f"{_supabase_url()}/auth/v1/invite",
+            headers={
+                "Authorization": f"Bearer {service_role_key}",
+                "apikey": service_role_key,
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=10,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Supabase invite email failed.") from exc
+    if response.status_code >= 400:
+        raise HTTPException(
+            status_code=502,
+            detail="Supabase invite email failed.",
+        )
+
+
 def _bearer_token(authorization: str | None) -> str | None:
     if authorization is None:
         return None
@@ -241,6 +271,25 @@ def _supabase_anon_key() -> str:
     if not value:
         raise HTTPException(status_code=500, detail="SUPABASE_ANON_KEY is not configured.")
     return value
+
+
+def _supabase_service_role_key() -> str:
+    value = (
+        os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        or os.getenv("FORMULIA_SUPABASE_SERVICE_ROLE_KEY")
+        or ""
+    ).strip()
+    if not value:
+        raise HTTPException(
+            status_code=500,
+            detail="SUPABASE_SERVICE_ROLE_KEY is required to send invite links.",
+        )
+    return value
+
+
+def _auth_redirect_url() -> str | None:
+    value = os.getenv("FORMULIA_AUTH_REDIRECT_URL", "").strip()
+    return value or None
 
 
 def _as_utc(value: datetime) -> datetime:
