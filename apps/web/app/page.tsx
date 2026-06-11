@@ -280,6 +280,19 @@ function parameterFamilyForCode(code: string) {
   return "Otros";
 }
 
+function parameterDisplayCode(code: string) {
+  const normalizedCode = normalizeParameterLookup(code);
+  for (const codes of Object.values(PARAMETER_FAMILIES)) {
+    const canonical = codes.find(
+      (candidate) => normalizeParameterLookup(candidate) === normalizedCode,
+    );
+    if (canonical) {
+      return canonical;
+    }
+  }
+  return code;
+}
+
 function formatFormulaNumber(value: number | null, suffix = "") {
   return value === null ? "-" : `${value.toFixed(2)}${suffix}`;
 }
@@ -294,7 +307,7 @@ function formatParameterValue(
   parameter: { code: string; value: number; unit: string | null },
 ) {
   const unit = parameter.unit ? ` ${parameter.unit}` : "";
-  return `${parameter.code}: ${parameter.value.toFixed(2)}${unit}`;
+  return `${parameterDisplayCode(parameter.code)}: ${parameter.value.toFixed(2)}${unit}`;
 }
 
 function parameterMatchesPositiveFilter(value: number, showOnlyPositive: boolean) {
@@ -4414,7 +4427,7 @@ export default function Home() {
                                   detailParameters.map((parameter) => (
                                     <div key={parameter.code}>
                                       <span>
-                                        {parameter.code}
+                                        {parameterDisplayCode(parameter.code)}
                                         <small>{parameterFamilyForCode(parameter.code)}</small>
                                       </span>
                                       <code>{formatParameterValue(parameter)}</code>
@@ -4832,83 +4845,85 @@ export default function Home() {
               </button>
               {builderSections.calculation ? (
                 <div className="builderStepBody builderCalculationPanel">
-              <div className="panelHeader">
-                <h2>Calculo vivo</h2>
-                <span>{result ? "Backend" : "Preview"}</span>
-              </div>
-              <div className="parameterControls">
-                <div>
-                  <strong>{selectedParameterPreset.label}</strong>
-                  <span>{visibleParameterSummary}</span>
-                </div>
-                <label className="switchControl">
-                  <input
-                    type="checkbox"
-                    checked={showOnlyPositiveParameters}
-                    onChange={(event) => setShowOnlyPositiveParameters(event.target.checked)}
-                  />
-                  <span>Solo parametros &gt; 0</span>
-                </label>
-                <div className="parameterPresetList compactPresetList">
-                  {PARAMETER_VIEW_PRESETS.map((preset) => (
-                    <button
-                      key={preset.key}
-                      className="segmentedChip"
-                      data-selected={parameterViewPreset === preset.key}
-                      type="button"
-                      onClick={() => selectParameterView(preset.key)}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="parameterList">
-                {parameterRows.length ? (
-                  parameterRows.map((parameter) => (
-                    <div key={`${parameter.source}-${parameter.code}`}>
-                      <Beaker size={18} />
-                      <span>
-                        {parameter.code}
-                        <small>{parameter.family}</small>
-                      </span>
-                      <code>
-                        {parameter.value.toFixed(2)} {parameter.unit ?? ""}
-                      </code>
-                    </div>
-                  ))
-                ) : (
-                  <div>
-                    <Beaker size={18} />
-                    <span>No calculated parameters</span>
-                    <code>-</code>
+                  <div className="panelHeader">
+                    <h2>Calculo vivo</h2>
+                    <span>{result ? "Backend" : "Preview"}</span>
                   </div>
-                )}
-              </div>
-              <div className="warningList">
-                {visibleWarnings.length ? (
-                  visibleWarnings.map((warning, index) => {
-                    const severity = normalizeWarningSeverity(warning);
-                    return (
-                      <div
-                        data-severity={severity}
-                        key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}-${index}`}
-                      >
-                        <AlertTriangle size={16} />
+                  <div className="parameterControls">
+                    <div>
+                      <strong>{selectedParameterPreset.label}</strong>
+                      <span>{visibleParameterSummary}</span>
+                    </div>
+                    <label className="switchControl">
+                      <input
+                        type="checkbox"
+                        checked={showOnlyPositiveParameters}
+                        onChange={(event) => setShowOnlyPositiveParameters(event.target.checked)}
+                      />
+                      <span>Solo parametros &gt; 0</span>
+                    </label>
+                    <div className="parameterPresetList compactPresetList">
+                      {PARAMETER_VIEW_PRESETS.map((preset) => (
+                        <button
+                          key={preset.key}
+                          className="segmentedChip"
+                          data-selected={parameterViewPreset === preset.key}
+                          type="button"
+                          onClick={() => selectParameterView(preset.key)}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="parameterList">
+                    {parameterRows.length ? (
+                      parameterRows.map((parameter) => (
+                        <div key={`${parameter.source}-${parameter.code}`}>
+                          <Beaker size={18} />
+                          <span>
+                            {parameterDisplayCode(parameter.code)}
+                            <small>{parameter.family}</small>
+                          </span>
+                          <code>
+                            {parameter.value.toFixed(2)} {parameter.unit ?? ""}
+                          </code>
+                        </div>
+                      ))
+                    ) : (
+                      <div>
+                        <Beaker size={18} />
                         <span>
-                          <strong>{severity}</strong>
-                          {warning.message}
-                          {warning.recommended_action ? (
-                            <small>{warning.recommended_action}</small>
-                          ) : null}
+                          No calculated parameters
                         </span>
+                        <code>-</code>
                       </div>
-                    );
-                  })
-                ) : (
-                  <div>No warnings</div>
-                )}
-              </div>
+                    )}
+                  </div>
+                  <div className="warningList">
+                    {visibleWarnings.length ? (
+                      visibleWarnings.map((warning, index) => {
+                        const severity = normalizeWarningSeverity(warning);
+                        return (
+                          <div
+                            data-severity={severity}
+                            key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}-${index}`}
+                          >
+                            <AlertTriangle size={16} />
+                            <span>
+                              <strong>{severity}</strong>
+                              {warning.message}
+                              {warning.recommended_action ? (
+                                <small>{warning.recommended_action}</small>
+                              ) : null}
+                            </span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div>No warnings</div>
+                    )}
+                  </div>
                 </div>
               ) : null}
             </section>
