@@ -7,12 +7,14 @@ import {
   Beaker,
   BrainCircuit,
   Calculator,
+  ChevronDown,
   Check,
   Copy,
   Database,
   Download,
   ExternalLink,
   FileSpreadsheet,
+  Filter,
   FlaskConical,
   FolderOpen,
   History,
@@ -139,6 +141,89 @@ const PARAMETER_FAMILIES: Record<string, string[]> = {
   "Metales pesados": ["As", "Hg", "Pb", "Cd", "Cr", "Ni"],
 };
 
+type ParameterViewPresetKey =
+  | "core"
+  | "macros"
+  | "micros"
+  | "secondary"
+  | "organic"
+  | "amino"
+  | "metals"
+  | "all"
+  | "custom";
+
+type BuilderSectionKey = "basics" | "materials" | "formula" | "calculation" | "review";
+
+const PARAMETER_VIEW_PRESETS: Array<{
+  key: ParameterViewPresetKey;
+  label: string;
+  families: string[];
+  helper: string;
+}> = [
+  {
+    key: "core",
+    label: "Esenciales",
+    families: ["Macronutriente", "Micronutriente"],
+    helper: "Macros y micros para decidir rapido.",
+  },
+  {
+    key: "macros",
+    label: "Macros",
+    families: ["Macronutriente"],
+    helper: "N, P, K y formas de nitrogeno.",
+  },
+  {
+    key: "secondary",
+    label: "Secundarios",
+    families: ["Secundario"],
+    helper: "Ca, Mg y azufre.",
+  },
+  {
+    key: "micros",
+    label: "Micros",
+    families: ["Micronutriente"],
+    helper: "Zn, Mn, Fe, Cu, B, Mo...",
+  },
+  {
+    key: "organic",
+    label: "Organica",
+    families: ["Fraccion Organica"],
+    helper: "Materia seca, carbono y extractos.",
+  },
+  {
+    key: "amino",
+    label: "Amino",
+    families: ["Aminoacidos", "Aminograma"],
+    helper: "Aminoacidos totales, libres y aminograma.",
+  },
+  {
+    key: "metals",
+    label: "Metales",
+    families: ["Metales pesados"],
+    helper: "As, Hg, Pb, Cd, Cr y Ni.",
+  },
+  {
+    key: "all",
+    label: "Todo",
+    families: [],
+    helper: "Todos los parametros disponibles.",
+  },
+  {
+    key: "custom",
+    label: "Personal",
+    families: [],
+    helper: "Elige parametro a parametro.",
+  },
+];
+
+const DEFAULT_BUILDER_SECTIONS: Record<BuilderSectionKey, boolean> = {
+  basics: true,
+  materials: true,
+  formula: false,
+  calculation: false,
+  review: false,
+};
+
 type WorkspaceView =
   | "formula"
   | "materials"
@@ -179,10 +264,17 @@ function normalizeLookup(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
 
+function normalizeParameterLookup(value: string | null | undefined) {
+  return normalizeLookup(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
 function parameterFamilyForCode(code: string) {
-  const normalizedCode = normalizeLookup(code);
+  const normalizedCode = normalizeParameterLookup(code);
   for (const [family, codes] of Object.entries(PARAMETER_FAMILIES)) {
-    if (codes.some((candidate) => normalizeLookup(candidate) === normalizedCode)) {
+    if (codes.some((candidate) => normalizeParameterLookup(candidate) === normalizedCode)) {
       return family;
     }
   }
@@ -200,13 +292,45 @@ function activeParameterValue(material: RawMaterial, parameterCode: string | nul
   return material.parameters[parameterCode]?.value ?? material.parameterValue;
 }
 
-function materialParameterPreview(material: RawMaterial) {
-  return Object.values(material.parameters)
-    .slice(0, 5)
-    .map((parameter) => {
-      const unit = parameter.unit ? ` ${parameter.unit}` : "";
-      return `${parameter.code}: ${parameter.value.toFixed(2)}${unit}`;
-    });
+function parameterFamilyRank(family: string) {
+  const familyOrder = Object.keys(PARAMETER_FAMILIES);
+  const index = familyOrder.indexOf(family);
+  return index === -1 ? familyOrder.length : index;
+}
+
+function formatParameterValue(
+  parameter: { code: string; value: number; unit: string | null },
+) {
+  const unit = parameter.unit ? ` ${parameter.unit}` : "";
+  return `${parameter.code}: ${parameter.value.toFixed(2)}${unit}`;
+}
+
+function parameterMatchesPositiveFilter(value: number, showOnlyPositive: boolean) {
+  return !showOnlyPositive || Math.abs(value) > 0.0001;
+}
+
+function materialParametersForView(
+  material: RawMaterial,
+  visibleParameterCodes: string[],
+  showOnlyPositive: boolean,
+  limit = 5,
+) {
+  const requestedCodes =
+    visibleParameterCodes.length > 0 ? visibleParameterCodes : Object.keys(material.parameters);
+  return requestedCodes
+    .map((code) => material.parameters[code])
+    .filter((parameter): parameter is NonNullable<typeof parameter> => Boolean(parameter))
+    .filter((parameter) => parameterMatchesPositiveFilter(parameter.value, showOnlyPositive))
+    .sort((left, right) => {
+      const familyDelta =
+        parameterFamilyRank(parameterFamilyForCode(left.code)) -
+        parameterFamilyRank(parameterFamilyForCode(right.code));
+      if (familyDelta !== 0) {
+        return familyDelta;
+      }
+      return left.code.localeCompare(right.code);
+    })
+    .slice(0, limit);
 }
 
 export default function Home() {
@@ -224,8 +348,17 @@ export default function Home() {
     parameterValue: "",
   });
   const [formulaMaterialQuery, setFormulaMaterialQuery] = useState("");
-  const [selectedParameterFamilies, setSelectedParameterFamilies] = useState<string[]>([]);
+  const [parameterViewPreset, setParameterViewPreset] =
+    useState<ParameterViewPresetKey>("core");
+  const [customParameterCodes, setCustomParameterCodes] = useState<string[]>([]);
   const [showOnlyPositiveParameters, setShowOnlyPositiveParameters] = useState(true);
+  const [catalogFamilyFilter, setCatalogFamilyFilter] = useState("all");
+  const [catalogPriceFilter, setCatalogPriceFilter] =
+    useState<"all" | "with_price" | "missing_price">("all");
+  const [catalogParameterFilter, setCatalogParameterFilter] = useState("");
+  const [expandedMaterialIds, setExpandedMaterialIds] = useState<string[]>([]);
+  const [builderSections, setBuilderSections] =
+    useState<Record<BuilderSectionKey, boolean>>(DEFAULT_BUILDER_SECTIONS);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
@@ -377,11 +510,88 @@ export default function Home() {
       }),
     [rawMaterialsById, workspace.formulaLines, workspace.parameter],
   );
+  const parameterCatalog = useMemo(() => {
+    const catalog = new Map<
+      string,
+      {
+        code: string;
+        name: string;
+        unit: string | null;
+        family: string;
+        materialCount: number;
+        positiveMaterialCount: number;
+      }
+    >();
+    for (const material of workspace.rawMaterials) {
+      for (const parameter of Object.values(material.parameters)) {
+        const existing = catalog.get(parameter.code);
+        if (existing) {
+          existing.materialCount += 1;
+          if (Math.abs(parameter.value) > 0.0001) {
+            existing.positiveMaterialCount += 1;
+          }
+          continue;
+        }
+        catalog.set(parameter.code, {
+          code: parameter.code,
+          name: parameter.name,
+          unit: parameter.unit,
+          family: parameterFamilyForCode(parameter.code),
+          materialCount: 1,
+          positiveMaterialCount: Math.abs(parameter.value) > 0.0001 ? 1 : 0,
+        });
+      }
+    }
+    if (workspace.parameter && !catalog.has(workspace.parameter.code)) {
+      catalog.set(workspace.parameter.code, {
+        code: workspace.parameter.code,
+        name: workspace.parameter.name,
+        unit: workspace.parameter.unit,
+        family: parameterFamilyForCode(workspace.parameter.code),
+        materialCount: 0,
+        positiveMaterialCount: 0,
+      });
+    }
+    return Array.from(catalog.values()).sort((left, right) => {
+      const familyDelta = parameterFamilyRank(left.family) - parameterFamilyRank(right.family);
+      if (familyDelta !== 0) {
+        return familyDelta;
+      }
+      return left.code.localeCompare(right.code);
+    });
+  }, [workspace.parameter, workspace.rawMaterials]);
+  const visibleParameterCodes = useMemo(() => {
+    const preset = PARAMETER_VIEW_PRESETS.find((option) => option.key === parameterViewPreset);
+    if (!preset || preset.key === "all") {
+      return parameterCatalog.map((parameter) => parameter.code);
+    }
+    if (preset.key === "custom") {
+      return customParameterCodes.filter((code) =>
+        parameterCatalog.some((parameter) => parameter.code === code),
+      );
+    }
+    return parameterCatalog
+      .filter((parameter) => preset.families.includes(parameter.family))
+      .map((parameter) => parameter.code);
+  }, [customParameterCodes, parameterCatalog, parameterViewPreset]);
+  const visibleParameterCodeSet = useMemo(
+    () => new Set(visibleParameterCodes),
+    [visibleParameterCodes],
+  );
+  const selectedParameterPreset =
+    PARAMETER_VIEW_PRESETS.find((option) => option.key === parameterViewPreset) ??
+    PARAMETER_VIEW_PRESETS[0];
+  const visibleParameterSummary =
+    visibleParameterCodes.length === 0
+      ? "Sin parametros seleccionados"
+      : `${visibleParameterCodes.length} parametros visibles`;
   const localPreview = useMemo(() => {
     let priceTotal = 0;
     let hasMissingPrice = false;
-    let activeParameterValue = 0;
-    let hasActiveParameter = false;
+    const parameterTotals = new Map<
+      string,
+      { code: string; value: number; unit: string | null; family: string; source: string }
+    >();
     const previewWarnings: CalculationResult["warnings"] = [];
     const previewTotal = formulaLineDetails.reduce((sum, line) => sum + line.percentage, 0);
 
@@ -422,49 +632,124 @@ export default function Home() {
           severity: line.material.isObsolete ? "blocker" : "warning",
         });
       }
-      if (line.activeParameterContribution !== null) {
-        hasActiveParameter = true;
-        activeParameterValue += line.activeParameterContribution;
+      for (const parameter of Object.values(line.material.parameters)) {
+        if (!visibleParameterCodeSet.has(parameter.code)) {
+          continue;
+        }
+        const contribution = (parameter.value * line.percentage) / 100;
+        const existing = parameterTotals.get(parameter.code);
+        if (existing) {
+          existing.value += contribution;
+          continue;
+        }
+        parameterTotals.set(parameter.code, {
+          code: parameter.code,
+          value: contribution,
+          unit: parameter.unit,
+          family: parameterFamilyForCode(parameter.code),
+          source: "Preview",
+        });
       }
     }
 
     return {
       priceTotal: hasMissingPrice ? null : priceTotal,
-      parameters:
-        workspace.parameter && hasActiveParameter
-          ? [
-              {
-                code: workspace.parameter.code,
-                value: activeParameterValue,
-                unit: workspace.parameter.unit,
-                family: parameterFamilyForCode(workspace.parameter.code),
-                source: "Preview",
-              },
-            ]
-          : [],
+      parameters: Array.from(parameterTotals.values()).sort((left, right) => {
+        const familyDelta = parameterFamilyRank(left.family) - parameterFamilyRank(right.family);
+        if (familyDelta !== 0) {
+          return familyDelta;
+        }
+        return left.code.localeCompare(right.code);
+      }),
       warnings: previewWarnings,
     };
-  }, [formulaLineDetails, workspace.parameter]);
-  const materialSearchResults = useMemo(() => {
+  }, [formulaLineDetails, visibleParameterCodeSet]);
+  const materialSearchMatches = useMemo(() => {
     const query = normalizeLookup(formulaMaterialQuery);
+    const normalizedParameterFilter = normalizeParameterLookup(catalogParameterFilter);
     const selectedIds = new Set(workspace.formulaLines.map((line) => line.rawMaterialId));
     const matches = workspace.rawMaterials.filter((material) => {
-      if (!query) {
-        return !selectedIds.has(material.id);
+      if (selectedIds.has(material.id)) {
+        return false;
       }
-      const searchable = [
-        material.code,
-        material.externalCode,
-        material.name,
-        material.family,
-        ...material.aliases,
-      ]
-        .map(normalizeLookup)
-        .join(" ");
-      return searchable.includes(query);
+      if (catalogPriceFilter === "with_price" && material.price === null) {
+        return false;
+      }
+      if (catalogPriceFilter === "missing_price" && material.price !== null) {
+        return false;
+      }
+      if (catalogFamilyFilter !== "all" && material.family !== catalogFamilyFilter) {
+        return false;
+      }
+      if (query) {
+        const searchable = [
+          material.code,
+          material.externalCode,
+          material.name,
+          material.family,
+          ...material.aliases,
+        ]
+          .map(normalizeLookup)
+          .join(" ");
+        if (!searchable.includes(query)) {
+          return false;
+        }
+      }
+      if (normalizedParameterFilter) {
+        const matchingParameters = Object.values(material.parameters).filter((parameter) => {
+          const normalizedCode = normalizeParameterLookup(parameter.code);
+          const normalizedName = normalizeParameterLookup(parameter.name);
+          const normalizedFamily = normalizeParameterLookup(parameterFamilyForCode(parameter.code));
+          const matchesParameter =
+            normalizedParameterFilter.length <= 4
+              ? normalizedCode === normalizedParameterFilter ||
+                normalizedCode.startsWith(normalizedParameterFilter)
+              : normalizedCode.includes(normalizedParameterFilter) ||
+                normalizedName.includes(normalizedParameterFilter) ||
+                normalizedFamily.includes(normalizedParameterFilter);
+          return (
+            matchesParameter &&
+            parameterMatchesPositiveFilter(parameter.value, showOnlyPositiveParameters)
+          );
+        });
+        if (matchingParameters.length === 0) {
+          return false;
+        }
+      }
+      return true;
     });
-    return matches.slice(0, 8);
-  }, [formulaMaterialQuery, workspace.formulaLines, workspace.rawMaterials]);
+    return matches.sort((left, right) => {
+      const leftVisibleValues = materialParametersForView(
+        left,
+        visibleParameterCodes,
+        showOnlyPositiveParameters,
+        100,
+      ).length;
+      const rightVisibleValues = materialParametersForView(
+        right,
+        visibleParameterCodes,
+        showOnlyPositiveParameters,
+        100,
+      ).length;
+      if (leftVisibleValues !== rightVisibleValues) {
+        return rightVisibleValues - leftVisibleValues;
+      }
+      return left.name.localeCompare(right.name);
+    });
+  }, [
+    catalogFamilyFilter,
+    catalogParameterFilter,
+    catalogPriceFilter,
+    formulaMaterialQuery,
+    showOnlyPositiveParameters,
+    visibleParameterCodes,
+    workspace.formulaLines,
+    workspace.rawMaterials,
+  ]);
+  const materialSearchResults = useMemo(
+    () => materialSearchMatches.slice(0, 60),
+    [materialSearchMatches],
+  );
   const parameterRows = useMemo(() => {
     const rows = result
       ? result.parameters.map((parameter) => ({
@@ -474,24 +759,22 @@ export default function Home() {
         }))
       : localPreview.parameters;
     return rows.filter((parameter) => {
-      const familySelected =
-        selectedParameterFamilies.length === 0 ||
-        selectedParameterFamilies.includes(parameter.family);
+      const visibleSelected = visibleParameterCodeSet.has(parameter.code);
       const positiveSelected = !showOnlyPositiveParameters || Math.abs(parameter.value) > 0.0001;
-      return familySelected && positiveSelected;
+      return visibleSelected && positiveSelected;
     });
-  }, [localPreview.parameters, result, selectedParameterFamilies, showOnlyPositiveParameters]);
-  const availableParameterFamilies = useMemo(() => {
-    const families = new Set<string>();
-    const rows = result
-      ? result.parameters.map((parameter) => parameterFamilyForCode(parameter.code))
-      : localPreview.parameters.map((parameter) => parameter.family);
-    rows.forEach((family) => families.add(family));
-    if (workspace.parameter) {
-      families.add(parameterFamilyForCode(workspace.parameter.code));
-    }
-    return Array.from(families).sort();
-  }, [localPreview.parameters, result, workspace.parameter]);
+  }, [localPreview.parameters, result, showOnlyPositiveParameters, visibleParameterCodeSet]);
+  const catalogMaterialFamilies = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          workspace.rawMaterials
+            .map((material) => material.family)
+            .filter((family): family is string => Boolean(family)),
+        ),
+      ).sort(),
+    [workspace.rawMaterials],
+  );
   const draftComparison = useMemo(
     () => buildDraftComparison(draftReview, workspace.formulaLines, rawMaterialsById),
     [draftReview, rawMaterialsById, workspace.formulaLines],
@@ -612,6 +895,37 @@ export default function Home() {
     Boolean(activeJiraConnection) &&
     result !== null &&
     !isBusy;
+
+  function selectParameterView(key: ParameterViewPresetKey) {
+    setParameterViewPreset(key);
+    if (key === "custom" && customParameterCodes.length === 0) {
+      setCustomParameterCodes(visibleParameterCodes.slice(0, 8));
+    }
+  }
+
+  function toggleCustomParameterCode(code: string) {
+    setCustomParameterCodes((current) =>
+      current.includes(code)
+        ? current.filter((candidate) => candidate !== code)
+        : [...current, code],
+    );
+    setParameterViewPreset("custom");
+  }
+
+  function toggleBuilderSection(section: BuilderSectionKey) {
+    setBuilderSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
+  }
+
+  function toggleExpandedMaterial(rawMaterialId: string) {
+    setExpandedMaterialIds((current) =>
+      current.includes(rawMaterialId)
+        ? current.filter((candidate) => candidate !== rawMaterialId)
+        : [...current, rawMaterialId],
+    );
+  }
 
   async function createWorkspace() {
     await runAction("Creating workspace", async () => {
@@ -1412,6 +1726,11 @@ export default function Home() {
         { localId: makeLocalId(), rawMaterialId, percentage: 0 },
       ],
     }));
+    setBuilderSections((current) => ({
+      ...current,
+      formula: true,
+      calculation: true,
+    }));
     markDraftReviewPending();
     setResult(null);
   }
@@ -1624,6 +1943,12 @@ export default function Home() {
       });
       setCalculationHistory([]);
       setResult(calculation);
+      setBuilderSections((current) => ({
+        ...current,
+        formula: true,
+        calculation: true,
+        review: true,
+      }));
       setDraftReview({
         candidateName: candidate.name,
         baselineLines: candidate.items.map((item) => ({
@@ -1694,6 +2019,11 @@ export default function Home() {
       setResult(calculation);
       setDraftReview(null);
       setSavedFormulaComparison(null);
+      setBuilderSections((current) => ({
+        ...current,
+        calculation: true,
+        review: Boolean(activeJiraConnection),
+      }));
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
       await loadFormulaReviewRequests(formula.id);
@@ -1742,6 +2072,11 @@ export default function Home() {
       setResult(null);
       setDraftReview(null);
       setFormulaReviewArtifacts({});
+      setBuilderSections((current) => ({
+        ...current,
+        formula: true,
+        calculation: true,
+      }));
       resetImportState();
       await loadCalculationHistory(formula.id);
       await loadFormulaReviewRequests(formula.id);
@@ -3783,138 +4118,360 @@ export default function Home() {
               <h2>Formula Builder</h2>
               <span>{isFormulaBalanced ? "Balanced" : `${totalPercentage.toFixed(1)}%`}</span>
             </div>
-            <label className="fullWidthLabel">
-              <span>Name</span>
-              <input
-                value={workspace.formulaName}
-                onChange={(event) => {
-                  setWorkspace((current) => ({ ...current, formulaName: event.target.value }));
-                  markDraftReviewPending();
-                }}
-                disabled={isBusy}
-              />
-            </label>
-            <div className="formulaMetaGrid">
-              <label>
-                <span>ProyectoID Jira opcional</span>
-                <input
-                  placeholder="FLOWER"
-                  value={workspace.formulaJiraProjectId}
-                  onChange={(event) => {
-                    setWorkspace((current) => ({
-                      ...current,
-                      formulaJiraProjectId: event.target.value,
-                    }));
-                    markDraftReviewPending();
-                  }}
-                  disabled={isBusy}
-                />
-              </label>
-              <label>
-                <span>Jira activity</span>
-                <input
-                  list="jira-activity-options"
-                  value={workspace.formulaJiraIssueType}
-                  onChange={(event) => {
-                    setWorkspace((current) => ({
-                      ...current,
-                      formulaJiraIssueType: event.target.value,
-                    }));
-                    markDraftReviewPending();
-                  }}
-                  disabled={isBusy}
-                />
-              </label>
-              <label>
-                <span>Tipo producto</span>
-                <input
-                  list="jira-product-type-options"
-                  value={workspace.formulaJiraProductType}
-                  onChange={(event) => {
-                    setWorkspace((current) => ({
-                      ...current,
-                      formulaJiraProductType: event.target.value,
-                    }));
-                    markDraftReviewPending();
-                  }}
-                  disabled={isBusy}
-                />
-              </label>
-              <datalist id="jira-activity-options">
-                <option value="Calidad" />
-                <option value="Prototipo" />
-                <option value="PoC" />
-              </datalist>
-              <datalist id="jira-product-type-options">
-                <option value="Nuevo" />
-                <option value="Mod A" />
-                <option value="Mod B" />
-                <option value="Mod C" />
-              </datalist>
-            </div>
-            <div className="builderSearch">
-              <label className="fullWidthLabel">
-                <span>Buscar y anadir materia prima</span>
-                <div className="searchInputWrap">
-                  <Search size={16} />
-                  <input
-                    value={formulaMaterialQuery}
-                    onChange={(event) => setFormulaMaterialQuery(event.target.value)}
-                    placeholder="Nombre, codigo, SAP/ERP, alias o familia"
-                    disabled={!workspace.tenant || isBusy}
-                  />
+            <section className="builderStep" data-open={builderSections.basics}>
+              <button
+                className="builderStepHeader"
+                type="button"
+                onClick={() => toggleBuilderSection("basics")}
+              >
+                <span>
+                  <strong>1. Datos basicos</strong>
+                  <small>Nombre de formula y, solo si procede, datos de revision.</small>
+                </span>
+                <ChevronDown size={18} />
+              </button>
+              {builderSections.basics ? (
+                <div className="builderStepBody">
+                  <label className="fullWidthLabel">
+                    <span>Name</span>
+                    <input
+                      value={workspace.formulaName}
+                      onChange={(event) => {
+                        setWorkspace((current) => ({
+                          ...current,
+                          formulaName: event.target.value,
+                        }));
+                        markDraftReviewPending();
+                      }}
+                      disabled={isBusy}
+                    />
+                  </label>
+                  {activeJiraConnection ? (
+                    <div className="formulaMetaGrid">
+                      <label>
+                        <span>ProyectoID Jira opcional</span>
+                        <input
+                          placeholder="FLOWER"
+                          value={workspace.formulaJiraProjectId}
+                          onChange={(event) => {
+                            setWorkspace((current) => ({
+                              ...current,
+                              formulaJiraProjectId: event.target.value,
+                            }));
+                            markDraftReviewPending();
+                          }}
+                          disabled={isBusy}
+                        />
+                      </label>
+                      <label>
+                        <span>Jira activity</span>
+                        <input
+                          list="jira-activity-options"
+                          value={workspace.formulaJiraIssueType}
+                          onChange={(event) => {
+                            setWorkspace((current) => ({
+                              ...current,
+                              formulaJiraIssueType: event.target.value,
+                            }));
+                            markDraftReviewPending();
+                          }}
+                          disabled={isBusy}
+                        />
+                      </label>
+                      <label>
+                        <span>Tipo producto</span>
+                        <input
+                          list="jira-product-type-options"
+                          value={workspace.formulaJiraProductType}
+                          onChange={(event) => {
+                            setWorkspace((current) => ({
+                              ...current,
+                              formulaJiraProductType: event.target.value,
+                            }));
+                            markDraftReviewPending();
+                          }}
+                          disabled={isBusy}
+                        />
+                      </label>
+                      <datalist id="jira-activity-options">
+                        <option value="Calidad" />
+                        <option value="Prototipo" />
+                        <option value="PoC" />
+                      </datalist>
+                      <datalist id="jira-product-type-options">
+                        <option value="Nuevo" />
+                        <option value="Mod A" />
+                        <option value="Mod B" />
+                        <option value="Mod C" />
+                      </datalist>
+                    </div>
+                  ) : null}
                 </div>
-              </label>
-              <div className="quickMaterialList">
-                {workspace.rawMaterials.length === 0 ? (
-                  <div className="empty">Crea o importa materias primas para empezar.</div>
-                ) : materialSearchResults.length === 0 ? (
-                  <div className="empty">No hay materias disponibles con ese filtro.</div>
-                ) : (
-                  materialSearchResults.map((material) => {
-                    const isSelected = workspace.formulaLines.some(
-                      (line) => line.rawMaterialId === material.id,
-                    );
-                    const parameterPreview = materialParameterPreview(material);
-                    return (
-                      <button
-                        className="quickMaterial"
-                        type="button"
-                        key={material.id}
-                        onClick={() => addFormulaLine(material.id)}
-                        disabled={isBusy || isSelected}
-                      >
-                        <span>
-                          <strong>{material.name}</strong>
-                          <small>
-                            {material.code ?? "-"}
-                            {material.externalCode ? ` - ${material.externalCode}` : ""}
-                            {material.family ? ` - ${material.family}` : ""}
-                          </small>
-                          {parameterPreview.length ? (
-                            <span className="parameterBadgeList">
-                              {parameterPreview.map((parameter) => (
-                                <em key={parameter}>{parameter}</em>
-                              ))}
+              ) : null}
+            </section>
+            <section className="builderStep" data-open={builderSections.materials}>
+              <button
+                className="builderStepHeader"
+                type="button"
+                onClick={() => toggleBuilderSection("materials")}
+              >
+                <span>
+                  <strong>2. Materias primas</strong>
+                  <small>
+                    {materialSearchMatches.length} disponibles - {visibleParameterSummary}
+                  </small>
+                </span>
+                <ChevronDown size={18} />
+              </button>
+              {builderSections.materials ? (
+                <div className="builderStepBody builderSearch">
+                  <div className="parameterViewPanel">
+                    <div className="parameterViewHeader">
+                      <span>
+                        <strong>Que parametros quieres ver</strong>
+                        <small>{selectedParameterPreset.helper}</small>
+                      </span>
+                      <label className="switchControl">
+                        <input
+                          type="checkbox"
+                          checked={showOnlyPositiveParameters}
+                          onChange={(event) => setShowOnlyPositiveParameters(event.target.checked)}
+                        />
+                        <span>Solo &gt; 0</span>
+                      </label>
+                    </div>
+                    <div className="parameterPresetList" role="list" aria-label="Vistas de parametros">
+                      {PARAMETER_VIEW_PRESETS.map((preset) => (
+                        <button
+                          key={preset.key}
+                          className="segmentedChip"
+                          data-selected={parameterViewPreset === preset.key}
+                          type="button"
+                          onClick={() => selectParameterView(preset.key)}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    {parameterViewPreset === "custom" ? (
+                      <div className="parameterPicker">
+                        {parameterCatalog.map((parameter) => (
+                          <label key={parameter.code}>
+                            <input
+                              type="checkbox"
+                              checked={customParameterCodes.includes(parameter.code)}
+                              onChange={() => toggleCustomParameterCode(parameter.code)}
+                            />
+                            <span>
+                              {parameter.code}
+                              <small>
+                                {parameter.family} - {parameter.positiveMaterialCount}/
+                                {parameter.materialCount} con valor
+                              </small>
                             </span>
-                          ) : (
-                            <span className="parameterBadgeList emptyBadges">
-                              <em>Sin parametros cargados</em>
+                          </label>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  <label className="fullWidthLabel">
+                    <span>Buscar y anadir materia prima</span>
+                    <div className="searchInputWrap">
+                      <Search size={16} />
+                      <input
+                        value={formulaMaterialQuery}
+                        onChange={(event) => setFormulaMaterialQuery(event.target.value)}
+                        placeholder="Nombre, codigo, SAP/ERP, alias o familia"
+                        disabled={!workspace.tenant || isBusy}
+                      />
+                    </div>
+                  </label>
+                  <details className="materialFilterPanel">
+                    <summary>
+                      <Filter size={16} />
+                      Filtros de catalogo
+                    </summary>
+                    <div className="materialFilterGrid">
+                      <label>
+                        <span>Familia materia</span>
+                        <select
+                          value={catalogFamilyFilter}
+                          onChange={(event) => setCatalogFamilyFilter(event.target.value)}
+                        >
+                          <option value="all">Todas</option>
+                          {catalogMaterialFamilies.map((family) => (
+                            <option key={family} value={family}>
+                              {family}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Precio</span>
+                        <select
+                          value={catalogPriceFilter}
+                          onChange={(event) =>
+                            setCatalogPriceFilter(
+                              event.target.value as "all" | "with_price" | "missing_price",
+                            )
+                          }
+                        >
+                          <option value="all">Todos</option>
+                          <option value="with_price">Con precio</option>
+                          <option value="missing_price">Sin precio</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>Contiene parametro</span>
+                        <input
+                          value={catalogParameterFilter}
+                          onChange={(event) => setCatalogParameterFilter(event.target.value)}
+                          placeholder="B, Zn, Ntotal, amino..."
+                        />
+                      </label>
+                    </div>
+                  </details>
+                  <div className="catalogResultMeta">
+                    <span>
+                      Mostrando {materialSearchResults.length} de {materialSearchMatches.length}
+                    </span>
+                    <button
+                      className="textButton"
+                      type="button"
+                      onClick={() => {
+                        setFormulaMaterialQuery("");
+                        setCatalogFamilyFilter("all");
+                        setCatalogPriceFilter("all");
+                        setCatalogParameterFilter("");
+                      }}
+                    >
+                      Reset filtros
+                    </button>
+                  </div>
+                  <div className="quickMaterialList">
+                    {workspace.rawMaterials.length === 0 ? (
+                      <div className="empty">Crea o importa materias primas para empezar.</div>
+                    ) : materialSearchResults.length === 0 ? (
+                      <div className="empty">No hay materias disponibles con ese filtro.</div>
+                    ) : (
+                      materialSearchResults.map((material) => {
+                        const isSelected = workspace.formulaLines.some(
+                          (line) => line.rawMaterialId === material.id,
+                        );
+                        const parameterPreview = materialParametersForView(
+                          material,
+                          visibleParameterCodes,
+                          showOnlyPositiveParameters,
+                          5,
+                        );
+                        const detailParameters = materialParametersForView(
+                          material,
+                          visibleParameterCodes,
+                          showOnlyPositiveParameters,
+                          120,
+                        );
+                        const isExpanded = expandedMaterialIds.includes(material.id);
+                        return (
+                          <div
+                            className="quickMaterial"
+                            data-selected={isSelected}
+                            key={material.id}
+                          >
+                            <span className="quickMaterialMain">
+                              <strong>{material.name}</strong>
+                              <small>
+                                {material.code ?? "-"}
+                                {material.externalCode ? ` - ${material.externalCode}` : ""}
+                                {material.family ? ` - ${material.family}` : ""}
+                              </small>
+                              {parameterPreview.length ? (
+                                <span className="parameterBadgeList">
+                                  {parameterPreview.map((parameter) => (
+                                    <em key={parameter.code}>{formatParameterValue(parameter)}</em>
+                                  ))}
+                                </span>
+                              ) : (
+                                <span className="parameterBadgeList emptyBadges">
+                                  <em>
+                                    {showOnlyPositiveParameters
+                                      ? "Sin valores > 0 en esta vista"
+                                      : "Sin parametros en esta vista"}
+                                  </em>
+                                </span>
+                              )}
                             </span>
-                          )}
-                        </span>
-                        <code>{isSelected ? "added" : formatFormulaNumber(material.price, " EUR/kg")}</code>
-                        <Plus size={15} />
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-            <div className="formulaMeter" aria-label="Formula percentage total">
-              <div style={{ width: `${Math.min(Math.max(totalPercentage, 0), 100)}%` }} />
-            </div>
-            <div className="formulaSummary">
+                            <span className="quickMaterialMeta">
+                              <code>{formatFormulaNumber(material.price, " EUR/kg")}</code>
+                              <small>{Object.keys(material.parameters).length} parametros</small>
+                            </span>
+                            <div className="quickMaterialActions">
+                              <button
+                                className="secondaryButton compactButton"
+                                type="button"
+                                onClick={() => addFormulaLine(material.id)}
+                                disabled={isBusy || isSelected}
+                              >
+                                <Plus size={15} />
+                                {isSelected ? "En formula" : "Anadir"}
+                              </button>
+                              <button
+                                className="iconButton"
+                                type="button"
+                                onClick={() => toggleExpandedMaterial(material.id)}
+                                aria-label={`Ver parametros de ${material.name}`}
+                                title="Ver parametros"
+                              >
+                                <ChevronDown size={16} />
+                              </button>
+                            </div>
+                            {isExpanded ? (
+                              <div className="materialParameterDetail">
+                                {detailParameters.length ? (
+                                  detailParameters.map((parameter) => (
+                                    <div key={parameter.code}>
+                                      <span>
+                                        {parameter.code}
+                                        <small>{parameterFamilyForCode(parameter.code)}</small>
+                                      </span>
+                                      <code>{formatParameterValue(parameter)}</code>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div>
+                                    <span>Sin parametros para la vista actual</span>
+                                    <code>-</code>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+            <section className="builderStep" data-open={builderSections.formula}>
+              <button
+                className="builderStepHeader"
+                type="button"
+                onClick={() => toggleBuilderSection("formula")}
+              >
+                <span>
+                  <strong>3. Formula editable</strong>
+                  <small>
+                    {workspace.formulaLines.length} lineas - {totalPercentage.toFixed(1)}%
+                  </small>
+                </span>
+                <ChevronDown size={18} />
+              </button>
+              {builderSections.formula ? (
+                <div className="builderStepBody">
+                  <div className="formulaMeter" aria-label="Formula percentage total">
+                    <div style={{ width: `${Math.min(Math.max(totalPercentage, 0), 100)}%` }} />
+                  </div>
+                  <div className="formulaSummary">
               <div>
                 <span>Total percentage</span>
                 <strong>{totalPercentage.toFixed(1)}%</strong>
@@ -3935,7 +4492,7 @@ export default function Home() {
                 <span>Calculation source</span>
                 <strong>{result ? "Backend official" : "Local preview"}</strong>
               </div>
-            </div>
+                  </div>
             {draftReview ? (
               <div className="draftReview" data-state={draftReview.status}>
                 <div className="draftReviewHeader">
@@ -4030,6 +4587,7 @@ export default function Home() {
                 ) : null}
               </div>
             ) : null}
+            {activeJiraConnection || formulaReviewRequests.length > 0 ? (
             <div className="jiraReviewBox">
               <div className="jiraReviewHeader">
                 <div>
@@ -4149,6 +4707,7 @@ export default function Home() {
                 </div>
               )}
             </div>
+            ) : null}
             <div className="formulaLineTable">
               <div className="formulaLineHead">
                 <span>Orden</span>
@@ -4157,7 +4716,7 @@ export default function Home() {
                 <span>%</span>
                 <span>Precio</span>
                 <span>Coste</span>
-                <span>{workspace.parameter?.code ?? "Parametro"}</span>
+                <span>Parametros visibles</span>
                 <span>Estado</span>
                 <span>Acciones</span>
               </div>
@@ -4166,7 +4725,14 @@ export default function Home() {
               ) : (
                 formulaLineDetails.map((line) => {
                   const material = line.material;
-                  const parameterPreview = material ? materialParameterPreview(material) : [];
+                  const parameterPreview = material
+                    ? materialParametersForView(
+                        material,
+                        visibleParameterCodes,
+                        showOnlyPositiveParameters,
+                        4,
+                      )
+                    : [];
                   const lineWarnings = [
                     material?.price === null ? "sin precio" : null,
                     material?.isObsolete ? "obsoleta" : null,
@@ -4207,7 +4773,7 @@ export default function Home() {
                         {parameterPreview.length ? (
                           <span className="parameterBadgeList">
                             {parameterPreview.map((parameter) => (
-                              <em key={parameter}>{parameter}</em>
+                              <em key={parameter.code}>{formatParameterValue(parameter)}</em>
                             ))}
                           </span>
                         ) : null}
@@ -4226,11 +4792,12 @@ export default function Home() {
                       />
                       <span>{formatFormulaNumber(material?.price ?? null, " EUR/kg")}</span>
                       <span>{formatFormulaNumber(line.partialCost, " EUR")}</span>
-                      <span>
-                        {formatFormulaNumber(
-                          line.activeParameterContribution,
-                          workspace.parameter?.unit ? ` ${workspace.parameter.unit}` : "",
-                        )}
+                      <span className="lineParameterPreview">
+                        {parameterPreview.length
+                          ? parameterPreview.map((parameter) => (
+                              <em key={parameter.code}>{formatParameterValue(parameter)}</em>
+                            ))
+                          : "-"}
                       </span>
                       <span className="lineWarnings">
                         {lineWarnings.length ? lineWarnings.join(", ") : "OK"}
@@ -4262,13 +4829,35 @@ export default function Home() {
                 })
               )}
             </div>
-            <div className="builderCalculationPanel">
+                </div>
+              ) : null}
+            </section>
+            <section className="builderStep" data-open={builderSections.calculation}>
+              <button
+                className="builderStepHeader"
+                type="button"
+                onClick={() => toggleBuilderSection("calculation")}
+              >
+                <span>
+                  <strong>4. Calculo vivo</strong>
+                  <small>
+                    {result ? "Backend oficial" : "Preview local"} - {parameterRows.length} parametros
+                  </small>
+                </span>
+                <ChevronDown size={18} />
+              </button>
+              {builderSections.calculation ? (
+                <div className="builderStepBody builderCalculationPanel">
               <div className="panelHeader">
                 <h2>Calculo vivo</h2>
                 <span>{result ? "Backend" : "Preview"}</span>
               </div>
               <div className="parameterControls">
-                <label>
+                <div>
+                  <strong>{selectedParameterPreset.label}</strong>
+                  <span>{visibleParameterSummary}</span>
+                </div>
+                <label className="switchControl">
                   <input
                     type="checkbox"
                     checked={showOnlyPositiveParameters}
@@ -4276,39 +4865,19 @@ export default function Home() {
                   />
                   <span>Solo parametros &gt; 0</span>
                 </label>
-                {availableParameterFamilies.length ? (
-                  <div className="familyFilterList">
-                    {availableParameterFamilies.map((family) => {
-                      const checked =
-                        selectedParameterFamilies.length === 0 ||
-                        selectedParameterFamilies.includes(family);
-                      return (
-                        <label key={family}>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(event) => {
-                              setSelectedParameterFamilies((current) => {
-                                if (current.length === 0) {
-                                  const allExcept = availableParameterFamilies.filter(
-                                    (candidate) => candidate !== family,
-                                  );
-                                  return event.target.checked ? [] : allExcept;
-                                }
-                                if (event.target.checked) {
-                                  const next = [...current, family];
-                                  return next.length === availableParameterFamilies.length ? [] : next;
-                                }
-                                return current.filter((candidate) => candidate !== family);
-                              });
-                            }}
-                          />
-                          <span>{family}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : null}
+                <div className="parameterPresetList compactPresetList">
+                  {PARAMETER_VIEW_PRESETS.map((preset) => (
+                    <button
+                      key={preset.key}
+                      className="segmentedChip"
+                      data-selected={parameterViewPreset === preset.key}
+                      type="button"
+                      onClick={() => selectParameterView(preset.key)}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="parameterList">
                 {parameterRows.length ? (
@@ -4356,7 +4925,9 @@ export default function Home() {
                   <div>No warnings</div>
                 )}
               </div>
-            </div>
+                </div>
+              ) : null}
+            </section>
           </section>
 
           <section id="results" className="panel resultPanel" hidden={activeView !== "results"}>

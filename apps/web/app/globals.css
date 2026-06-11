@@ -1533,6 +1533,70 @@ label span {
   margin-bottom: 2px;
 }
 
+.builderStep {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+}
+
+.builderStep + .builderStep {
+  margin-top: 2px;
+}
+
+.builderStepHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 12px 14px;
+  background: #fbfcfc;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.builderStep[data-open="true"] .builderStepHeader {
+  border-bottom-color: var(--border);
+}
+
+.builderStepHeader span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.builderStepHeader strong {
+  font-size: 14px;
+}
+
+.builderStepHeader small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.builderStepHeader svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition: transform 160ms ease;
+}
+
+.builderStep[data-open="true"] .builderStepHeader svg {
+  transform: rotate(180deg);
+}
+
+.builderStepBody {
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px 14px;
+}
+
 .formulaMeter {
   height: 10px;
   background: var(--surface-muted);
@@ -1554,8 +1618,154 @@ label span {
 .builderSearch {
   display: grid;
   gap: 10px;
-  padding: 12px 0;
-  border-top: 1px solid var(--border);
+}
+
+.parameterViewPanel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.parameterViewHeader,
+.catalogResultMeta,
+.quickMaterialActions,
+.parameterControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.parameterViewHeader > span,
+.parameterControls > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.parameterViewHeader strong,
+.parameterControls strong {
+  font-size: 13px;
+}
+
+.parameterViewHeader small,
+.parameterControls span,
+.catalogResultMeta span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.switchControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  white-space: nowrap;
+}
+
+.switchControl input {
+  width: 16px;
+  height: 16px;
+}
+
+.parameterPresetList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.compactPresetList {
+  flex: 1 1 100%;
+}
+
+.segmentedChip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: white;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.segmentedChip[data-selected="true"] {
+  border-color: var(--teal);
+  background: rgba(27, 148, 130, 0.1);
+  color: var(--teal-dark);
+}
+
+.parameterPicker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 6px;
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.parameterPicker label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: white;
+}
+
+.parameterPicker span {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.parameterPicker small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.materialFilterPanel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+}
+
+.materialFilterPanel summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.materialFilterPanel summary::-webkit-details-marker {
+  display: none;
+}
+
+.materialFilterGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 10px 10px;
+}
+
+.textButton {
+  border: 0;
+  background: transparent;
+  color: var(--teal-dark);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .searchInputWrap {
@@ -1581,36 +1791,34 @@ label span {
 .quickMaterialList {
   display: grid;
   gap: 6px;
-  max-height: 330px;
+  max-height: 440px;
   overflow-y: auto;
   padding-right: 4px;
 }
 
 .quickMaterial {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(90px, auto) 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(108px, auto) minmax(138px, auto);
   gap: 10px;
   align-items: center;
-  min-height: 42px;
   border: 1px solid var(--border);
   border-radius: 7px;
-  padding: 7px 9px;
+  padding: 8px 9px;
   background: #fbfcfc;
   color: var(--text);
-  cursor: pointer;
   text-align: left;
 }
 
-.quickMaterial:hover {
+.quickMaterial:hover,
+.quickMaterial[data-selected="true"] {
   border-color: var(--teal);
 }
 
-.quickMaterial:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
+.quickMaterial[data-selected="true"] {
+  background: rgba(27, 148, 130, 0.07);
 }
 
-.quickMaterial span,
+.quickMaterialMain,
 .formulaMaterialName {
   min-width: 0;
   display: grid;
@@ -1631,7 +1839,70 @@ label span {
   overflow-wrap: anywhere;
 }
 
-.quickMaterial code {
+.quickMaterialMeta {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+}
+
+.quickMaterialMeta code {
+  color: var(--teal-dark);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.quickMaterialMeta small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.quickMaterialActions {
+  justify-content: flex-end;
+}
+
+.compactButton {
+  min-height: 30px;
+  width: auto;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.materialParameterDetail {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.materialParameterDetail div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 7px;
+  border-radius: 6px;
+  background: white;
+}
+
+.materialParameterDetail span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialParameterDetail small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.materialParameterDetail code {
   color: var(--teal-dark);
   font-size: 12px;
   font-weight: 800;
@@ -1907,11 +2178,11 @@ label span {
 .formulaLineRow {
   display: grid;
   grid-template-columns:
-    112px 82px minmax(180px, 1.2fr) 78px 96px 92px 104px
+    112px 82px minmax(200px, 1.2fr) 78px 96px 92px minmax(180px, 1fr)
     minmax(90px, 0.7fr) 76px;
   gap: 10px;
   align-items: center;
-  min-width: 980px;
+  min-width: 1120px;
 }
 
 .formulaLineHead {
@@ -1936,6 +2207,23 @@ label span {
 
 .formulaLineRow input {
   text-align: right;
+}
+
+.lineParameterPreview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.lineParameterPreview em {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: var(--surface-muted);
+  color: var(--teal-dark);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .orderControls,
