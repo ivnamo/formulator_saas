@@ -46,6 +46,8 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_033_jira_connector_portability.md`](00-meta/meta_033_jira_connector_portability.md)
 - [`00-meta/meta_034_jira_metadata_discovery.md`](00-meta/meta_034_jira_metadata_discovery.md)
 - [`00-meta/meta_035_jira_status_sync.md`](00-meta/meta_035_jira_status_sync.md)
+- [`00-meta/meta_036_frontend_ux_foundation.md`](00-meta/meta_036_frontend_ux_foundation.md)
+- [`00-meta/meta_037_supabase_auth_sso_invites.md`](00-meta/meta_037_supabase_auth_sso_invites.md)
 
 ## Producto
 
@@ -90,3 +92,5 @@ Inventario de documentación ordenado por área.
 - [`05-delivery/decisions.md`](05-delivery/decisions.md)
 - [`05-delivery/open_questions.md`](05-delivery/open_questions.md)
 - [`05-delivery/repo_migration.md`](05-delivery/repo_migration.md)
+- [`05-delivery/frontend_ux_refactor_plan.md`](05-delivery/frontend_ux_refactor_plan.md)
+- [`05-delivery/supabase_auth_sso_setup.md`](05-delivery/supabase_auth_sso_setup.md)

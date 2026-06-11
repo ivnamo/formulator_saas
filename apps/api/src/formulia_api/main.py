@@ -58,6 +58,7 @@ from .models import (
     RawMaterialParameterValue,
     RawMaterialPrice,
     Tenant,
+    TenantInvitation,
     TenantMember,
     User,
     utc_now,
@@ -90,9 +91,18 @@ from .schemas import (
     RequirementParseRead,
     RequirementParseRequest,
     TenantCreate,
+    TenantInvitationCreate,
+    TenantInvitationRead,
     TenantRead,
 )
-from .tenant import TenantContext, get_current_user, require_tenant_context
+from .tenant import (
+    TenantContext,
+    get_current_user,
+    normalize_email,
+    normalize_tenant_role,
+    require_tenant_admin,
+    require_tenant_context,
+)
 
 
 FUZZY_SUGGESTION_THRESHOLD = 0.82
@@ -167,6 +177,57 @@ def register_routes(app: FastAPI) -> None:
         )
         session.commit()
         return tenant
+
+    @app.get("/api/v1/tenant-invitations", response_model=list[TenantInvitationRead])
+    def list_tenant_invitations(
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[TenantInvitation]:
+        require_tenant_admin(tenant)
+        return session.exec(
+            select(TenantInvitation).where(TenantInvitation.tenant_id == tenant.tenant_id)
+        ).all()
+
+    @app.post(
+        "/api/v1/tenant-invitations",
+        response_model=TenantInvitationRead,
+        status_code=201,
+    )
+    def create_tenant_invitation(
+        payload: TenantInvitationCreate,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> TenantInvitation:
+        require_tenant_admin(tenant)
+        email = normalize_email(payload.email)
+        role = normalize_tenant_role(payload.role)
+        if "@" not in email:
+            raise HTTPException(status_code=400, detail="Invitation email is invalid.")
+        invitation = session.exec(
+            select(TenantInvitation).where(
+                TenantInvitation.tenant_id == tenant.tenant_id,
+                TenantInvitation.email == email,
+            )
+        ).first()
+        if invitation is None:
+            invitation = TenantInvitation(
+                tenant_id=tenant.tenant_id,
+                email=email,
+                role=role,
+                expires_at=payload.expires_at,
+                invited_by=tenant.user_id,
+            )
+        else:
+            invitation.role = role
+            invitation.status = "pending"
+            invitation.expires_at = payload.expires_at
+            invitation.invited_by = tenant.user_id
+            invitation.accepted_by = None
+            invitation.accepted_at = None
+        session.add(invitation)
+        session.commit()
+        session.refresh(invitation)
+        return invitation
 
     @app.get("/api/v1/parameters", response_model=list[ParameterRead])
     def list_parameters(

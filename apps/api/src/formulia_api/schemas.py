@@ -21,6 +21,27 @@ class TenantRead(BaseModel):
     status: str
 
 
+class TenantInvitationCreate(BaseModel):
+    email: str = Field(min_length=3)
+    role: Literal["owner", "admin", "formulator", "formulador", "viewer"] = "formulator"
+    expires_at: datetime | None = None
+
+
+class TenantInvitationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    email: str
+    role: str
+    status: str
+    invited_by: uuid.UUID | None
+    accepted_by: uuid.UUID | None
+    expires_at: datetime | None
+    created_at: datetime
+    accepted_at: datetime | None
+
+
 class ParameterCreate(BaseModel):
     code: str
     name: str

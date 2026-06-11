@@ -66,8 +66,10 @@ Restart the API after updating `.env.local`. Without that configuration, the par
 Run the web app:
 
 ```powershell
-npm run dev:web -- --hostname 127.0.0.1 --port 3000
+npm run dev:web
 ```
+
+Then open `http://127.0.0.1:3000`.
 
 Checks:
 

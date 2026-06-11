@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Any
 
-from sqlalchemy import Column, LargeBinary
+from sqlalchemy import Column, LargeBinary, UniqueConstraint
 from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
 
@@ -41,6 +41,24 @@ class TenantMember(SQLModel, table=True):
     role: str
     status: str = "active"
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class TenantInvitation(SQLModel, table=True):
+    __tablename__ = "tenant_invitations"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "email", name="uq_tenant_invitations_tenant_email"),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    email: str = Field(index=True)
+    role: str
+    status: str = Field(default="pending", index=True)
+    invited_by: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    accepted_by: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    expires_at: datetime | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    accepted_at: datetime | None = None
 
 
 class Parameter(SQLModel, table=True):
@@ -117,6 +135,34 @@ class RawMaterialPrice(SQLModel, table=True):
     valid_from: date = Field(default_factory=date.today)
     valid_to: date | None = None
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class RawMaterialImport(SQLModel, table=True):
+    __tablename__ = "raw_material_imports"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    file_name: str
+    source: str
+    source_hash: str = Field(index=True)
+    status: str = Field(index=True)
+    summary_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class RawMaterialImportRow(SQLModel, table=True):
+    __tablename__ = "raw_material_import_rows"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    import_id: uuid.UUID = Field(index=True, foreign_key="raw_material_imports.id")
+    row_number: int
+    raw_material_id: uuid.UUID | None = Field(default=None, foreign_key="raw_materials.id")
+    raw_name: str | None = None
+    action: str
+    status: str = Field(index=True)
+    raw_row_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    message: str | None = None
 
 
 class Formula(SQLModel, table=True):

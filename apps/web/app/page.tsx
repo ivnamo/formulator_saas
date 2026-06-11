@@ -15,6 +15,7 @@ import {
   History,
   ListChecks,
   Loader2,
+  LogOut,
   Plus,
   RefreshCw,
   Save,
@@ -23,8 +24,10 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { apiUrl, request, userId } from "./workspace-api";
+import { useEffect, useMemo, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { apiUrl, request } from "./workspace-api";
+import { getSupabaseBrowserClient } from "./supabase-client";
 import {
   aliasFromImportRow,
   emptyJiraConnectionForm,
@@ -91,6 +94,38 @@ const JIRA_MAPPING_KEYS = [
   "notes",
 ] as const;
 
+type WorkspaceView =
+  | "formula"
+  | "materials"
+  | "import"
+  | "results"
+  | "settings"
+  | "library"
+  | "compatibility"
+  | "ai";
+
+const VIEW_TITLES: Record<WorkspaceView, string> = {
+  formula: "Formula actual",
+  materials: "Materias primas",
+  import: "Importar Excel",
+  results: "Resultados",
+  settings: "Configuracion",
+  library: "Biblioteca",
+  compatibility: "Compatibilidad",
+  ai: "Asistente IA",
+};
+
+const VIEW_DESCRIPTIONS: Record<WorkspaceView, string> = {
+  formula: "Edita composicion, calcula con backend y prepara revision tecnica.",
+  materials: "Consulta y crea materias primas para formular.",
+  import: "Sube formulas historicas y resuelve coincidencias.",
+  results: "Lee coste, riqueza, parametros y warnings calculados.",
+  settings: "Configura workspace, parametros e integraciones.",
+  library: "Abre formulas guardadas y compara escenarios.",
+  compatibility: "Gestiona reglas manuales de compatibilidad.",
+  ai: "Convierte requisitos en restricciones y borradores revisables.",
+};
+
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
   const [workspaceName, setWorkspaceName] = useState("Workspace Lab");
@@ -154,22 +189,75 @@ export default function Home() {
   const [selectedImportSheet, setSelectedImportSheet] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("Ready");
+  const [activeView, setActiveView] = useState<WorkspaceView>("formula");
+  const [session, setSession] = useState<Session | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
-  const headers = useMemo(
+  const authHeaders = useMemo(
     () => ({
       "Content-Type": "application/json",
-      "X-User-Id": userId,
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+    }),
+    [session?.access_token],
+  );
+  const headers = useMemo(
+    () => ({
+      ...authHeaders,
       ...(workspace.tenant ? { "X-Tenant-Id": workspace.tenant.id } : {}),
     }),
-    [workspace.tenant],
+    [authHeaders, workspace.tenant],
   );
   const uploadHeaders = useMemo(
     () => ({
-      "X-User-Id": userId,
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
       ...(workspace.tenant ? { "X-Tenant-Id": workspace.tenant.id } : {}),
     }),
-    [workspace.tenant],
+    [session?.access_token, workspace.tenant],
   );
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) {
+        return;
+      }
+      if (!data.session) {
+        window.location.href = "/login";
+        return;
+      }
+      setSession(data.session);
+      setAuthChecked(true);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!nextSession) {
+        window.location.href = "/login";
+        return;
+      }
+      setSession(nextSession);
+      setAuthChecked(true);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session?.access_token || workspace.tenant) {
+      return;
+    }
+    void loadAuthenticatedWorkspace(session.access_token);
+  }, [session?.access_token, workspace.tenant]);
 
   const rawMaterialsById = useMemo(
     () => new Map(workspace.rawMaterials.map((material) => [material.id, material])),
@@ -300,7 +388,7 @@ export default function Home() {
       const name = workspaceName.trim() || "Workspace Lab";
       const tenant = await request<TenantRead>("/api/v1/tenants", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Id": userId },
+        headers: authHeaders,
         body: JSON.stringify({
           name,
           slug: `${slugify(name)}-${Date.now()}`,
@@ -345,6 +433,70 @@ export default function Home() {
       resetImportState();
       setMessage("Workspace ready");
     });
+  }
+
+  async function loadAuthenticatedWorkspace(accessToken: string) {
+    setStatus("working");
+    setMessage("Loading tenant");
+    const baseHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    };
+    try {
+      const tenants = await request<TenantRead[]>("/api/v1/tenants", {
+        method: "GET",
+        headers: baseHeaders,
+      });
+      const tenant =
+        tenants.find((candidate) => candidate.slug === "atlantica-agricola") ?? tenants[0];
+      if (!tenant) {
+        setStatus("error");
+        setMessage("No tenant invitation is active for this user.");
+        return;
+      }
+      const tenantHeaders = { ...baseHeaders, "X-Tenant-Id": tenant.id };
+      const [parameters, materials] = await Promise.all([
+        request<ParameterRead[]>("/api/v1/parameters", {
+          method: "GET",
+          headers: tenantHeaders,
+        }),
+        request<RawMaterialRead[]>("/api/v1/raw-materials", {
+          method: "GET",
+          headers: tenantHeaders,
+        }),
+      ]);
+
+      setWorkspace({
+        ...emptyWorkspace,
+        tenant,
+        parameter: parameters[0] ?? null,
+        rawMaterials: materials.map((material) => toWorkspaceRawMaterial(material)),
+        formulaName: `${tenant.name} Formula`,
+      });
+      setWorkspaceName(tenant.name);
+      setResult(null);
+      setFormulas([]);
+      setCalculationHistory([]);
+      setFormulaReviewRequests([]);
+      setFormulaReviewArtifacts({});
+      setCompatibilityRules([]);
+      setJiraConnections([]);
+      setJiraMetadata(null);
+      setRequirementParse(null);
+      setAgentPlan(null);
+      setDraftReview(null);
+      setAiRuns([]);
+      resetImportState();
+      setStatus("idle");
+      setMessage(`${tenant.name} loaded`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not load tenant");
+    }
+  }
+
+  async function signOut() {
+    await getSupabaseBrowserClient().auth.signOut();
+    window.location.href = "/login";
   }
 
   async function createParameter() {
@@ -1672,6 +1824,26 @@ export default function Home() {
     setMessage(nextMessage);
   }
 
+  if (!authChecked || !session) {
+    return (
+      <main className="loginShell">
+        <section className="loginPanel">
+          <div className="brand">
+            <div className="brandMark">F</div>
+            <div>
+              <strong>FormulIA Cloud</strong>
+              <span>Acceso seguro</span>
+            </div>
+          </div>
+          <div className="statusLine">
+            <Loader2 className="spin" size={16} />
+            <span>Validando sesion</span>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="shell">
       <aside className="sidebar" aria-label="Workspace navigation">
@@ -1683,48 +1855,94 @@ export default function Home() {
           </div>
         </div>
         <nav className="nav">
-          <a className="navItem active" href="#workspace">
-            <FlaskConical size={18} /> Workspace
-          </a>
-          <a className="navItem" href="#materials">
-            <Database size={18} /> Materials
-          </a>
-          <a className="navItem" href="#compatibility">
-            <AlertTriangle size={18} /> Compatibility
-          </a>
-          <a className="navItem" href="#library">
-            <FolderOpen size={18} /> Library
-          </a>
-          <a className="navItem" href="#parameters">
-            <Settings2 size={18} /> Parameters
-          </a>
-          <a className="navItem" href="#integrations">
-            <Settings2 size={18} /> Integrations
-          </a>
-          <a className="navItem" href="#import">
-            <Upload size={18} /> Import
-          </a>
-          <a className="navItem" href="#ai">
-            <BrainCircuit size={18} /> AI parser
-          </a>
-          <a className="navItem" href="#results">
-            <ListChecks size={18} /> Results
-          </a>
+          <button
+            className={`navItem ${activeView === "formula" ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveView("formula")}
+          >
+            <FlaskConical size={18} /> Formula actual
+          </button>
+          <button
+            className={`navItem ${activeView === "materials" ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveView("materials")}
+          >
+            <Database size={18} /> Materias primas
+          </button>
+          <button
+            className={`navItem ${activeView === "import" ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveView("import")}
+          >
+            <Upload size={18} /> Importar Excel
+          </button>
+          <button
+            className={`navItem ${activeView === "results" ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveView("results")}
+          >
+            <ListChecks size={18} /> Resultados
+          </button>
+          <button
+            className={`navItem ${activeView === "settings" ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveView("settings")}
+          >
+            <Settings2 size={18} /> Configuracion
+          </button>
+          <details className="navDisclosure">
+            <summary>Herramientas avanzadas</summary>
+            <button
+              className={`navItem ${activeView === "library" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveView("library")}
+            >
+              <FolderOpen size={18} /> Biblioteca
+            </button>
+            <button
+              className={`navItem ${activeView === "compatibility" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveView("compatibility")}
+            >
+              <AlertTriangle size={18} /> Compatibilidad
+            </button>
+            <button
+              className={`navItem ${activeView === "ai" ? "active" : ""}`}
+              type="button"
+              onClick={() => setActiveView("ai")}
+            >
+              <BrainCircuit size={18} /> Asistente IA
+            </button>
+          </details>
         </nav>
       </aside>
 
       <section className="workspace" id="workspace">
         <header className="topbar">
           <div>
-            <h1>{workspace.formulaName}</h1>
+            <h1>{VIEW_TITLES[activeView]}</h1>
             <p>
               {workspace.tenant
-                ? `${workspace.tenant.name} - ${workspace.tenant.id}`
-                : "No workspace active"}
+                ? `${workspace.formulaName} - ${VIEW_DESCRIPTIONS[activeView]} - ${workspace.tenant.name} - ${workspace.tenant.id}`
+                : VIEW_DESCRIPTIONS[activeView]}
             </p>
           </div>
           <div className="actions">
-            <button className="primaryButton" type="button" onClick={calculateFormula} disabled={!canCalculate}>
+            <button className="secondaryButton" type="button" onClick={signOut} disabled={isBusy}>
+              <LogOut size={17} />
+              Salir
+            </button>
+            <button
+              className="primaryButton"
+              type="button"
+              onClick={calculateFormula}
+              disabled={!canCalculate}
+              title={
+                workspace.formulaJiraProjectId.trim()
+                  ? undefined
+                  : "ProyectoID obligatorio para guardar y calcular"
+              }
+            >
               {isBusy ? <Loader2 className="spin" size={17} /> : <Calculator size={17} />}
               Save & calculate
             </button>
@@ -1738,7 +1956,7 @@ export default function Home() {
         </div>
 
         <div className="grid">
-          <section className="panel setupPanel">
+          <section className="panel setupPanel" hidden={activeView !== "settings"}>
             <div className="panelHeader">
               <h2>Workspace</h2>
               <span>{workspace.tenant ? "Active" : "New"}</span>
@@ -1759,7 +1977,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section id="parameters" className="panel setupPanel">
+          <section id="parameters" className="panel setupPanel" hidden={activeView !== "settings"}>
             <div className="panelHeader">
               <h2>Parameter</h2>
               <span>{workspace.parameter ? workspace.parameter.code : "None"}</span>
@@ -1802,7 +2020,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section id="integrations" className="panel integrationPanel">
+          <section id="integrations" className="panel integrationPanel" hidden={activeView !== "settings"}>
             <div className="panelHeader">
               <h2>Integrations</h2>
               <span>
@@ -2076,7 +2294,7 @@ export default function Home() {
             ) : null}
           </section>
 
-          <section id="materials" className="panel materialPanel">
+          <section id="materials" className="panel materialPanel" hidden={activeView !== "materials"}>
             <div className="panelHeader">
               <h2>Raw materials</h2>
               <span>{workspace.rawMaterials.length} rows</span>
@@ -2198,7 +2416,11 @@ export default function Home() {
             </div>
           </section>
 
-          <section id="compatibility" className="panel compatibilityPanel">
+          <section
+            id="compatibility"
+            className="panel compatibilityPanel"
+            hidden={activeView !== "compatibility"}
+          >
             <div className="panelHeader">
               <h2>Compatibility</h2>
               <span>{compatibilityRules.length} rules</span>
@@ -2322,7 +2544,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section id="library" className="panel libraryPanel">
+          <section id="library" className="panel libraryPanel" hidden={activeView !== "library"}>
             <div className="panelHeader">
               <h2>Formula library</h2>
               <span>{formulas.length} formulas</span>
@@ -2717,7 +2939,7 @@ export default function Home() {
             ) : null}
           </section>
 
-          <section id="import" className="panel importPanel">
+          <section id="import" className="panel importPanel" hidden={activeView !== "import"}>
             <div className="panelHeader">
               <h2>Excel import</h2>
               <span>{importPreview ? importPreview.sheet_name : "No file"}</span>
@@ -2867,7 +3089,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section id="ai" className="panel aiPanel">
+          <section id="ai" className="panel aiPanel" hidden={activeView !== "ai"}>
             <div className="panelHeader">
               <h2>AI requirement parser</h2>
               <span>{requirementParse ? requirementParse.source : "Pending"}</span>
@@ -3137,7 +3359,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section id="formula" className="panel formulaPanel">
+          <section id="formula" className="panel formulaPanel" hidden={activeView !== "formula"}>
             <div className="panelHeader">
               <h2>Formula</h2>
               <span>{totalPercentage.toFixed(1)}%</span>
@@ -3155,8 +3377,12 @@ export default function Home() {
             </label>
             <div className="formulaMetaGrid">
               <label>
-                <span>ProyectoID</span>
+                <span>
+                  ProyectoID <strong className="requiredMark">obligatorio</strong>
+                </span>
                 <input
+                  aria-required="true"
+                  required
                   placeholder="FLOWER"
                   value={workspace.formulaJiraProjectId}
                   onChange={(event) => {
@@ -3479,7 +3705,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section id="results" className="panel resultPanel">
+          <section id="results" className="panel resultPanel" hidden={activeView !== "results"}>
             <div className="panelHeader">
               <h2>Calculation results</h2>
               <span>{result ? result.currency : "Pending"}</span>
