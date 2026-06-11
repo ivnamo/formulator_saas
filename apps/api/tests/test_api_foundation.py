@@ -122,6 +122,56 @@ def test_raw_material_aliases_are_tenant_scoped() -> None:
     assert forbidden.status_code == 404
 
 
+def test_raw_material_list_includes_current_price_parameters_and_aliases() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "Ntotal", "name": "Nitrogen total", "unit": "% p/p"},
+    ).json()
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Urea Technical", "code": "UREA", "external_code": "SAP-001"},
+    ).json()
+
+    client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers,
+        json={"price": 1.42, "currency": "EUR", "unit": "kg"},
+    )
+    client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/parameter-values",
+        headers=headers,
+        json={"parameter_id": parameter["id"], "value": 46.0},
+    )
+    client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/aliases",
+        headers=headers,
+        json={"alias": "Urea 46"},
+    )
+
+    listed = client.get("/api/v1/raw-materials", headers=headers)
+
+    assert listed.status_code == 200
+    listed_material = listed.json()[0]
+    assert listed_material["current_price"]["price"] == 1.42
+    assert listed_material["parameters"] == [
+        {
+            "parameter_id": parameter["id"],
+            "code": "Ntotal",
+            "name": "Nitrogen total",
+            "value": 46.0,
+            "unit": "% p/p",
+            "source": None,
+            "confidence": None,
+        }
+    ]
+    assert listed_material["aliases"] == ["Urea 46"]
+
+
 def test_compatibility_rules_are_tenant_scoped() -> None:
     client = make_client()
     tenant_a = create_tenant(client, USER_A, "tenant-a")

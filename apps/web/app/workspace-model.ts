@@ -22,7 +22,18 @@ export type RawMaterial = {
   isObsolete: boolean;
   price: number | null;
   parameterValue: number | null;
+  parameters: Record<string, RawMaterialParameterValue>;
   aliases: string[];
+};
+
+export type RawMaterialParameterValue = {
+  parameterId: string;
+  code: string;
+  name: string;
+  value: number;
+  unit: string | null;
+  source: string | null;
+  confidence: number | null;
 };
 
 export type FormulaLine = {
@@ -77,6 +88,24 @@ export type RawMaterialRead = {
   subfamily: string | null;
   is_active: boolean;
   is_obsolete: boolean;
+  current_price: {
+    price: number;
+    currency: string;
+    unit: string;
+    supplier: string | null;
+    source: string;
+    valid_from: string;
+  } | null;
+  parameters: Array<{
+    parameter_id: string;
+    code: string;
+    name: string;
+    value: number;
+    unit: string | null;
+    source: string | null;
+    confidence: number | null;
+  }>;
+  aliases: string[];
 };
 
 export function toWorkspaceRawMaterial(
@@ -91,9 +120,23 @@ export function toWorkspaceRawMaterial(
     family: material.family,
     isActive: material.is_active,
     isObsolete: material.is_obsolete,
-    price: values.price ?? null,
+    price: values.price ?? material.current_price?.price ?? null,
     parameterValue: values.parameterValue ?? null,
-    aliases: [],
+    parameters: Object.fromEntries(
+      material.parameters.map((parameter) => [
+        parameter.code,
+        {
+          parameterId: parameter.parameter_id,
+          code: parameter.code,
+          name: parameter.name,
+          value: parameter.value,
+          unit: parameter.unit,
+          source: parameter.source,
+          confidence: parameter.confidence,
+        },
+      ]),
+    ),
+    aliases: material.aliases,
   };
 }
 

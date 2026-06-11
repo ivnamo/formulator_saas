@@ -1581,6 +1581,9 @@ label span {
 .quickMaterialList {
   display: grid;
   gap: 6px;
+  max-height: 330px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .quickMaterial {
@@ -1633,6 +1636,29 @@ label span {
   font-size: 12px;
   font-weight: 800;
   text-align: right;
+}
+
+.parameterBadgeList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.parameterBadgeList em {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: var(--surface-muted);
+  color: var(--teal-dark);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.parameterBadgeList.emptyBadges em {
+  color: var(--muted);
 }
 
 .formulaSummary,

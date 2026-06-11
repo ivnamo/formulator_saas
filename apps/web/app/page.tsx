@@ -66,6 +66,7 @@ import {
   type JiraOAuthAuthorize,
   type JiraConnectionTest,
   type MaterialForm,
+  type RawMaterial,
   type RawMaterialAliasRead,
   type ParameterRead,
   type RawMaterialRead,
@@ -190,6 +191,22 @@ function parameterFamilyForCode(code: string) {
 
 function formatFormulaNumber(value: number | null, suffix = "") {
   return value === null ? "-" : `${value.toFixed(2)}${suffix}`;
+}
+
+function activeParameterValue(material: RawMaterial, parameterCode: string | null | undefined) {
+  if (!parameterCode) {
+    return null;
+  }
+  return material.parameters[parameterCode]?.value ?? material.parameterValue;
+}
+
+function materialParameterPreview(material: RawMaterial) {
+  return Object.values(material.parameters)
+    .slice(0, 5)
+    .map((parameter) => {
+      const unit = parameter.unit ? ` ${parameter.unit}` : "";
+      return `${parameter.code}: ${parameter.value.toFixed(2)}${unit}`;
+    });
 }
 
 export default function Home() {
@@ -345,10 +362,11 @@ export default function Home() {
           material?.price === null || material?.price === undefined
             ? null
             : (material.price * line.percentage) / 100;
+        const parameterValue = material
+          ? activeParameterValue(material, workspace.parameter?.code)
+          : null;
         const activeParameterContribution =
-          workspace.parameter && material?.parameterValue !== null && material?.parameterValue !== undefined
-            ? (material.parameterValue * line.percentage) / 100
-            : null;
+          parameterValue !== null ? (parameterValue * line.percentage) / 100 : null;
         return {
           ...line,
           index,
@@ -685,11 +703,19 @@ export default function Home() {
           : Promise.resolve([]),
       ]);
 
+      const activeParameter = parameters[0] ?? null;
       setWorkspace({
         ...emptyWorkspace,
         tenant,
-        parameter: parameters[0] ?? null,
-        rawMaterials: materials.map((material) => toWorkspaceRawMaterial(material)),
+        parameter: activeParameter,
+        rawMaterials: materials.map((material) =>
+          toWorkspaceRawMaterial(material, {
+            parameterValue: activeParameter
+              ? (material.parameters.find((parameter) => parameter.code === activeParameter.code)
+                  ?.value ?? null)
+              : null,
+          }),
+        ),
         formulaName: `${tenant.name} Formula`,
       });
       setWorkspaceName(tenant.name);
@@ -833,10 +859,26 @@ export default function Home() {
         ...current,
         rawMaterials: [
           ...current.rawMaterials,
-          toWorkspaceRawMaterial(material, {
-            price,
-            parameterValue: workspace.parameter ? parameterValue : null,
-          }),
+          {
+            ...toWorkspaceRawMaterial(material, {
+              price,
+              parameterValue: current.parameter ? parameterValue : null,
+            }),
+            parameters:
+              current.parameter && parameterValue !== null
+                ? {
+                    [current.parameter.code]: {
+                      parameterId: current.parameter.id,
+                      code: current.parameter.code,
+                      name: current.parameter.name,
+                      value: parameterValue,
+                      unit: current.parameter.unit,
+                      source: "manual",
+                      confidence: null,
+                    },
+                  }
+                : {},
+          },
         ],
       }));
       setMaterialForm({ code: "", name: "", price: "", parameterValue: "" });
@@ -1544,6 +1586,20 @@ export default function Home() {
             const activeParameter = current.parameter
               ? material?.parameters[current.parameter.code]
               : undefined;
+            const activeParameterMap =
+              current.parameter && activeParameter
+                ? {
+                    [current.parameter.code]: {
+                      parameterId: current.parameter.id,
+                      code: current.parameter.code,
+                      name: current.parameter.name,
+                      value: activeParameter.value,
+                      unit: activeParameter.unit,
+                      source: null,
+                      confidence: null,
+                    },
+                  }
+                : {};
             return {
               id: item.raw_material_id,
               code: material?.code ?? null,
@@ -1554,6 +1610,7 @@ export default function Home() {
               isObsolete: false,
               price: material?.price_eur_per_kg ?? null,
               parameterValue: activeParameter?.value ?? null,
+              parameters: activeParameterMap,
               aliases: [],
             };
           });
@@ -3818,6 +3875,7 @@ export default function Home() {
                     const isSelected = workspace.formulaLines.some(
                       (line) => line.rawMaterialId === material.id,
                     );
+                    const parameterPreview = materialParameterPreview(material);
                     return (
                       <button
                         className="quickMaterial"
@@ -3833,6 +3891,17 @@ export default function Home() {
                             {material.externalCode ? ` - ${material.externalCode}` : ""}
                             {material.family ? ` - ${material.family}` : ""}
                           </small>
+                          {parameterPreview.length ? (
+                            <span className="parameterBadgeList">
+                              {parameterPreview.map((parameter) => (
+                                <em key={parameter}>{parameter}</em>
+                              ))}
+                            </span>
+                          ) : (
+                            <span className="parameterBadgeList emptyBadges">
+                              <em>Sin parametros cargados</em>
+                            </span>
+                          )}
                         </span>
                         <code>{isSelected ? "added" : formatFormulaNumber(material.price, " EUR/kg")}</code>
                         <Plus size={15} />
@@ -4097,6 +4166,7 @@ export default function Home() {
               ) : (
                 formulaLineDetails.map((line) => {
                   const material = line.material;
+                  const parameterPreview = material ? materialParameterPreview(material) : [];
                   const lineWarnings = [
                     material?.price === null ? "sin precio" : null,
                     material?.isObsolete ? "obsoleta" : null,
@@ -4134,6 +4204,13 @@ export default function Home() {
                           {material?.externalCode ? `ERP ${material.externalCode}` : "Sin ERP"}
                           {material?.family ? ` - ${material.family}` : ""}
                         </small>
+                        {parameterPreview.length ? (
+                          <span className="parameterBadgeList">
+                            {parameterPreview.map((parameter) => (
+                              <em key={parameter}>{parameter}</em>
+                            ))}
+                          </span>
+                        ) : null}
                       </span>
                       <input
                         aria-label={`${material?.name ?? "Material"} percentage`}
@@ -4257,12 +4334,12 @@ export default function Home() {
               </div>
               <div className="warningList">
                 {visibleWarnings.length ? (
-                  visibleWarnings.map((warning) => {
+                  visibleWarnings.map((warning, index) => {
                     const severity = normalizeWarningSeverity(warning);
                     return (
                       <div
                         data-severity={severity}
-                        key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}-${warning.message}`}
+                        key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}-${index}`}
                       >
                         <AlertTriangle size={16} />
                         <span>
@@ -4326,12 +4403,12 @@ export default function Home() {
             </div>
             <div className="warningList">
               {result?.warnings.length ? (
-                result.warnings.map((warning) => {
+                result.warnings.map((warning, index) => {
                   const severity = normalizeWarningSeverity(warning);
                   return (
                     <div
                       data-severity={severity}
-                      key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}`}
+                      key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}-${index}`}
                     >
                       <AlertTriangle size={16} />
                       <span>

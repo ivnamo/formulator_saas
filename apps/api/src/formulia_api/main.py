@@ -266,17 +266,18 @@ def register_routes(app: FastAPI) -> None:
     def list_raw_materials(
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
-    ) -> list[RawMaterial]:
-        return session.exec(
+    ) -> list[dict[str, Any]]:
+        materials = session.exec(
             select(RawMaterial).where(RawMaterial.tenant_id == tenant.tenant_id)
         ).all()
+        return [_raw_material_read(session, tenant.tenant_id, material) for material in materials]
 
     @app.post("/api/v1/raw-materials", response_model=RawMaterialRead, status_code=201)
     def create_raw_material(
         payload: RawMaterialCreate,
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
-    ) -> RawMaterial:
+    ) -> dict[str, Any]:
         raw_material = RawMaterial(
             tenant_id=tenant.tenant_id,
             normalized_name=_normalize(payload.name),
@@ -285,15 +286,19 @@ def register_routes(app: FastAPI) -> None:
         session.add(raw_material)
         session.commit()
         session.refresh(raw_material)
-        return raw_material
+        return _raw_material_read(session, tenant.tenant_id, raw_material)
 
     @app.get("/api/v1/raw-materials/{raw_material_id}", response_model=RawMaterialRead)
     def get_raw_material(
         raw_material_id: uuid.UUID,
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
-    ) -> RawMaterial:
-        return _get_raw_material(session, tenant.tenant_id, raw_material_id)
+    ) -> dict[str, Any]:
+        return _raw_material_read(
+            session,
+            tenant.tenant_id,
+            _get_raw_material(session, tenant.tenant_id, raw_material_id),
+        )
 
     @app.patch("/api/v1/raw-materials/{raw_material_id}", response_model=RawMaterialRead)
     def update_raw_material(
@@ -301,7 +306,7 @@ def register_routes(app: FastAPI) -> None:
         payload: RawMaterialUpdate,
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
-    ) -> RawMaterial:
+    ) -> dict[str, Any]:
         raw_material = _get_raw_material(session, tenant.tenant_id, raw_material_id)
         updates = payload.model_dump(exclude_unset=True)
         if "name" in updates and updates["name"] is not None:
@@ -312,7 +317,7 @@ def register_routes(app: FastAPI) -> None:
         session.add(raw_material)
         session.commit()
         session.refresh(raw_material)
-        return raw_material
+        return _raw_material_read(session, tenant.tenant_id, raw_material)
 
     @app.get(
         "/api/v1/raw-materials/{raw_material_id}/aliases",
@@ -837,6 +842,56 @@ def _get_parameter(session: Session, tenant_id: uuid.UUID, parameter_id: uuid.UU
     if parameter is None:
         raise HTTPException(status_code=404, detail="Parameter not found.")
     return parameter
+
+
+def _raw_material_read(
+    session: Session,
+    tenant_id: uuid.UUID,
+    material: RawMaterial,
+) -> dict[str, Any]:
+    price = session.exec(
+        select(RawMaterialPrice)
+        .where(
+            RawMaterialPrice.tenant_id == tenant_id,
+            RawMaterialPrice.raw_material_id == material.id,
+        )
+        .order_by(RawMaterialPrice.valid_from.desc(), RawMaterialPrice.created_at.desc())
+    ).first()
+    values = session.exec(
+        select(RawMaterialParameterValue, Parameter)
+        .join(Parameter, RawMaterialParameterValue.parameter_id == Parameter.id)
+        .where(
+            RawMaterialParameterValue.tenant_id == tenant_id,
+            RawMaterialParameterValue.raw_material_id == material.id,
+            Parameter.tenant_id == tenant_id,
+        )
+        .order_by(Parameter.code)
+    ).all()
+    aliases = session.exec(
+        select(RawMaterialAlias)
+        .where(
+            RawMaterialAlias.tenant_id == tenant_id,
+            RawMaterialAlias.raw_material_id == material.id,
+        )
+        .order_by(RawMaterialAlias.alias)
+    ).all()
+    return {
+        **_model_dict(material),
+        "current_price": _model_dict(price) if price else None,
+        "parameters": [
+            {
+                "parameter_id": value.parameter_id,
+                "code": parameter.code,
+                "name": parameter.name,
+                "value": value.value,
+                "unit": parameter.unit,
+                "source": value.source,
+                "confidence": value.confidence,
+            }
+            for value, parameter in values
+        ],
+        "aliases": [alias.alias for alias in aliases],
+    }
 
 
 def _get_formula(session: Session, tenant_id: uuid.UUID, formula_id: uuid.UUID) -> Formula:

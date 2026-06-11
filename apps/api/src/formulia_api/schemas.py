@@ -99,6 +99,9 @@ class RawMaterialRead(RawMaterialCreate):
     normalized_name: str
     is_active: bool
     is_obsolete: bool
+    current_price: dict[str, Any] | None = None
+    parameters: list[dict[str, Any]] = Field(default_factory=list)
+    aliases: list[str] = Field(default_factory=list)
 
 
 class RawMaterialAliasCreate(BaseModel):
