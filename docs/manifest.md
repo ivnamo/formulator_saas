@@ -45,6 +45,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_032_jira_one_click_e2e.md`](00-meta/meta_032_jira_one_click_e2e.md)
 - [`00-meta/meta_033_jira_connector_portability.md`](00-meta/meta_033_jira_connector_portability.md)
 - [`00-meta/meta_034_jira_metadata_discovery.md`](00-meta/meta_034_jira_metadata_discovery.md)
+- [`00-meta/meta_035_jira_status_sync.md`](00-meta/meta_035_jira_status_sync.md)
 
 ## Producto
 
