@@ -167,6 +167,26 @@ label span {
   flex-wrap: wrap;
 }
 
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.textLink:hover {
+  text-decoration: underline;
+}
+
+.accountActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .nav {
   display: grid;
   gap: 6px;

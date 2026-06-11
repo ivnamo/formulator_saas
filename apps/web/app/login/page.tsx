@@ -85,6 +85,9 @@ export default function LoginPage() {
             {status === "working" ? <Loader2 className="spin" size={17} /> : <LogIn size={17} />}
             Entrar
           </button>
+          <a className="textLink" href="/reset-password">
+            Crear o recuperar contrasena
+          </a>
         </div>
         <div className="statusLine" data-state={status === "error" ? "error" : "idle"}>
           <span>{message}</span>

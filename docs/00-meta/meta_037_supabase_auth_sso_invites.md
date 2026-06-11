@@ -60,6 +60,7 @@ Tambien existe un proyecto Supabase compartido con otra app. FormulIA debe segui
   - aceptada por `auth_user_id`,
   - auditoria basica.
 - No exponer magic link en el login publico; `Enviar enlace` queda solo para `owner/admin` dentro de Configuracion.
+- Los usuarios invitados deben poder crear o recuperar contrasena desde `/reset-password`, y usuarios logueados deben poder cambiarla desde `Configuracion > Mi cuenta`.
 - Seed/control administrativo para invitar al admin inicial Ivan Navarro al tenant `Atlantica Agricola`.
 - Validar que Ivan puede entrar y queda como `owner` o `admin`.
 - Preparar soporte SSO:
@@ -206,7 +207,7 @@ SSO esta preparado en codigo, pero queda a la espera de dos confirmaciones exter
 - Supabase: SAML 2.0 habilitado en el proyecto y plan compatible.
 - Atlantica: admin de Microsoft Entra que cree/configure la Enterprise Application de FormulIA y entregue la Federation Metadata URL o XML.
 
-Ivan puede entrar antes de SSO usando email/password o un enlace enviado por un admin desde la app, incluido su email de Atlantica si se invita explicitamente. Ese camino no requiere admin de Atlantica, solo una invitacion FormulIA y acceso al buzon si se usa enlace.
+Ivan puede entrar antes de SSO usando email/password, recuperacion de contrasena o un enlace enviado por un admin desde la app, incluido su email de Atlantica si se invita explicitamente. Ese camino no requiere admin de Atlantica, solo una invitacion FormulIA y acceso al buzon si se usa enlace o recuperacion.
 
 ## Referencias
 

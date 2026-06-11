@@ -13,6 +13,7 @@ import {
   FlaskConical,
   FolderOpen,
   History,
+  KeyRound,
   ListChecks,
   Loader2,
   LogOut,
@@ -2027,6 +2028,19 @@ export default function Home() {
                 <Plus size={17} />
                 Create workspace
               </button>
+            </div>
+          </section>
+
+          <section className="panel setupPanel" hidden={activeView !== "settings"}>
+            <div className="panelHeader">
+              <h2>Mi cuenta</h2>
+              <span>{session.user.email ?? "Sesion activa"}</span>
+            </div>
+            <div className="accountActions">
+              <a className="secondaryButton" href="/update-password">
+                <KeyRound size={17} />
+                Cambiar contrasena
+              </a>
             </div>
           </section>
 

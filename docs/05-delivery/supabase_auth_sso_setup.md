@@ -33,6 +33,8 @@ Admins invite users from `Configuracion > Invitaciones` once logged in as `owner
 
 The backend sends Supabase invite links with the service-role key, so `SUPABASE_SERVICE_ROLE_KEY` must be configured server-side. Never expose it as a `NEXT_PUBLIC_*` variable.
 
+After a user receives the admin invitation, they can set or recover their password through the password flow below.
+
 For local or scripted invitation records, use the script from the repo root:
 
 ```powershell
@@ -45,12 +47,23 @@ Allowed roles are `owner`, `admin`, `formulator`, `formulador`, and `viewer`. `f
 
 1. User opens the app.
 2. Next.js `proxy.ts` redirects unauthenticated users to `/login`.
-3. User signs in with email/password or magic link.
-4. Supabase redirects to `/auth/callback`.
-5. Frontend loads the Supabase session.
-6. Backend validates the bearer token.
-7. Backend accepts a pending invitation and creates/activates `tenant_members`.
-8. The app loads `atlantica-agricola` and its raw materials.
+3. User signs in with email/password.
+4. Frontend loads the Supabase session.
+5. Backend validates the bearer token.
+6. Backend accepts a pending invitation and creates/activates `tenant_members`.
+7. The app loads `atlantica-agricola` and its raw materials.
+
+## Password Flow
+
+Users can create or recover their password from `/reset-password`.
+
+1. User enters their invited email.
+2. Supabase sends a recovery email.
+3. Supabase redirects through `/auth/callback?next=/update-password`.
+4. User sets a new password in `/update-password`.
+5. User continues to the app or returns to `/login`.
+
+Logged-in users can also open `Configuracion > Mi cuenta > Cambiar contrasena`.
 
 ## SSO Setup
 
@@ -83,11 +96,11 @@ Recommended setup for Microsoft Entra ID:
    - production: the deployed FormulIA URL plus `/auth/callback`
 6. Test from `/login` with an email on the configured domain.
 
-If Supabase SAML SSO is not available on the current plan, the app remains secured by invitation-only email magic links until the provider is enabled.
+If Supabase SAML SSO is not available on the current plan, the app remains secured by invitation-only email/password login and admin-sent invitation links until the provider is enabled.
 
 ## Can Ivan Enter With an Atlantica Email Now?
 
-Yes, if Ivan provides the exact Atlantica email address and that email is invited to `atlantica-agricola`, he can use the email magic-link login without any Microsoft Entra admin work.
+Yes, if Ivan provides the exact Atlantica email address and that email is invited to `atlantica-agricola`, he can use email/password login or the password flow without any Microsoft Entra admin work.
 
 That path is not SSO. It only requires:
 
