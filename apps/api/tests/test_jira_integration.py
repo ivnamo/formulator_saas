@@ -23,8 +23,14 @@ USER_B = "20000000-0000-0000-0000-000000000001"
 
 
 class FakeJiraClient:
-    def __init__(self, *, fail_attachment: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        fail_attachment: bool = False,
+        issue_status: str = "Cambios solicitados",
+    ) -> None:
         self.fail_attachment = fail_attachment
+        self.issue_status = issue_status
         self.created_payloads: list[dict] = []
         self.attachments: list[dict] = []
 
@@ -98,6 +104,25 @@ class FakeJiraClient:
             key="LAB-321",
             url="https://example.atlassian.net/browse/LAB-321",
         )
+
+    def get_issue(self, issue_key: str) -> dict:
+        assert issue_key == "LAB-321"
+        return {
+            "key": issue_key,
+            "fields": {
+                "summary": "Review Formula",
+                "status": {"name": self.issue_status},
+            },
+        }
+
+    def get_issue_transitions(self, issue_key: str) -> dict:
+        assert issue_key == "LAB-321"
+        return {
+            "transitions": [
+                {"id": "31", "name": "OK"},
+                {"id": "41", "name": "NOK"},
+            ]
+        }
 
     def add_attachment(self, issue_key: str, artifact: object) -> JiraAttachmentResult:
         if self.fail_attachment:
@@ -721,6 +746,98 @@ def test_formula_jira_review_retry_attachment_after_partial_failure(monkeypatch)
     assert len(fake_jira.created_payloads) == 1
     assert len(fake_jira.attachments) == 1
     assert fake_jira.attachments[0]["issue_key"] == "LAB-321"
+
+
+def test_formula_jira_review_sync_updates_status_from_jira(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient(issue_status="OK")
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={},
+    ).json()
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=headers(USER_A, tenant_id),
+    )
+    assert sent.status_code == 200
+
+    synced = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/sync",
+        headers=headers(USER_A, tenant_id),
+    )
+
+    assert synced.status_code == 200
+    synced_review = synced.json()
+    assert synced_review["review_status"] == "approved"
+    assert synced_review["jira_status"] == "OK"
+    assert synced_review["last_sync_at"] is not None
+    with Session(client.app.state.engine) as session:
+        events = session.exec(
+            select(IntegrationEvent).where(IntegrationEvent.tenant_id == uuid.UUID(tenant_id))
+        ).all()
+    sync_event = [event for event in events if event.event_type == "jira_status_sync"][0]
+    assert sync_event.status == "success"
+    assert sync_event.payload_summary["available_transitions"] == ["OK", "NOK"]
+
+
+def test_formula_jira_review_sync_keeps_internal_status_when_unmapped(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient(issue_status="Cliente QA")
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={},
+    ).json()
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=headers(USER_A, tenant_id),
+    )
+    assert sent.status_code == 200
+
+    synced = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/sync",
+        headers=headers(USER_A, tenant_id),
+    )
+
+    assert synced.status_code == 200
+    synced_review = synced.json()
+    assert synced_review["review_status"] == "sent_to_jira"
+    assert synced_review["jira_status"] == "Cliente QA"
+    with Session(client.app.state.engine) as session:
+        events = session.exec(
+            select(IntegrationEvent).where(IntegrationEvent.tenant_id == uuid.UUID(tenant_id))
+        ).all()
+    sync_event = [event for event in events if event.event_type == "jira_status_sync"][0]
+    assert sync_event.payload_summary["mapped"] is False
+
+
+def test_formula_jira_review_sync_requires_sent_issue() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={},
+    ).json()
+
+    synced = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/sync",
+        headers=headers(USER_A, tenant_id),
+    )
+
+    assert synced.status_code == 409
+    assert synced.json()["detail"] == "Formula review must be sent to Jira before sync."
 
 
 def test_jira_send_records_integration_events(monkeypatch) -> None:

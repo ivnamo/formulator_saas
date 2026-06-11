@@ -536,6 +536,77 @@ def register_jira_routes(app: FastAPI) -> None:
         session.refresh(review)
         return _formula_review_request_read(review)
 
+    @app.post(
+        "/api/v1/formula-reviews/{review_id}/sync",
+        response_model=FormulaReviewRequestRead,
+    )
+    def sync_formula_review_from_jira(
+        review_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        _require_formula_reviewer(tenant)
+        review = _get_formula_review_request(session, tenant.tenant_id, review_id)
+        if not review.jira_issue_key:
+            raise HTTPException(
+                status_code=409,
+                detail="Formula review must be sent to Jira before sync.",
+            )
+
+        connection = _get_jira_connection(session, tenant.tenant_id, review.jira_connection_id)
+        transition_names: list[str] = []
+        transition_error: str | None = None
+        try:
+            jira_client = make_jira_client(connection)
+            issue = jira_client.get_issue(review.jira_issue_key)
+            try:
+                transitions = jira_client.get_issue_transitions(review.jira_issue_key)
+                transition_names = _jira_transition_names(transitions)
+            except JiraClientError as exc:
+                transition_error = str(exc)
+            jira_status = _jira_issue_status_name(issue)
+        except JiraConfigurationError as exc:
+            _record_jira_sync_error(session, tenant.tenant_id, review, str(exc))
+            session.commit()
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except JiraClientError as exc:
+            _record_jira_sync_error(session, tenant.tenant_id, review, str(exc))
+            session.commit()
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        synced_at = utc_now()
+        was_mapped = jira_status in connection.status_mapping_json
+        mapped_status = _mapped_review_status(
+            connection.status_mapping_json,
+            jira_status,
+            fallback=review.review_status,
+        )
+        review.jira_status = jira_status
+        review.review_status = mapped_status
+        review.last_sync_at = synced_at
+        payload_summary: dict[str, Any] = {
+            "jira_issue_key": review.jira_issue_key,
+            "jira_status": jira_status,
+            "review_status": mapped_status,
+            "mapped": was_mapped,
+            "available_transitions": transition_names,
+        }
+        if transition_error:
+            payload_summary["transition_error"] = transition_error
+        _record_integration_event(
+            session,
+            tenant.tenant_id,
+            entity_type="formula_review_request",
+            entity_id=review.id,
+            event_type="jira_status_sync",
+            status="success",
+            payload_summary=payload_summary,
+        )
+        session.add(review)
+        session.commit()
+        session.refresh(review)
+        return _formula_review_request_read(review)
+
 
 def _require_integration_admin(tenant: TenantContext) -> None:
     if tenant.role not in {"owner", "admin"}:
@@ -588,6 +659,57 @@ def _validate_jira_formula_fields(
     )
     if product_type_mapped and not product_type:
         raise HTTPException(status_code=400, detail="Tipo producto is required before sending.")
+
+
+def _jira_issue_status_name(issue: dict[str, Any]) -> str:
+    status = _mapping(_mapping(issue.get("fields")).get("status"))
+    name = _optional_str(status.get("name"))
+    if name:
+        return name
+    status = _mapping(issue.get("status"))
+    name = _optional_str(status.get("name"))
+    if name:
+        return name
+    raise JiraClientError("Jira issue did not include a status.")
+
+
+def _jira_transition_names(transitions: dict[str, Any]) -> list[str]:
+    return [
+        name
+        for name in (
+            _optional_str(transition.get("name"))
+            for transition in _sequence(transitions.get("transitions"))
+            if isinstance(transition, dict)
+        )
+        if name
+    ]
+
+
+def _mapped_review_status(
+    status_mapping: dict[str, str],
+    jira_status: str,
+    *,
+    fallback: str,
+) -> str:
+    return status_mapping.get(jira_status, fallback)
+
+
+def _record_jira_sync_error(
+    session: Session,
+    tenant_id: uuid.UUID,
+    review: FormulaReviewRequest,
+    error_message: str,
+) -> None:
+    _record_integration_event(
+        session,
+        tenant_id,
+        entity_type="formula_review_request",
+        entity_id=review.id,
+        event_type="jira_status_sync",
+        status="error",
+        payload_summary={"jira_issue_key": review.jira_issue_key},
+        error_message=error_message,
+    )
 
 
 def _record_integration_event(

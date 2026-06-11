@@ -167,6 +167,10 @@ def test_jira_client_loads_project_search_and_create_fields(monkeypatch) -> None
             "/rest/api/3/issue/createmeta/LAB/issuetypes/10001?maxResults=100"
         ):
             return FakeHttpResponse(b'{"fields": [{"fieldId": "summary"}]}')
+        if request.full_url.endswith("/rest/api/3/issue/LAB-321?fields=status%2Csummary"):
+            return FakeHttpResponse(b'{"key": "LAB-321", "fields": {"status": {"name": "OK"}}}')
+        if request.full_url.endswith("/rest/api/3/issue/LAB-321/transitions"):
+            return FakeHttpResponse(b'{"transitions": [{"name": "LIBERADO"}]}')
         raise AssertionError(f"Unexpected URL: {request.full_url}")
 
     monkeypatch.setattr(jira_client, "urlopen", fake_urlopen)
@@ -180,9 +184,15 @@ def test_jira_client_loads_project_search_and_create_fields(monkeypatch) -> None
     assert client.get_create_issue_fields("LAB", "10001") == {
         "fields": [{"fieldId": "summary"}]
     }
+    assert client.get_issue("LAB-321")["fields"]["status"]["name"] == "OK"
+    assert client.get_issue_transitions("LAB-321") == {
+        "transitions": [{"name": "LIBERADO"}]
+    }
     assert captured_urls == [
         "https://example.atlassian.net/rest/api/3/project/search?maxResults=50",
         "https://example.atlassian.net/rest/api/3/issue/createmeta/LAB/issuetypes/10001?maxResults=100",
+        "https://example.atlassian.net/rest/api/3/issue/LAB-321?fields=status%2Csummary",
+        "https://example.atlassian.net/rest/api/3/issue/LAB-321/transitions",
     ]
 
 

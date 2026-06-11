@@ -157,16 +157,32 @@ Estados internos recomendados en FormulIA:
 
 Estados Jira sugeridos:
 
+- `Pendiente`
 - `Pendiente de revision`
+- `Pre-calidad`
+- `LABORATORIO`
+- `Calidad`
 - `En revision laboratorio`
 - `Cambios solicitados`
+- `OK`
+- `OK NO LIBERADO`
 - `Aprobada`
+- `NOK`
 - `Rechazada`
 - `En pruebas`
 - `Validada`
+- `LIBERADO`
+- `CANCELADO`
 - `Cerrada`
 
 El mapeo entre estados Jira y estados internos debe ser configurable por tenant.
+
+Sincronizacion:
+
+- `POST /formula-reviews/{review_id}/sync` lee el issue Jira por REST v3 y actualiza `jira_status`, `review_status` y `last_sync_at`.
+- El estado interno se calcula con `status_mapping`. Si el estado Jira no esta mapeado, FormulIA conserva el `review_status` actual y registra el estado Jira recibido.
+- La llamada tambien intenta leer transiciones disponibles y las guarda en auditoria para diagnostico, pero no cambia estados en Jira.
+- Para activar un cliente nuevo hay que confirmar los nombres exactos de estados Jira y su equivalencia interna antes de enviar formulas reales.
 
 ## Versionado
 

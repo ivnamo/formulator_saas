@@ -61,6 +61,7 @@ offline_access
 - Issue types disponibles para el flujo de formulas.
 - Issue type por defecto.
 - Estados y transiciones relevantes.
+- Mapping exacto `estado Jira -> estado FormulIA` para `status_mapping`.
 - Si se debe crear siempre issue nuevo o enlazar con issues existentes.
 - Politica de assignee/reporter:
   - Assignee por defecto, si aplica.
@@ -106,6 +107,34 @@ El conector soporta `field_mapping` como JSON por tenant. Las claves de FormulIA
 
 Usar `jira_product_type_option` cuando el campo Jira sea selector, porque envia `{ "value": "..." }`. Usar `jira_product_type` cuando el campo sea texto.
 
+## Mapeo Jira -> FormulIA
+
+El conector soporta `status_mapping` como JSON por tenant. Las claves son nombres exactos de estados Jira y los valores son estados internos de revision.
+
+Ejemplo:
+
+```json
+{
+  "Pendiente": "sent_to_jira",
+  "Pre-calidad": "in_lab_review",
+  "LABORATORIO": "in_lab_review",
+  "Calidad": "in_lab_review",
+  "OK": "approved",
+  "OK NO LIBERADO": "approved",
+  "LIBERADO": "closed",
+  "NOK": "rejected",
+  "CANCELADO": "closed"
+}
+```
+
+Antes de activar un Jira nuevo, pedir al cliente:
+
+- Nombres exactos de estados, respetando mayusculas, espacios y acentos.
+- Estados finales y estados intermedios.
+- Transiciones disponibles desde cada estado relevante.
+- Que estado Jira significa cambios solicitados, aprobado, rechazado, liberado o cancelado.
+- Si un estado Jira debe mantener el estado interno actual en vez de cambiarlo.
+
 ## Configuracion local
 
 Variables locales esperadas para OAuth:
@@ -132,18 +161,21 @@ El script `scripts/set-jira-oauth-env.ps1` solicita Client ID, Client Secret, Re
 5. Revisar el JSON resultante y pulsar `Save Jira`.
 6. Crear una formula de prueba con datos no sensibles.
 7. Enviar un issue controlado y adjuntar Excel.
-8. Confirmar en Jira:
+8. Mover el issue por uno o dos estados reales y ejecutar `Sync Jira status` en FormulIA.
+9. Confirmar en Jira:
    - issue creado en proyecto correcto,
    - issue type correcto,
    - campos obligatorios rellenados,
    - descripcion legible,
    - Excel adjunto,
+   - estado sincronizado segun `status_mapping`,
    - permisos y auditoria aceptables.
-9. Documentar el mapping final del cliente en un entorno seguro, no en repositorio publico.
+10. Documentar el mapping final del cliente en un entorno seguro, no en repositorio publico.
 
 ## Fuera de alcance actual
 
 - Almacenamiento cifrado multi-tenant de OAuth en base de datos.
-- Descubrimiento de transiciones/estados Jira en la UI.
-- Webhooks y sincronizacion bidireccional de estados.
+- Cambiar estados Jira desde FormulIA.
+- Descubrimiento visual de transiciones/estados Jira en la UI.
+- Webhooks y sincronizacion bidireccional automatica de estados.
 - Transformaciones avanzadas por campo mas alla de los mapeos soportados.

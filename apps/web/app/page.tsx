@@ -860,6 +860,22 @@ export default function Home() {
     });
   }
 
+  async function syncJiraReviewStatus(reviewId: string) {
+    await runAction("Syncing Jira review", async () => {
+      const review = await request<FormulaReviewRequest>(
+        `/api/v1/formula-reviews/${reviewId}/sync`,
+        {
+          method: "POST",
+          headers,
+        },
+      );
+      setFormulaReviewRequests((current) =>
+        current.map((item) => (item.id === review.id ? review : item)),
+      );
+      setMessage("Jira status synced");
+    });
+  }
+
   async function createAliasFromImportRow(row: ExcelImportPreviewRow) {
     if (!row.raw_material_id) {
       setError("Resolve import row before saving alias");
@@ -3382,6 +3398,16 @@ export default function Home() {
                             </button>
                           ) : (
                             <>
+                              <button
+                                className="iconButton"
+                                type="button"
+                                onClick={() => syncJiraReviewStatus(review.id)}
+                                disabled={isBusy}
+                                title="Sync Jira status"
+                                aria-label="Sync Jira status"
+                              >
+                                <RefreshCw size={16} />
+                              </button>
                               {review.review_status === "partial_failure" ? (
                                 <button
                                   className="iconButton"

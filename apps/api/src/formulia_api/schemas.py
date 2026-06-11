@@ -190,13 +190,22 @@ class CompatibilityRuleRead(BaseModel):
 
 def default_jira_status_mapping() -> dict[str, str]:
     return {
+        "Pendiente": "sent_to_jira",
         "Pendiente de revision": "sent_to_jira",
+        "Pre-calidad": "in_lab_review",
+        "LABORATORIO": "in_lab_review",
+        "Calidad": "in_lab_review",
         "En revision laboratorio": "in_lab_review",
         "Cambios solicitados": "changes_requested",
+        "OK": "approved",
+        "OK NO LIBERADO": "approved",
         "Aprobada": "approved",
+        "NOK": "rejected",
         "Rechazada": "rejected",
         "En pruebas": "in_testing",
         "Validada": "validated",
+        "LIBERADO": "closed",
+        "CANCELADO": "closed",
         "Cerrada": "closed",
     }
 
