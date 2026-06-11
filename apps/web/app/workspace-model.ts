@@ -15,7 +15,11 @@ export type Parameter = {
 export type RawMaterial = {
   id: string;
   code: string | null;
+  externalCode: string | null;
   name: string;
+  family: string | null;
+  isActive: boolean;
+  isObsolete: boolean;
   price: number | null;
   parameterValue: number | null;
   aliases: string[];
@@ -66,8 +70,11 @@ export type RawMaterialRead = {
   id: string;
   tenant_id: string;
   code: string | null;
+  external_code: string | null;
   name: string;
   normalized_name: string;
+  family: string | null;
+  subfamily: string | null;
   is_active: boolean;
   is_obsolete: boolean;
 };
@@ -79,7 +86,11 @@ export function toWorkspaceRawMaterial(
   return {
     id: material.id,
     code: material.code,
+    externalCode: material.external_code,
     name: material.name,
+    family: material.family,
+    isActive: material.is_active,
+    isObsolete: material.is_obsolete,
     price: values.price ?? null,
     parameterValue: values.parameterValue ?? null,
     aliases: [],

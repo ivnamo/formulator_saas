@@ -2,10 +2,13 @@
 
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   Beaker,
   BrainCircuit,
   Calculator,
   Check,
+  Copy,
   Database,
   Download,
   ExternalLink,
@@ -20,6 +23,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Search,
   Send,
   Settings2,
   Trash2,
@@ -96,6 +100,44 @@ const JIRA_MAPPING_KEYS = [
   "notes",
 ] as const;
 
+const PARAMETER_FAMILIES: Record<string, string[]> = {
+  Macronutriente: ["Ntotal", "Norg", "Nnitr", "Nure", "Namo", "K2O", "P2O5"],
+  Secundario: ["CaO", "MgO", "SO3"],
+  Micronutriente: ["Zn", "Mn", "Fe", "Cu", "B", "Mo", "Co", "SiO2"],
+  "Fraccion Organica": [
+    "Mseca",
+    "Morg",
+    "Corg",
+    "Extracto Humico total",
+    "Acidos fulvicos",
+    "Acidos humicos",
+    "Extracto de Algas",
+    "Polisacaridos",
+  ],
+  Aminoacidos: ["Sum AA totales", "Sum AA libres"],
+  Aminograma: [
+    "Ac aspartico",
+    "Ac glutamico",
+    "Alanina",
+    "Glicina",
+    "Histidina",
+    "Isoleucina",
+    "Leucina",
+    "Lisina",
+    "Serina",
+    "Tirosina",
+    "Treonina",
+    "Valina",
+    "Arginina",
+    "Fenilalanina",
+    "Metionina",
+    "Prolina",
+    "Hidroxiprolina",
+    "Triptofano",
+  ],
+  "Metales pesados": ["As", "Hg", "Pb", "Cd", "Cr", "Ni"],
+};
+
 type WorkspaceView =
   | "formula"
   | "materials"
@@ -107,7 +149,7 @@ type WorkspaceView =
   | "ai";
 
 const VIEW_TITLES: Record<WorkspaceView, string> = {
-  formula: "Formula actual",
+  formula: "Formula Builder",
   materials: "Materias primas",
   import: "Importar Excel",
   results: "Resultados",
@@ -118,10 +160,10 @@ const VIEW_TITLES: Record<WorkspaceView, string> = {
 };
 
 const VIEW_DESCRIPTIONS: Record<WorkspaceView, string> = {
-  formula: "Edita composicion, calcula con backend y prepara revision tecnica.",
+  formula: "Mesa unica para formular, calcular, guardar y enviar a revision.",
   materials: "Consulta y crea materias primas para formular.",
   import: "Sube formulas historicas y resuelve coincidencias.",
-  results: "Lee coste, riqueza, parametros y warnings calculados.",
+  results: "Vista legacy de resultados calculados.",
   settings: "Configura workspace, parametros e integraciones.",
   library: "Abre formulas guardadas y compara escenarios.",
   compatibility: "Gestiona reglas manuales de compatibilidad.",
@@ -130,6 +172,24 @@ const VIEW_DESCRIPTIONS: Record<WorkspaceView, string> = {
 
 function isTenantAdminRole(role?: string | null) {
   return role === "owner" || role === "admin";
+}
+
+function normalizeLookup(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function parameterFamilyForCode(code: string) {
+  const normalizedCode = normalizeLookup(code);
+  for (const [family, codes] of Object.entries(PARAMETER_FAMILIES)) {
+    if (codes.some((candidate) => normalizeLookup(candidate) === normalizedCode)) {
+      return family;
+    }
+  }
+  return "Otros";
+}
+
+function formatFormulaNumber(value: number | null, suffix = "") {
+  return value === null ? "-" : `${value.toFixed(2)}${suffix}`;
 }
 
 export default function Home() {
@@ -146,6 +206,9 @@ export default function Home() {
     price: "",
     parameterValue: "",
   });
+  const [formulaMaterialQuery, setFormulaMaterialQuery] = useState("");
+  const [selectedParameterFamilies, setSelectedParameterFamilies] = useState<string[]>([]);
+  const [showOnlyPositiveParameters, setShowOnlyPositiveParameters] = useState(true);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
@@ -274,6 +337,143 @@ export default function Home() {
     () => new Map(workspace.rawMaterials.map((material) => [material.id, material])),
     [workspace.rawMaterials],
   );
+  const formulaLineDetails = useMemo(
+    () =>
+      workspace.formulaLines.map((line, index) => {
+        const material = rawMaterialsById.get(line.rawMaterialId);
+        const partialCost =
+          material?.price === null || material?.price === undefined
+            ? null
+            : (material.price * line.percentage) / 100;
+        const activeParameterContribution =
+          workspace.parameter && material?.parameterValue !== null && material?.parameterValue !== undefined
+            ? (material.parameterValue * line.percentage) / 100
+            : null;
+        return {
+          ...line,
+          index,
+          material,
+          partialCost,
+          activeParameterContribution,
+        };
+      }),
+    [rawMaterialsById, workspace.formulaLines, workspace.parameter],
+  );
+  const localPreview = useMemo(() => {
+    let priceTotal = 0;
+    let hasMissingPrice = false;
+    let activeParameterValue = 0;
+    let hasActiveParameter = false;
+    const previewWarnings: CalculationResult["warnings"] = [];
+    const previewTotal = formulaLineDetails.reduce((sum, line) => sum + line.percentage, 0);
+
+    if (formulaLineDetails.length > 0 && Math.abs(previewTotal - 100) > 0.01) {
+      previewWarnings.push({
+        code: "total_percentage_not_100",
+        message: `Formula percentage total is ${previewTotal.toFixed(2)}, expected 100.`,
+        severity: "warning",
+      });
+    }
+
+    for (const line of formulaLineDetails) {
+      if (line.percentage <= 0) {
+        continue;
+      }
+      if (!line.material) {
+        previewWarnings.push({
+          code: "missing_raw_material",
+          message: `Formula line ${line.index + 1} has no raw material.`,
+          severity: "warning",
+        });
+        continue;
+      }
+      if (line.material.price === null) {
+        hasMissingPrice = true;
+        previewWarnings.push({
+          code: "missing_price",
+          message: `${line.material.name} has no current price.`,
+          severity: "warning",
+        });
+      } else {
+        priceTotal += (line.material.price * line.percentage) / 100;
+      }
+      if (!line.material.isActive || line.material.isObsolete) {
+        previewWarnings.push({
+          code: "material_status",
+          message: `${line.material.name} is ${line.material.isObsolete ? "obsolete" : "inactive"}.`,
+          severity: line.material.isObsolete ? "blocker" : "warning",
+        });
+      }
+      if (line.activeParameterContribution !== null) {
+        hasActiveParameter = true;
+        activeParameterValue += line.activeParameterContribution;
+      }
+    }
+
+    return {
+      priceTotal: hasMissingPrice ? null : priceTotal,
+      parameters:
+        workspace.parameter && hasActiveParameter
+          ? [
+              {
+                code: workspace.parameter.code,
+                value: activeParameterValue,
+                unit: workspace.parameter.unit,
+                family: parameterFamilyForCode(workspace.parameter.code),
+                source: "Preview",
+              },
+            ]
+          : [],
+      warnings: previewWarnings,
+    };
+  }, [formulaLineDetails, workspace.parameter]);
+  const materialSearchResults = useMemo(() => {
+    const query = normalizeLookup(formulaMaterialQuery);
+    const selectedIds = new Set(workspace.formulaLines.map((line) => line.rawMaterialId));
+    const matches = workspace.rawMaterials.filter((material) => {
+      if (!query) {
+        return !selectedIds.has(material.id);
+      }
+      const searchable = [
+        material.code,
+        material.externalCode,
+        material.name,
+        material.family,
+        ...material.aliases,
+      ]
+        .map(normalizeLookup)
+        .join(" ");
+      return searchable.includes(query);
+    });
+    return matches.slice(0, 8);
+  }, [formulaMaterialQuery, workspace.formulaLines, workspace.rawMaterials]);
+  const parameterRows = useMemo(() => {
+    const rows = result
+      ? result.parameters.map((parameter) => ({
+          ...parameter,
+          family: parameterFamilyForCode(parameter.code),
+          source: "Backend",
+        }))
+      : localPreview.parameters;
+    return rows.filter((parameter) => {
+      const familySelected =
+        selectedParameterFamilies.length === 0 ||
+        selectedParameterFamilies.includes(parameter.family);
+      const positiveSelected = !showOnlyPositiveParameters || Math.abs(parameter.value) > 0.0001;
+      return familySelected && positiveSelected;
+    });
+  }, [localPreview.parameters, result, selectedParameterFamilies, showOnlyPositiveParameters]);
+  const availableParameterFamilies = useMemo(() => {
+    const families = new Set<string>();
+    const rows = result
+      ? result.parameters.map((parameter) => parameterFamilyForCode(parameter.code))
+      : localPreview.parameters.map((parameter) => parameter.family);
+    rows.forEach((family) => families.add(family));
+    if (workspace.parameter) {
+      families.add(parameterFamilyForCode(workspace.parameter.code));
+    }
+    return Array.from(families).sort();
+  }, [localPreview.parameters, result, workspace.parameter]);
   const draftComparison = useMemo(
     () => buildDraftComparison(draftReview, workspace.formulaLines, rawMaterialsById),
     [draftReview, rawMaterialsById, workspace.formulaLines],
@@ -335,6 +535,8 @@ export default function Home() {
     (sum, line) => sum + line.percentage,
     0,
   );
+  const isFormulaBalanced = Math.abs(totalPercentage - 100) <= 0.01;
+  const visibleWarnings = result?.warnings ?? localPreview.warnings;
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
   const canManageTenantUsers = isTenantAdminRole(workspace.tenant?.role) && !isBusy;
@@ -347,7 +549,6 @@ export default function Home() {
   const canCalculate =
     Boolean(workspace.tenant) &&
     workspace.formulaLines.length > 0 &&
-    workspace.formulaJiraProjectId.trim().length > 0 &&
     !hasPendingDraftReview &&
     !isBusy;
   const canCompareSavedFormulas =
@@ -361,7 +562,6 @@ export default function Home() {
     Boolean(importPreview) &&
     importPreview?.rows.length !== 0 &&
     importPreview?.pending_rows === 0 &&
-    workspace.formulaJiraProjectId.trim().length > 0 &&
     !isBusy;
   const canParseRequirements =
     Boolean(workspace.tenant) && requirementText.trim().length >= 3 && !isBusy;
@@ -1194,6 +1394,43 @@ export default function Home() {
     setResult(null);
   }
 
+  function moveFormulaLine(localId: string, direction: -1 | 1) {
+    setWorkspace((current) => {
+      const index = current.formulaLines.findIndex((line) => line.localId === localId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.formulaLines.length) {
+        return current;
+      }
+      const nextLines = [...current.formulaLines];
+      const [line] = nextLines.splice(index, 1);
+      nextLines.splice(nextIndex, 0, line);
+      return {
+        ...current,
+        formulaLines: nextLines,
+      };
+    });
+    markDraftReviewPending();
+    setResult(null);
+  }
+
+  function duplicateFormulaLine(localId: string) {
+    setWorkspace((current) => {
+      const index = current.formulaLines.findIndex((line) => line.localId === localId);
+      if (index < 0) {
+        return current;
+      }
+      const line = current.formulaLines[index];
+      const nextLines = [...current.formulaLines];
+      nextLines.splice(index + 1, 0, { ...line, localId: makeLocalId() });
+      return {
+        ...current,
+        formulaLines: nextLines,
+      };
+    });
+    markDraftReviewPending();
+    setResult(null);
+  }
+
   async function calculateAdHocFormula(
     lines: FormulaLine[],
     requiredParameterCodes: string[] = [],
@@ -1310,7 +1547,11 @@ export default function Home() {
             return {
               id: item.raw_material_id,
               code: material?.code ?? null,
+              externalCode: null,
               name: item.name,
+              family: null,
+              isActive: true,
+              isObsolete: false,
               price: material?.price_eur_per_kg ?? null,
               parameterValue: activeParameter?.value ?? null,
               aliases: [],
@@ -1352,10 +1593,6 @@ export default function Home() {
       setError("Add at least one formula line");
       return;
     }
-    if (!workspace.formulaJiraProjectId.trim()) {
-      setError("ProyectoID is required before saving a formula");
-      return;
-    }
     if (hasPendingDraftReview) {
       setError("Confirm draft review before saving");
       return;
@@ -1369,7 +1606,7 @@ export default function Home() {
       }));
       const payload = {
         name: workspace.formulaName.trim() || "Manual Formula",
-        jira_project_id: workspace.formulaJiraProjectId.trim(),
+        jira_project_id: workspace.formulaJiraProjectId.trim() || null,
         jira_issue_type: workspace.formulaJiraIssueType,
         jira_product_type: workspace.formulaJiraProductType,
         items,
@@ -1650,7 +1887,7 @@ export default function Home() {
         headers,
         body: JSON.stringify({
           name: `${workspace.tenant?.name ?? "Imported"} Excel Formula`,
-          jira_project_id: workspace.formulaJiraProjectId.trim(),
+          jira_project_id: workspace.formulaJiraProjectId.trim() || null,
           jira_issue_type: workspace.formulaJiraIssueType,
           jira_product_type: workspace.formulaJiraProductType,
           rows: importPreview.rows.map((row) => ({
@@ -1931,13 +2168,6 @@ export default function Home() {
             <Upload size={18} /> Importar Excel
           </button>
           <button
-            className={`navItem ${activeView === "results" ? "active" : ""}`}
-            type="button"
-            onClick={() => setActiveView("results")}
-          >
-            <ListChecks size={18} /> Resultados
-          </button>
-          <button
             className={`navItem ${activeView === "settings" ? "active" : ""}`}
             type="button"
             onClick={() => setActiveView("settings")}
@@ -1977,7 +2207,7 @@ export default function Home() {
             <h1>{VIEW_TITLES[activeView]}</h1>
             <p>
               {workspace.tenant
-                ? `${workspace.formulaName} - ${VIEW_DESCRIPTIONS[activeView]} - ${workspace.tenant.name} - ${workspace.tenant.id}`
+                ? `${workspace.formulaName} - ${VIEW_DESCRIPTIONS[activeView]} - ${workspace.tenant.name}`
                 : VIEW_DESCRIPTIONS[activeView]}
             </p>
           </div>
@@ -1991,11 +2221,6 @@ export default function Home() {
               type="button"
               onClick={calculateFormula}
               disabled={!canCalculate}
-              title={
-                workspace.formulaJiraProjectId.trim()
-                  ? undefined
-                  : "ProyectoID obligatorio para guardar y calcular"
-              }
             >
               {isBusy ? <Loader2 className="spin" size={17} /> : <Calculator size={17} />}
               Save & calculate
@@ -2006,7 +2231,6 @@ export default function Home() {
         <div className="statusLine" data-state={status}>
           {status === "error" ? <AlertTriangle size={16} /> : <RefreshCw size={16} />}
           <span>{message}</span>
-          <code>{apiUrl}</code>
         </div>
 
         <div className="grid">
@@ -3493,10 +3717,14 @@ export default function Home() {
             </div>
           </section>
 
-          <section id="formula" className="panel formulaPanel" hidden={activeView !== "formula"}>
+          <section
+            id="formula"
+            className="panel formulaPanel formulaBuilder"
+            hidden={activeView !== "formula"}
+          >
             <div className="panelHeader">
-              <h2>Formula</h2>
-              <span>{totalPercentage.toFixed(1)}%</span>
+              <h2>Formula Builder</h2>
+              <span>{isFormulaBalanced ? "Balanced" : `${totalPercentage.toFixed(1)}%`}</span>
             </div>
             <label className="fullWidthLabel">
               <span>Name</span>
@@ -3511,12 +3739,8 @@ export default function Home() {
             </label>
             <div className="formulaMetaGrid">
               <label>
-                <span>
-                  ProyectoID <strong className="requiredMark">obligatorio</strong>
-                </span>
+                <span>ProyectoID Jira opcional</span>
                 <input
-                  aria-required="true"
-                  required
                   placeholder="FLOWER"
                   value={workspace.formulaJiraProjectId}
                   onChange={(event) => {
@@ -3571,6 +3795,53 @@ export default function Home() {
                 <option value="Mod C" />
               </datalist>
             </div>
+            <div className="builderSearch">
+              <label className="fullWidthLabel">
+                <span>Buscar y anadir materia prima</span>
+                <div className="searchInputWrap">
+                  <Search size={16} />
+                  <input
+                    value={formulaMaterialQuery}
+                    onChange={(event) => setFormulaMaterialQuery(event.target.value)}
+                    placeholder="Nombre, codigo, SAP/ERP, alias o familia"
+                    disabled={!workspace.tenant || isBusy}
+                  />
+                </div>
+              </label>
+              <div className="quickMaterialList">
+                {workspace.rawMaterials.length === 0 ? (
+                  <div className="empty">Crea o importa materias primas para empezar.</div>
+                ) : materialSearchResults.length === 0 ? (
+                  <div className="empty">No hay materias disponibles con ese filtro.</div>
+                ) : (
+                  materialSearchResults.map((material) => {
+                    const isSelected = workspace.formulaLines.some(
+                      (line) => line.rawMaterialId === material.id,
+                    );
+                    return (
+                      <button
+                        className="quickMaterial"
+                        type="button"
+                        key={material.id}
+                        onClick={() => addFormulaLine(material.id)}
+                        disabled={isBusy || isSelected}
+                      >
+                        <span>
+                          <strong>{material.name}</strong>
+                          <small>
+                            {material.code ?? "-"}
+                            {material.externalCode ? ` - ${material.externalCode}` : ""}
+                            {material.family ? ` - ${material.family}` : ""}
+                          </small>
+                        </span>
+                        <code>{isSelected ? "added" : formatFormulaNumber(material.price, " EUR/kg")}</code>
+                        <Plus size={15} />
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
             <div className="formulaMeter" aria-label="Formula percentage total">
               <div style={{ width: `${Math.min(Math.max(totalPercentage, 0), 100)}%` }} />
             </div>
@@ -3581,11 +3852,19 @@ export default function Home() {
               </div>
               <div>
                 <span>Status</span>
-                <strong>{totalPercentage === 100 ? "Balanced" : "Draft"}</strong>
+                <strong>{isFormulaBalanced ? "Balanced" : "Draft"}</strong>
+              </div>
+              <div>
+                <span>Price</span>
+                <strong>
+                  {result
+                    ? formatResultPrice(result)
+                    : formatFormulaNumber(localPreview.priceTotal, " EUR/kg")}
+                </strong>
               </div>
               <div>
                 <span>Calculation source</span>
-                <strong>Backend</strong>
+                <strong>{result ? "Backend official" : "Local preview"}</strong>
               </div>
             </div>
             {draftReview ? (
@@ -3801,15 +4080,61 @@ export default function Home() {
                 </div>
               )}
             </div>
-            <div className="formulaLines">
-              {workspace.formulaLines.length === 0 ? (
-                <div className="empty">Add materials to build a formula.</div>
+            <div className="formulaLineTable">
+              <div className="formulaLineHead">
+                <span>Orden</span>
+                <span>Codigo</span>
+                <span>Materia prima</span>
+                <span>%</span>
+                <span>Precio</span>
+                <span>Coste</span>
+                <span>{workspace.parameter?.code ?? "Parametro"}</span>
+                <span>Estado</span>
+                <span>Acciones</span>
+              </div>
+              {formulaLineDetails.length === 0 ? (
+                <div className="empty">Busca y anade materias primas para empezar.</div>
               ) : (
-                workspace.formulaLines.map((line) => {
-                  const material = rawMaterialsById.get(line.rawMaterialId);
+                formulaLineDetails.map((line) => {
+                  const material = line.material;
+                  const lineWarnings = [
+                    material?.price === null ? "sin precio" : null,
+                    material?.isObsolete ? "obsoleta" : null,
+                    material && !material.isActive ? "inactiva" : null,
+                  ].filter(Boolean);
                   return (
-                    <div className="formulaLine" key={line.localId}>
-                      <span>{material?.name ?? "Unknown material"}</span>
+                    <div className="formulaLineRow" key={line.localId}>
+                      <div className="orderControls">
+                        <strong>{line.index + 1}</strong>
+                        <button
+                          className="iconButton"
+                          type="button"
+                          onClick={() => moveFormulaLine(line.localId, -1)}
+                          disabled={isBusy || line.index === 0}
+                          title="Subir linea"
+                          aria-label={`Subir ${material?.name ?? "linea"}`}
+                        >
+                          <ArrowUp size={15} />
+                        </button>
+                        <button
+                          className="iconButton"
+                          type="button"
+                          onClick={() => moveFormulaLine(line.localId, 1)}
+                          disabled={isBusy || line.index === formulaLineDetails.length - 1}
+                          title="Bajar linea"
+                          aria-label={`Bajar ${material?.name ?? "linea"}`}
+                        >
+                          <ArrowDown size={15} />
+                        </button>
+                      </div>
+                      <code>{material?.code ?? "-"}</code>
+                      <span className="formulaMaterialName">
+                        <strong>{material?.name ?? "Unknown material"}</strong>
+                        <small>
+                          {material?.externalCode ? `ERP ${material.externalCode}` : "Sin ERP"}
+                          {material?.family ? ` - ${material.family}` : ""}
+                        </small>
+                      </span>
                       <input
                         aria-label={`${material?.name ?? "Material"} percentage`}
                         type="number"
@@ -3822,20 +4147,138 @@ export default function Home() {
                         }
                         disabled={isBusy}
                       />
-                      <button
-                        className="iconButton danger"
-                        type="button"
-                        onClick={() => removeFormulaLine(line.localId)}
-                        disabled={isBusy}
-                        title="Remove line"
-                        aria-label={`Remove ${material?.name ?? "material"} from formula`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <span>{formatFormulaNumber(material?.price ?? null, " EUR/kg")}</span>
+                      <span>{formatFormulaNumber(line.partialCost, " EUR")}</span>
+                      <span>
+                        {formatFormulaNumber(
+                          line.activeParameterContribution,
+                          workspace.parameter?.unit ? ` ${workspace.parameter.unit}` : "",
+                        )}
+                      </span>
+                      <span className="lineWarnings">
+                        {lineWarnings.length ? lineWarnings.join(", ") : "OK"}
+                      </span>
+                      <div className="lineActions">
+                        <button
+                          className="iconButton"
+                          type="button"
+                          onClick={() => duplicateFormulaLine(line.localId)}
+                          disabled={isBusy}
+                          title="Duplicar linea"
+                          aria-label={`Duplicar ${material?.name ?? "linea"}`}
+                        >
+                          <Copy size={15} />
+                        </button>
+                        <button
+                          className="iconButton danger"
+                          type="button"
+                          onClick={() => removeFormulaLine(line.localId)}
+                          disabled={isBusy}
+                          title="Eliminar linea"
+                          aria-label={`Eliminar ${material?.name ?? "linea"}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   );
                 })
               )}
+            </div>
+            <div className="builderCalculationPanel">
+              <div className="panelHeader">
+                <h2>Calculo vivo</h2>
+                <span>{result ? "Backend" : "Preview"}</span>
+              </div>
+              <div className="parameterControls">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showOnlyPositiveParameters}
+                    onChange={(event) => setShowOnlyPositiveParameters(event.target.checked)}
+                  />
+                  <span>Solo parametros &gt; 0</span>
+                </label>
+                {availableParameterFamilies.length ? (
+                  <div className="familyFilterList">
+                    {availableParameterFamilies.map((family) => {
+                      const checked =
+                        selectedParameterFamilies.length === 0 ||
+                        selectedParameterFamilies.includes(family);
+                      return (
+                        <label key={family}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) => {
+                              setSelectedParameterFamilies((current) => {
+                                if (current.length === 0) {
+                                  const allExcept = availableParameterFamilies.filter(
+                                    (candidate) => candidate !== family,
+                                  );
+                                  return event.target.checked ? [] : allExcept;
+                                }
+                                if (event.target.checked) {
+                                  const next = [...current, family];
+                                  return next.length === availableParameterFamilies.length ? [] : next;
+                                }
+                                return current.filter((candidate) => candidate !== family);
+                              });
+                            }}
+                          />
+                          <span>{family}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+              <div className="parameterList">
+                {parameterRows.length ? (
+                  parameterRows.map((parameter) => (
+                    <div key={`${parameter.source}-${parameter.code}`}>
+                      <Beaker size={18} />
+                      <span>
+                        {parameter.code}
+                        <small>{parameter.family}</small>
+                      </span>
+                      <code>
+                        {parameter.value.toFixed(2)} {parameter.unit ?? ""}
+                      </code>
+                    </div>
+                  ))
+                ) : (
+                  <div>
+                    <Beaker size={18} />
+                    <span>No calculated parameters</span>
+                    <code>-</code>
+                  </div>
+                )}
+              </div>
+              <div className="warningList">
+                {visibleWarnings.length ? (
+                  visibleWarnings.map((warning) => {
+                    const severity = normalizeWarningSeverity(warning);
+                    return (
+                      <div
+                        data-severity={severity}
+                        key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}-${warning.message}`}
+                      >
+                        <AlertTriangle size={16} />
+                        <span>
+                          <strong>{severity}</strong>
+                          {warning.message}
+                          {warning.recommended_action ? (
+                            <small>{warning.recommended_action}</small>
+                          ) : null}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div>No warnings</div>
+                )}
+              </div>
             </div>
           </section>
 

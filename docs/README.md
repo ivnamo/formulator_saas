@@ -36,6 +36,7 @@ Define cómo usar la documentación como base de trabajo.
 
 - [`meta_prompts.md`](00-meta/meta_prompts.md): modo meta, prompts reutilizables, decisiones congeladas y primera vertical slice.
 - [`meta_001_foundation_slice.md`](00-meta/meta_001_foundation_slice.md): primera meta implementable y criterios de done.
+- [`meta_038_formula_builder_unified_workflow.md`](00-meta/meta_038_formula_builder_unified_workflow.md): primera slice para convertir la pantalla de formula en una mesa de formulacion.
 
 ### `01-product`
 

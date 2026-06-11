@@ -48,6 +48,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_035_jira_status_sync.md`](00-meta/meta_035_jira_status_sync.md)
 - [`00-meta/meta_036_frontend_ux_foundation.md`](00-meta/meta_036_frontend_ux_foundation.md)
 - [`00-meta/meta_037_supabase_auth_sso_invites.md`](00-meta/meta_037_supabase_auth_sso_invites.md)
+- [`00-meta/meta_038_formula_builder_unified_workflow.md`](00-meta/meta_038_formula_builder_unified_workflow.md)
 
 ## Producto
 
