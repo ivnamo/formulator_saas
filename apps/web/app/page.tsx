@@ -152,7 +152,7 @@ type ParameterViewPresetKey =
   | "all"
   | "custom";
 
-type BuilderSectionKey = "basics" | "materials" | "formula" | "calculation" | "review";
+type BuilderSectionKey = "basics" | "materials" | "formula" | "calculation";
 
 const PARAMETER_VIEW_PRESETS: Array<{
   key: ParameterViewPresetKey;
@@ -221,7 +221,6 @@ const DEFAULT_BUILDER_SECTIONS: Record<BuilderSectionKey, boolean> = {
   materials: true,
   formula: false,
   calculation: false,
-  review: false,
 };
 
 type WorkspaceView =
@@ -283,13 +282,6 @@ function parameterFamilyForCode(code: string) {
 
 function formatFormulaNumber(value: number | null, suffix = "") {
   return value === null ? "-" : `${value.toFixed(2)}${suffix}`;
-}
-
-function activeParameterValue(material: RawMaterial, parameterCode: string | null | undefined) {
-  if (!parameterCode) {
-    return null;
-  }
-  return material.parameters[parameterCode]?.value ?? material.parameterValue;
 }
 
 function parameterFamilyRank(family: string) {
@@ -495,20 +487,14 @@ export default function Home() {
           material?.price === null || material?.price === undefined
             ? null
             : (material.price * line.percentage) / 100;
-        const parameterValue = material
-          ? activeParameterValue(material, workspace.parameter?.code)
-          : null;
-        const activeParameterContribution =
-          parameterValue !== null ? (parameterValue * line.percentage) / 100 : null;
         return {
           ...line,
           index,
           material,
           partialCost,
-          activeParameterContribution,
         };
       }),
-    [rawMaterialsById, workspace.formulaLines, workspace.parameter],
+    [rawMaterialsById, workspace.formulaLines],
   );
   const parameterCatalog = useMemo(() => {
     const catalog = new Map<
@@ -1947,7 +1933,6 @@ export default function Home() {
         ...current,
         formula: true,
         calculation: true,
-        review: true,
       }));
       setDraftReview({
         candidateName: candidate.name,
@@ -2022,7 +2007,6 @@ export default function Home() {
       setBuilderSections((current) => ({
         ...current,
         calculation: true,
-        review: Boolean(activeJiraConnection),
       }));
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
