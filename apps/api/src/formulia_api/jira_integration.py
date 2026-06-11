@@ -46,10 +46,6 @@ from .schemas import (
 )
 from .tenant import TenantContext, require_tenant_context
 
-JIRA_FORMULA_ISSUE_TYPES = {"Calidad", "PoC", "Prototipo"}
-JIRA_PRODUCT_TYPES = {"Nuevo", "Mod A", "Mod B", "Mod C"}
-
-
 def register_jira_routes(app: FastAPI) -> None:
     @app.get(
         "/api/v1/integrations/jira/oauth/authorize-url",
@@ -216,7 +212,7 @@ def register_jira_routes(app: FastAPI) -> None:
                 status_code=400,
                 detail="Formula needs at least one line before Jira review.",
             )
-        _validate_formula_jira_ready(formula)
+        _validate_formula_jira_ready(formula, connection)
         review = FormulaReviewRequest(
             tenant_id=tenant.tenant_id,
             formula_id=formula.id,
@@ -313,7 +309,7 @@ def register_jira_routes(app: FastAPI) -> None:
             tenant.tenant_id,
             review.jira_connection_id,
         )
-        _validate_review_snapshot_jira_ready(review.snapshot_json)
+        _validate_review_snapshot_jira_ready(review.snapshot_json, connection)
         artifact = _ensure_review_excel_artifact(session, tenant.tenant_id, review)
         payload = build_jira_issue_payload(review.snapshot_json, connection)
         try:
@@ -498,17 +494,22 @@ def _require_formula_reviewer(tenant: TenantContext) -> None:
         raise HTTPException(status_code=403, detail="Formula review role is required.")
 
 
-def _validate_formula_jira_ready(formula: Formula) -> None:
+def _validate_formula_jira_ready(formula: Formula, connection: JiraConnection) -> None:
     _validate_jira_formula_fields(
+        field_mapping=connection.field_mapping_json,
         jira_project_id=formula.jira_project_id,
         jira_issue_type=formula.jira_issue_type,
         jira_product_type=formula.jira_product_type,
     )
 
 
-def _validate_review_snapshot_jira_ready(snapshot: dict[str, Any]) -> None:
+def _validate_review_snapshot_jira_ready(
+    snapshot: dict[str, Any],
+    connection: JiraConnection,
+) -> None:
     formula = snapshot.get("formula") if isinstance(snapshot.get("formula"), dict) else {}
     _validate_jira_formula_fields(
+        field_mapping=connection.field_mapping_json,
         jira_project_id=formula.get("jira_project_id"),
         jira_issue_type=formula.get("jira_issue_type"),
         jira_product_type=formula.get("jira_product_type"),
@@ -517,6 +518,7 @@ def _validate_review_snapshot_jira_ready(snapshot: dict[str, Any]) -> None:
 
 def _validate_jira_formula_fields(
     *,
+    field_mapping: dict[str, str],
     jira_project_id: Any,
     jira_issue_type: Any,
     jira_product_type: Any,
@@ -524,15 +526,15 @@ def _validate_jira_formula_fields(
     project_id = str(jira_project_id or "").strip()
     issue_type = str(jira_issue_type or "").strip()
     product_type = str(jira_product_type or "").strip()
-    if not project_id:
+    if field_mapping.get("jira_project_id") and not project_id:
         raise HTTPException(status_code=400, detail="ProyectoID is required before sending to Jira.")
-    if issue_type not in JIRA_FORMULA_ISSUE_TYPES:
-        raise HTTPException(status_code=400, detail="Unsupported Jira activity for formula review.")
-    if issue_type in {"Calidad", "Prototipo"} and product_type not in JIRA_PRODUCT_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail="Tipo producto must be Nuevo, Mod A, Mod B or Mod C before sending to Jira.",
-        )
+    if not issue_type:
+        raise HTTPException(status_code=400, detail="Jira activity is required before sending.")
+    product_type_mapped = field_mapping.get("jira_product_type") or field_mapping.get(
+        "jira_product_type_option"
+    )
+    if product_type_mapped and not product_type:
+        raise HTTPException(status_code=400, detail="Tipo producto is required before sending.")
 
 
 def _record_integration_event(

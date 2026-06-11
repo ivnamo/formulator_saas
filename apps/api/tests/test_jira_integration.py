@@ -123,7 +123,11 @@ def create_oauth_jira_connection(
             "auth_type": "oauth",
             "default_project_key": "LAB",
             "default_issue_type": "Calidad",
-            "field_mapping": {"formula_name": "customfield_10010"},
+            "field_mapping": {
+                "formula_name": "customfield_10010",
+                "jira_project_id": "customfield_20010",
+                "jira_product_type_option": "customfield_20011",
+            },
         },
     )
     assert response.status_code == 201
@@ -481,12 +485,12 @@ def test_formula_jira_review_can_be_sent_to_jira_with_excel_attachment(monkeypat
     assert fields["project"] == {"key": "LAB"}
     assert fields["issuetype"] == {"name": "Calidad"}
     assert fields["summary"] == review["snapshot"]["jira"]["issue_summary"]
-    assert fields["reporter"] == {"accountId": "712020:d8d35c01-546b-498f-aa7f-dbe2c966820c"}
+    assert "reporter" not in fields
     assert fields["description"]["type"] == "doc"
     assert fields["labels"] == ["formulia", "formula-review"]
     assert fields["customfield_10010"] == "Review Formula"
-    assert fields["customfield_10658"] == "FLOWER"
-    assert fields["customfield_10856"] == {"value": "Nuevo"}
+    assert fields["customfield_20010"] == "FLOWER"
+    assert fields["customfield_20011"] == {"value": "Nuevo"}
 
     assert len(fake_jira.attachments) == 1
     assert fake_jira.attachments[0]["issue_key"] == "LAB-321"

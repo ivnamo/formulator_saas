@@ -2,7 +2,8 @@
 param(
     [string]$TargetPath = ".env.local",
     [string]$ClientId = "",
-    [string]$RedirectUri = ""
+    [string]$RedirectUri = "",
+    [string]$SiteUrl = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -53,6 +54,9 @@ if ([string]::IsNullOrWhiteSpace($RedirectUri)) {
     throw "FORMULIA_JIRA_OAUTH_REDIRECT_URI cannot be empty."
 }
 
+if ([string]::IsNullOrWhiteSpace($SiteUrl)) {
+    $SiteUrl = Read-Host "Jira site URL (optional; e.g. https://example.atlassian.net)"
+}
 $cloudId = Read-Host "Jira Cloud ID (optional until you have an access token)"
 $accessToken = Read-PlainSecret "Jira OAuth Access Token (optional; press Enter if pending)" $false
 
@@ -72,6 +76,9 @@ $values = [ordered]@{
     "FORMULIA_JIRA_OAUTH_REDIRECT_URI" = $RedirectUri.Trim()
 }
 
+if (-not [string]::IsNullOrWhiteSpace($SiteUrl)) {
+    $values["FORMULIA_JIRA_SITE_URL"] = $SiteUrl.Trim().TrimEnd("/")
+}
 if (-not [string]::IsNullOrWhiteSpace($cloudId)) {
     $values["FORMULIA_JIRA_CLOUD_ID"] = $cloudId.Trim()
 }

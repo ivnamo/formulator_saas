@@ -43,6 +43,7 @@ Inventario de documentación ordenado por área.
 - [`03-domain/optimization_engine.md`](03-domain/optimization_engine.md)
 - [`03-domain/compatibility_engine.md`](03-domain/compatibility_engine.md)
 - [`03-domain/erp_integrations.md`](03-domain/erp_integrations.md)
+- [`03-domain/jira_connector_onboarding.md`](03-domain/jira_connector_onboarding.md)
 - [`03-domain/jira_formula_review.md`](03-domain/jira_formula_review.md)
 
 ## IA

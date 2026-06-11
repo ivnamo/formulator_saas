@@ -23,9 +23,9 @@ ATLASSIAN_ACCESSIBLE_RESOURCES_URL = (
     "https://api.atlassian.com/oauth/token/accessible-resources"
 )
 DEFAULT_JIRA_SITE_URL = "https://example.atlassian.net"
-DEFAULT_JIRA_CLOUD_ID = "61c328dd-e711-487e-9cfc-931d7a48d006"
+DEFAULT_JIRA_CLOUD_ID = ""
 DEFAULT_JIRA_REDIRECT_URI = "http://localhost:3000/callback"
-DEFAULT_JIRA_OAUTH_CLIENT_ID = "IKEbZY7kAaSaBxF6VilwuWJxI4w8Y7A4"
+DEFAULT_JIRA_OAUTH_CLIENT_ID = ""
 JIRA_OAUTH_SCOPES = [
     "read:issue:jira",
     "write:issue:jira",
@@ -300,7 +300,10 @@ def _unbase64url(value: str) -> bytes:
 
 
 def _client_id() -> str:
-    return os.getenv("FORMULIA_JIRA_OAUTH_CLIENT_ID", DEFAULT_JIRA_OAUTH_CLIENT_ID).strip()
+    value = os.getenv("FORMULIA_JIRA_OAUTH_CLIENT_ID", DEFAULT_JIRA_OAUTH_CLIENT_ID).strip()
+    if not value:
+        raise JiraOAuthError("FORMULIA_JIRA_OAUTH_CLIENT_ID is required.")
+    return value
 
 
 def _client_secret() -> str:

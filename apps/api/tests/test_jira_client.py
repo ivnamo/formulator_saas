@@ -74,12 +74,12 @@ def test_make_jira_client_uses_persisted_api_token(monkeypatch) -> None:
     client = jira_client.make_jira_client(
         JiraConnection(
             tenant_id="10000000-0000-0000-0000-000000000001",
-            base_url="https://atlanticaagricola.atlassian.net",
+            base_url="https://example.atlassian.net",
             auth_type="api_token",
-            auth_email="inavarro@atlanticaagricola.com",
+            auth_email="lab@example.com",
             credential_json={"api_token": "persisted-token"},
-            default_project_key="ID",
-            default_issue_type="Calidad",
+            default_project_key="LAB",
+            default_issue_type="Review",
         )
     )
 
@@ -93,14 +93,14 @@ def test_check_jira_connection_validates_user_project_and_issue_type(monkeypatch
         requests.append((request.full_url, request.get_header("Authorization"), timeout))
         if request.full_url.endswith("/rest/api/3/myself"):
             return FakeHttpResponse(
-                json.dumps({"displayName": "Iván Navarro"}).encode("utf-8")
+                json.dumps({"displayName": "Lab User"}).encode("utf-8")
             )
-        if request.full_url.endswith("/rest/api/3/project/ID"):
+        if request.full_url.endswith("/rest/api/3/project/LAB"):
             return FakeHttpResponse(
                 json.dumps(
                     {
-                        "name": "I+D+i - Desarrollo",
-                        "issueTypes": [{"name": "Calidad"}, {"name": "PoC"}],
+                        "name": "Formula Lab",
+                        "issueTypes": [{"name": "Review"}, {"name": "Prototype"}],
                     }
                 ).encode("utf-8")
             )
@@ -111,28 +111,28 @@ def test_check_jira_connection_validates_user_project_and_issue_type(monkeypatch
     result = jira_client.check_jira_connection(
         JiraConnection(
             tenant_id="10000000-0000-0000-0000-000000000001",
-            base_url="https://atlanticaagricola.atlassian.net",
+            base_url="https://example.atlassian.net",
             auth_type="api_token",
-            auth_email="inavarro@atlanticaagricola.com",
+            auth_email="lab@example.com",
             credential_json={"api_token": "persisted-token"},
-            default_project_key="ID",
-            default_issue_type="Calidad",
+            default_project_key="LAB",
+            default_issue_type="Review",
         )
     )
 
     assert result.status == "ready_for_client"
-    assert "Iván Navarro" in result.message
-    assert "I+D+i - Desarrollo" in result.message
+    assert "Lab User" in result.message
+    assert "Formula Lab" in result.message
     assert len(requests) == 2
 
 
 def test_check_jira_connection_reports_missing_issue_type(monkeypatch) -> None:
     def fake_urlopen(request, timeout):  # noqa: ANN001
         if request.full_url.endswith("/rest/api/3/myself"):
-            return FakeHttpResponse(b'{"displayName": "Iv\\u00e1n Navarro"}')
-        if request.full_url.endswith("/rest/api/3/project/ID"):
+            return FakeHttpResponse(b'{"displayName": "Lab User"}')
+        if request.full_url.endswith("/rest/api/3/project/LAB"):
             return FakeHttpResponse(
-                json.dumps({"name": "I+D+i - Desarrollo", "issueTypes": [{"name": "PoC"}]}).encode(
+                json.dumps({"name": "Formula Lab", "issueTypes": [{"name": "Prototype"}]}).encode(
                     "utf-8"
                 )
             )
@@ -143,20 +143,20 @@ def test_check_jira_connection_reports_missing_issue_type(monkeypatch) -> None:
     result = jira_client.check_jira_connection(
         JiraConnection(
             tenant_id="10000000-0000-0000-0000-000000000001",
-            base_url="https://atlanticaagricola.atlassian.net",
+            base_url="https://example.atlassian.net",
             auth_type="api_token",
-            auth_email="inavarro@atlanticaagricola.com",
+            auth_email="lab@example.com",
             credential_json={"api_token": "persisted-token"},
-            default_project_key="ID",
-            default_issue_type="Calidad",
+            default_project_key="LAB",
+            default_issue_type="Review",
         )
     )
 
     assert result.status == "configuration_error"
-    assert "issue type 'Calidad' is not available" in result.message
+    assert "issue type 'Review' is not available" in result.message
 
 
-def test_build_jira_issue_payload_adds_atlantica_required_fields_for_quality() -> None:
+def test_build_jira_issue_payload_maps_configured_review_fields() -> None:
     payload = jira_client.build_jira_issue_payload(
         {
             "formula": {
@@ -173,17 +173,20 @@ def test_build_jira_issue_payload_adds_atlantica_required_fields_for_quality() -
         },
         JiraConnection(
             tenant_id="10000000-0000-0000-0000-000000000001",
-            base_url="https://atlanticaagricola.atlassian.net",
+            base_url="https://example.atlassian.net",
             auth_type="api_token",
-            default_project_key="ID",
+            default_project_key="LAB",
             default_issue_type="Calidad",
+            field_mapping_json={
+                "jira_project_id": "customfield_20010",
+                "jira_product_type_option": "customfield_20011",
+            },
         ),
     )
 
     fields = payload["fields"]
-    assert fields["reporter"] == {"accountId": "712020:d8d35c01-546b-498f-aa7f-dbe2c966820c"}
-    assert fields["customfield_10658"] == "FLOWER"
-    assert fields["customfield_10856"] == {"value": "Nuevo"}
+    assert fields["customfield_20010"] == "FLOWER"
+    assert fields["customfield_20011"] == {"value": "Nuevo"}
 
 
 def test_build_jira_issue_payload_uses_formula_jira_fields() -> None:
@@ -203,19 +206,23 @@ def test_build_jira_issue_payload_uses_formula_jira_fields() -> None:
         },
         JiraConnection(
             tenant_id="10000000-0000-0000-0000-000000000001",
-            base_url="https://atlanticaagricola.atlassian.net",
+            base_url="https://example.atlassian.net",
             auth_type="api_token",
-            default_project_key="ID",
+            default_project_key="LAB",
             default_issue_type="Prototipo",
+            field_mapping_json={
+                "jira_project_id": "customfield_20010",
+                "jira_product_type_option": "customfield_20011",
+            },
         ),
     )
 
     fields = payload["fields"]
-    assert fields["customfield_10658"] == "FLOWER-CHINA"
-    assert fields["customfield_10856"] == {"value": "Mod A"}
+    assert fields["customfield_20010"] == "FLOWER-CHINA"
+    assert fields["customfield_20011"] == {"value": "Mod A"}
 
 
-def test_build_jira_issue_payload_does_not_add_quality_fields_for_poc() -> None:
+def test_build_jira_issue_payload_omits_unmapped_review_fields() -> None:
     payload = jira_client.build_jira_issue_payload(
         {
             "formula": {
@@ -232,14 +239,14 @@ def test_build_jira_issue_payload_does_not_add_quality_fields_for_poc() -> None:
         },
         JiraConnection(
             tenant_id="10000000-0000-0000-0000-000000000001",
-            base_url="https://atlanticaagricola.atlassian.net",
+            base_url="https://example.atlassian.net",
             auth_type="api_token",
-            default_project_key="ID",
+            default_project_key="LAB",
             default_issue_type="PoC",
         ),
     )
 
     fields = payload["fields"]
-    assert fields["reporter"] == {"accountId": "712020:d8d35c01-546b-498f-aa7f-dbe2c966820c"}
-    assert "customfield_10658" not in fields
-    assert "customfield_10856" not in fields
+    assert "reporter" not in fields
+    assert "customfield_20010" not in fields
+    assert "customfield_20011" not in fields

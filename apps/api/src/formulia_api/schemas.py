@@ -119,8 +119,8 @@ class FormulaCreate(BaseModel):
     name: str
     objective: str | None = None
     jira_project_id: str | None = None
-    jira_issue_type: Literal["Calidad", "PoC", "Prototipo"] = "Calidad"
-    jira_product_type: Literal["Nuevo", "Mod A", "Mod B", "Mod C"] = "Nuevo"
+    jira_issue_type: str = "Calidad"
+    jira_product_type: str = "Nuevo"
     items: list[FormulaItemCreate] = []
 
 
@@ -129,8 +129,8 @@ class FormulaUpdate(BaseModel):
     status: str | None = None
     objective: str | None = None
     jira_project_id: str | None = None
-    jira_issue_type: Literal["Calidad", "PoC", "Prototipo"] | None = None
-    jira_product_type: Literal["Nuevo", "Mod A", "Mod B", "Mod C"] | None = None
+    jira_issue_type: str | None = None
+    jira_product_type: str | None = None
     items: list[FormulaItemCreate] | None = None
 
 
@@ -350,8 +350,8 @@ class ExcelImportSaveRow(BaseModel):
 class ExcelImportSaveRequest(BaseModel):
     name: str
     jira_project_id: str | None = None
-    jira_issue_type: Literal["Calidad", "PoC", "Prototipo"] = "Calidad"
-    jira_product_type: Literal["Nuevo", "Mod A", "Mod B", "Mod C"] = "Nuevo"
+    jira_issue_type: str = "Calidad"
+    jira_product_type: str = "Nuevo"
     rows: list[ExcelImportSaveRow]
 
 

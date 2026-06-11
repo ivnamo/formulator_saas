@@ -335,6 +335,10 @@ label span {
   align-items: end;
 }
 
+.jiraFieldMappingLabel {
+  grid-column: 1 / -1;
+}
+
 .integrationActions {
   grid-column: 1 / -1;
   display: flex;

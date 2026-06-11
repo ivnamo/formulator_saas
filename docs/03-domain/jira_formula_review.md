@@ -288,16 +288,15 @@ Decision MVP:
 - Usar `/rest/api/3` para Jira Cloud.
 - Usar Atlassian Document Format en `description`.
 - Usar OAuth 2.0 / 3LO como camino principal para Jira Cloud.
-- App OAuth registrada en Atlassian Developer Console:
-  - App ID: `262a5fcb-b418-46d1-9660-13c513ba3ec9`.
-  - Client ID: `IKEbZY7kAaSaBxF6VilwuWJxI4w8Y7A4`.
-  - Client Secret: solo local, nunca en chat, docs ni commits.
+- App OAuth registrada en Atlassian Developer Console por cliente o por entorno:
+  - Client ID y Client Secret son secretos de configuracion, no datos de producto.
+  - No se commitean ni se documentan credenciales reales.
+  - El callback local recomendado para pruebas es `http://localhost:3000/callback`.
 - Scopes esperados:
   - `read:issue:jira`, `read:issue-meta:jira`, `read:issue-details:jira` y relacionados para leer issues, campos, estados y proyectos.
   - `write:issue:jira`, `write:comment:jira` y `write:attachment:jira` para crear issues, comentarios y adjuntos.
   - `read:user:jira`, `read:comment:jira`, `read:attachment:jira`, `read:label:jira`, `read:priority:jira`.
   - `offline_access` para recibir refresh token y renovar el access token local.
-- Callback local recomendado para pruebas: `http://localhost:3000/callback`.
 - Llamar con OAuth a `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/...`.
 - Guardar `FORMULIA_JIRA_OAUTH_CLIENT_ID`, `FORMULIA_JIRA_OAUTH_CLIENT_SECRET`, `FORMULIA_JIRA_OAUTH_REDIRECT_URI`, `FORMULIA_JIRA_SITE_URL` y `FORMULIA_JIRA_CLOUD_ID` localmente.
 - Intercambiar `code` en `POST /api/v1/integrations/jira/oauth/callback` y guardar `FORMULIA_JIRA_OAUTH_ACCESS_TOKEN`, `FORMULIA_JIRA_OAUTH_REFRESH_TOKEN` y expiracion en `.env.local`.
@@ -305,20 +304,19 @@ Decision MVP:
 - Mantener Basic Auth con email + API token; el token debe persistirse en la conexion Jira y `FORMULIA_JIRA_API_TOKEN` queda solo como fallback local/ad-hoc.
 - Dejar persistencia cifrada multi-tenant para una fase posterior.
 
-Configuracion Atlantica Agricola para pruebas con API token:
+Configuracion portable del conector:
 
-- Site Jira: `https://atlanticaagricola.atlassian.net`.
-- Proyecto Jira: `ID` (`I+D+i - Desarrollo`).
-- Informador fijo: Iván Navarro (`accountId`: `712020:d8d35c01-546b-498f-aa7f-dbe2c966820c`).
-- Tipos de issue disponibles para el flujo:
-  - `PoC`: solo requiere resumen, proyecto, tipo e informador.
-  - `Prototipo`: requiere tambien `ProyectoID` y `Tipo producto`.
-  - `Calidad`: requiere tambien `ProyectoID` y `Tipo producto`.
-- `ProyectoID` (`customfield_10658`) no es el project key de Jira. Es un identificador funcional de formula o conjunto de formulas, por ejemplo `FLOWER`, y pertenece a la formula.
-- `Tipo producto` (`customfield_10856`) es un selector Jira. Valores vistos en el tenant: `Nuevo`, `Mod A`, `Mod B`, `Mod C`.
-- La conexion Jira queda como configuracion de admin: URL, email de autenticacion, API token/OAuth, proyecto Jira (`ID`), assignee por defecto y mapeos tecnicos. El API token de pruebas se guarda en la conexion (`jira_connections.credential_json`) y no se devuelve al frontend.
+- Usar [`jira_connector_onboarding.md`](jira_connector_onboarding.md) como checklist para conectar un Jira nuevo.
+- La conexion Jira queda como configuracion de admin: URL del site, metodo de autenticacion, proyecto Jira destino, issue type por defecto, assignee por defecto y mapeos tecnicos.
+- `ProyectoID` no es el project key de Jira. Es un identificador funcional de formula o conjunto de formulas, por ejemplo `FLOWER`, y pertenece a la formula.
+- `Tipo producto` es un valor funcional de la formula. Si el Jira del cliente usa un selector, se mapea con `jira_product_type_option`; si usa texto, se mapea con `jira_product_type`.
+- Los campos Jira obligatorios se declaran en `field_mapping` por tenant. Ejemplo:
+  - `formula_name -> customfield_20010`
+  - `jira_project_id -> customfield_20011`
+  - `jira_product_type_option -> customfield_20012`
+- Si el Jira de un cliente exige campos adicionales, se documentan y se anaden al mapping o a una transformacion explicita antes de habilitar envios reales.
+- El API token de pruebas se guarda en la conexion (`jira_connections.credential_json`) y no se devuelve al frontend. OAuth es el camino preferente para integraciones compartidas.
 - El test de conexion debe hacer una llamada real de solo lectura a Jira para validar usuario autenticado, proyecto y tipo de issue disponible antes de enviar formulas.
-- La integracion envia estos campos obligatorios al crear issues `Calidad` o `Prototipo`; para `PoC` no envia `ProyectoID` ni `Tipo producto`.
 
 Diferencia operativa:
 

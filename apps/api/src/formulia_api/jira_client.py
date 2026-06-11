@@ -14,11 +14,6 @@ from .jira_excel import JiraReviewExcel
 from .jira_oauth import JiraOAuthError, get_jira_cloud_id, get_valid_jira_oauth_access_token
 from .models import JiraConnection
 
-ATLANTICA_JIRA_REPORTER_ACCOUNT_ID = "712020:d8d35c01-546b-498f-aa7f-dbe2c966820c"
-JIRA_PROJECT_ID_FIELD_ID = "customfield_10658"
-JIRA_PRODUCT_TYPE_FIELD_ID = "customfield_10856"
-DEFAULT_JIRA_PRODUCT_TYPE = "Nuevo"
-JIRA_FORMULA_REVIEW_ISSUE_TYPES = {"Calidad", "Prototipo"}
 JIRA_API_TOKEN_CREDENTIAL_KEY = "api_token"
 
 
@@ -283,11 +278,9 @@ def build_jira_issue_payload(snapshot: dict[str, Any], connection: JiraConnectio
         "description": _adf_document(snapshot),
         "labels": ["formulia", "formula-review"],
     }
-    fields["reporter"] = {"accountId": ATLANTICA_JIRA_REPORTER_ACCOUNT_ID}
     if connection.default_assignee:
         fields["assignee"] = {"accountId": connection.default_assignee}
     fields.update(_mapped_custom_fields(snapshot, connection.field_mapping_json))
-    fields.update(_required_formula_review_fields(snapshot, issue_type))
     return {"fields": fields}
 
 
@@ -295,12 +288,17 @@ def _mapped_custom_fields(
     snapshot: dict[str, Any],
     field_mapping: dict[str, str],
 ) -> dict[str, Any]:
+    jira_product_type = _mapping(snapshot.get("formula")).get("jira_product_type")
     values = {
         "formula_id": _mapping(snapshot.get("formula")).get("id"),
         "formula_short_id": _formula_short_id(snapshot),
         "formula_name": _mapping(snapshot.get("formula")).get("name"),
         "formula_version": _mapping(snapshot.get("formula")).get("version"),
         "formula_status": _mapping(snapshot.get("formula")).get("status"),
+        "jira_project_id": _mapping(snapshot.get("formula")).get("jira_project_id"),
+        "jira_issue_type": _mapping(snapshot.get("formula")).get("jira_issue_type"),
+        "jira_product_type": jira_product_type,
+        "jira_product_type_option": {"value": jira_product_type} if jira_product_type else None,
         "estimated_cost": _formula_cost(snapshot),
         "notes": snapshot.get("notes"),
     }
@@ -308,22 +306,6 @@ def _mapped_custom_fields(
         jira_field: values[formulia_field]
         for formulia_field, jira_field in field_mapping.items()
         if formulia_field in values and values[formulia_field] is not None
-    }
-
-
-def _required_formula_review_fields(
-    snapshot: dict[str, Any],
-    issue_type: str,
-) -> dict[str, Any]:
-    if issue_type not in JIRA_FORMULA_REVIEW_ISSUE_TYPES:
-        return {}
-
-    formula = _mapping(snapshot.get("formula"))
-    project_id = str(formula.get("jira_project_id") or "").strip()
-    product_type = str(formula.get("jira_product_type") or DEFAULT_JIRA_PRODUCT_TYPE).strip()
-    return {
-        JIRA_PROJECT_ID_FIELD_ID: project_id or _formula_short_id(snapshot),
-        JIRA_PRODUCT_TYPE_FIELD_ID: {"value": product_type},
     }
 
 

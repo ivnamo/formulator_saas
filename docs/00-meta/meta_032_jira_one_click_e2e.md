@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Permitir que una formula completa de FormulIA se envie a Jira con un unico boton, creando un issue correcto en el proyecto `ID`, adjuntando el Excel tecnico y guardando el vinculo resultante.
+Permitir que una formula completa de FormulIA se envie a Jira con un unico boton, creando un issue correcto en el proyecto configurado, adjuntando el Excel tecnico y guardando el vinculo resultante.
 
 ## Alcance
 
@@ -35,9 +35,9 @@ Permitir que una formula completa de FormulIA se envie a Jira con un unico boton
 
 - Un Admin puede guardar una conexion Jira y pulsar `Test` para validar una conexion real.
 - El test falla con mensaje claro si el token, proyecto o tipo de issue no son validos.
-- Una formula no puede enviarse sin `ProyectoID`.
-- `Calidad` y `Prototipo` envian `ProyectoID` (`customfield_10658`) y `Tipo producto` (`customfield_10856`).
-- `PoC` no envia campos que Jira no exige para ese tipo.
+- Una formula no puede enviarse sin `ProyectoID` cuando el mapping Jira del tenant lo exige.
+- Los campos especificos del cliente se envian solo si estan declarados en `field_mapping`.
+- Los tipos de actividad y producto de Jira son configurables y no deben restringirse en codigo a un unico proyecto.
 - El formulador pulsa un unico boton `Send to Jira` desde la ficha de formula.
 - El issue creado queda enlazado en FormulIA y el Excel queda adjunto.
 
@@ -53,9 +53,13 @@ Parcialmente implementado:
 - Validaciones previas para campos Jira de formula.
 - Auditoria basica de test/envio/reintento en `integration_events`.
 - Reintento especifico del adjunto Excel cuando el envio queda en `partial_failure`.
+- Prueba controlada real completada contra un Jira de validacion configurado:
+  - issue creado: `ID-673`,
+  - tipo: `PoC`,
+  - adjunto Excel confirmado por API Jira,
+  - enlace persistido en `formula_review_requests`.
 - Tests backend y typecheck frontend actualizados.
 
 Pendiente:
 
-- Prueba controlada creando un issue real en Jira.
 - Cifrado de credenciales.

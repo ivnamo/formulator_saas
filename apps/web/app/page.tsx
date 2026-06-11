@@ -1097,16 +1097,8 @@ export default function Home() {
         formulaId: formula.id,
         formulaName: formula.name,
         formulaJiraProjectId: formula.jira_project_id ?? "",
-        formulaJiraIssueType:
-          formula.jira_issue_type === "PoC" || formula.jira_issue_type === "Prototipo"
-            ? formula.jira_issue_type
-            : "Calidad",
-        formulaJiraProductType:
-          formula.jira_product_type === "Mod A" ||
-          formula.jira_product_type === "Mod B" ||
-          formula.jira_product_type === "Mod C"
-            ? formula.jira_product_type
-            : "Nuevo",
+        formulaJiraIssueType: textOrDefault(formula.jira_issue_type, "Calidad"),
+        formulaJiraProductType: textOrDefault(formula.jira_product_type, "Nuevo"),
       }));
       setResult(calculation);
       setDraftReview(null);
@@ -1148,16 +1140,8 @@ export default function Home() {
         formulaId: formula.id,
         formulaName: formula.name,
         formulaJiraProjectId: formula.jira_project_id ?? "",
-        formulaJiraIssueType:
-          formula.jira_issue_type === "PoC" || formula.jira_issue_type === "Prototipo"
-            ? formula.jira_issue_type
-            : "Calidad",
-        formulaJiraProductType:
-          formula.jira_product_type === "Mod A" ||
-          formula.jira_product_type === "Mod B" ||
-          formula.jira_product_type === "Mod C"
-            ? formula.jira_product_type
-            : "Nuevo",
+        formulaJiraIssueType: textOrDefault(formula.jira_issue_type, "Calidad"),
+        formulaJiraProductType: textOrDefault(formula.jira_product_type, "Nuevo"),
         formulaLines: formula.items.map((item) => ({
           localId: makeLocalId(),
           rawMaterialId: item.raw_material_id,
@@ -1383,16 +1367,8 @@ export default function Home() {
         formulaId: formula.id,
         formulaName: formula.name,
         formulaJiraProjectId: formula.jira_project_id ?? "",
-        formulaJiraIssueType:
-          formula.jira_issue_type === "PoC" || formula.jira_issue_type === "Prototipo"
-            ? formula.jira_issue_type
-            : "Calidad",
-        formulaJiraProductType:
-          formula.jira_product_type === "Mod A" ||
-          formula.jira_product_type === "Mod B" ||
-          formula.jira_product_type === "Mod C"
-            ? formula.jira_product_type
-            : "Nuevo",
+        formulaJiraIssueType: textOrDefault(formula.jira_issue_type, "Calidad"),
+        formulaJiraProductType: textOrDefault(formula.jira_product_type, "Nuevo"),
         formulaLines: formula.items.map((item) => ({
           localId: makeLocalId(),
           rawMaterialId: item.raw_material_id,
@@ -1546,10 +1522,12 @@ export default function Home() {
       defaultProjectKey: connection.default_project_key,
       defaultIssueType: connection.default_issue_type,
       defaultAssignee: connection.default_assignee ?? "",
+      fieldMappingJson: JSON.stringify(connection.field_mapping, null, 2),
     };
   }
 
   function buildJiraConnectionPayload(form: typeof jiraConnectionForm) {
+    const fieldMapping = parseJsonObject(form.fieldMappingJson, "Jira field mapping");
     const payload: Record<string, unknown> = {
       base_url: form.baseUrl.trim(),
       auth_type: form.authType,
@@ -1557,12 +1535,34 @@ export default function Home() {
       default_project_key: form.defaultProjectKey.trim(),
       default_issue_type: form.defaultIssueType.trim(),
       default_assignee: form.defaultAssignee.trim() || null,
+      field_mapping: fieldMapping,
       is_active: true,
     };
     if (form.authType === "api_token" && form.apiToken.trim()) {
       payload.api_token = form.apiToken.trim();
     }
     return payload;
+  }
+
+  function parseJsonObject(value: string, label: string): Record<string, string> {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return {};
+    }
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (
+      parsed === null ||
+      Array.isArray(parsed) ||
+      typeof parsed !== "object" ||
+      Object.values(parsed).some((item) => typeof item !== "string")
+    ) {
+      throw new Error(`${label} must be a JSON object with string values`);
+    }
+    return parsed as Record<string, string>;
+  }
+
+  function textOrDefault(value: string | null | undefined, fallback: string): string {
+    return value?.trim() || fallback;
   }
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -1812,6 +1812,20 @@ export default function Home() {
                     }))
                   }
                   disabled={!canEditTenantData}
+                />
+              </label>
+              <label className="jiraFieldMappingLabel">
+                <span>Field mapping JSON</span>
+                <textarea
+                  value={jiraConnectionForm.fieldMappingJson}
+                  onChange={(event) =>
+                    setJiraConnectionForm((current) => ({
+                      ...current,
+                      fieldMappingJson: event.target.value,
+                    }))
+                  }
+                  disabled={!canEditTenantData}
+                  rows={5}
                 />
               </label>
               <div className="integrationActions">
@@ -2976,49 +2990,45 @@ export default function Home() {
               </label>
               <label>
                 <span>Jira activity</span>
-                <select
+                <input
+                  list="jira-activity-options"
                   value={workspace.formulaJiraIssueType}
                   onChange={(event) => {
                     setWorkspace((current) => ({
                       ...current,
-                      formulaJiraIssueType:
-                        event.target.value === "PoC" || event.target.value === "Prototipo"
-                          ? event.target.value
-                          : "Calidad",
+                      formulaJiraIssueType: event.target.value,
                     }));
                     markDraftReviewPending();
                   }}
                   disabled={isBusy}
-                >
-                  <option value="Calidad">Calidad</option>
-                  <option value="Prototipo">Prototipo</option>
-                  <option value="PoC">PoC</option>
-                </select>
+                />
               </label>
               <label>
                 <span>Tipo producto</span>
-                <select
+                <input
+                  list="jira-product-type-options"
                   value={workspace.formulaJiraProductType}
                   onChange={(event) => {
                     setWorkspace((current) => ({
                       ...current,
-                      formulaJiraProductType:
-                        event.target.value === "Mod A" ||
-                        event.target.value === "Mod B" ||
-                        event.target.value === "Mod C"
-                          ? event.target.value
-                          : "Nuevo",
+                      formulaJiraProductType: event.target.value,
                     }));
                     markDraftReviewPending();
                   }}
-                  disabled={isBusy || workspace.formulaJiraIssueType === "PoC"}
-                >
-                  <option value="Nuevo">Nuevo</option>
-                  <option value="Mod A">Mod A</option>
-                  <option value="Mod B">Mod B</option>
-                  <option value="Mod C">Mod C</option>
-                </select>
+                  disabled={isBusy}
+                />
               </label>
+              <datalist id="jira-activity-options">
+                <option value="Calidad" />
+                <option value="Prototipo" />
+                <option value="PoC" />
+              </datalist>
+              <datalist id="jira-product-type-options">
+                <option value="Nuevo" />
+                <option value="Mod A" />
+                <option value="Mod B" />
+                <option value="Mod C" />
+              </datalist>
             </div>
             <div className="formulaMeter" aria-label="Formula percentage total">
               <div style={{ width: `${Math.min(Math.max(totalPercentage, 0), 100)}%` }} />

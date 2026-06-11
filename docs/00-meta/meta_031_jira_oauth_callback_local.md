@@ -8,19 +8,16 @@ El usuario autoriza la app Atlassian en navegador, Atlassian redirige a `http://
 
 ## Datos confirmados
 
-- Jira site: configurado localmente mediante `FORMULIA_JIRA_SITE_URL` y el formulario de integracion.
-- Cloud ID: `61c328dd-e711-487e-9cfc-931d7a48d006`.
-- Project key: `ID`.
-- Issue types:
-  - `Prototipo` (`10659`).
-  - `PoC` (`10884`).
-  - `Calidad` (`10885`).
-- Issue type recomendado para revision: `Calidad`.
+- Jira site: configurable mediante `FORMULIA_JIRA_SITE_URL` y el formulario de integracion.
+- Cloud ID: configurable mediante `FORMULIA_JIRA_CLOUD_ID` o resuelto con `accessible-resources`.
+- Project key: configurable por conexion Jira.
+- Issue types: configurables por proyecto/tenant.
+- Issue type recomendado para revision: configurable por conexion Jira.
 - Callback URL: `http://localhost:3000/callback`.
 - OAuth authorization URL: `https://auth.atlassian.com/authorize`.
 - OAuth token URL: `https://auth.atlassian.com/oauth/token`.
 - Accessible resources URL: `https://api.atlassian.com/oauth/token/accessible-resources`.
-- Jira REST API base: `https://api.atlassian.com/ex/jira/61c328dd-e711-487e-9cfc-931d7a48d006/rest/api/3`.
+- Jira REST API base: `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3`.
 
 ## Scopes configurados
 
@@ -97,4 +94,4 @@ El usuario autoriza la app Atlassian en navegador, Atlassian redirige a `http://
 
 ## Siguiente accion
 
-Listar issues (`GET /rest/api/3/search?jql=project=ID`) y exponer acciones de transicion para los estados reales del proyecto ID.
+Listar issues (`GET /rest/api/3/search?jql=project={projectKey}`) y exponer acciones de transicion para los estados reales del proyecto configurado.

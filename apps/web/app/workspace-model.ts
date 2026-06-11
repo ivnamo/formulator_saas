@@ -33,8 +33,8 @@ export type WorkspaceState = {
   formulaId: string | null;
   formulaName: string;
   formulaJiraProjectId: string;
-  formulaJiraIssueType: "Calidad" | "PoC" | "Prototipo";
-  formulaJiraProductType: "Nuevo" | "Mod A" | "Mod B" | "Mod C";
+  formulaJiraIssueType: string;
+  formulaJiraProductType: string;
   formulaLines: FormulaLine[];
 };
 
@@ -236,6 +236,7 @@ export type JiraConnectionForm = {
   defaultProjectKey: string;
   defaultIssueType: string;
   defaultAssignee: string;
+  fieldMappingJson: string;
 };
 
 export type FormulaCalculationHistory = {
@@ -449,9 +450,10 @@ export const emptyJiraConnectionForm: JiraConnectionForm = {
   baseUrl: "https://example.atlassian.net",
   authEmail: "",
   apiToken: "",
-  defaultProjectKey: "ID",
-  defaultIssueType: "Calidad",
+  defaultProjectKey: "PROJ",
+  defaultIssueType: "Task",
   defaultAssignee: "",
+  fieldMappingJson: "{}",
 };
 
 export function parseOptionalNumber(value: string): number | null {
