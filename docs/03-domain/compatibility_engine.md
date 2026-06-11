@@ -66,6 +66,18 @@ Emitir blockers/warnings/info
 
 Las reglas sugeridas por IA no deben activarse como blocker hasta validación humana.
 
+## META-026
+
+La primera slice implementada cubre reglas manuales `material_pair`:
+
+- `compatibility_rules` incluye `tenant_id`,
+- `condition_json.raw_material_ids` guarda el par de materias primas,
+- `condition_json.recommended_action` guarda la accion sugerida,
+- el calculo de formulas evalua reglas activas del tenant,
+- el resultado de calculo emite warnings `compatibility_<severity>` con `rule_id`, `severity` y `recommended_action`.
+
+Quedan fuera las reglas por parametro, pH, estado fisico, RAG, IA y overrides autorizados. La severidad `blocker` no bloquea guardado mientras no exista workflow de aprobacion.
+
 ## Output
 
 ```json

@@ -35,6 +35,7 @@ La documentación está pensada para desarrollo asistido por IA o por equipo té
 Define cómo usar la documentación como base de trabajo.
 
 - [`meta_prompts.md`](00-meta/meta_prompts.md): modo meta, prompts reutilizables, decisiones congeladas y primera vertical slice.
+- [`meta_001_foundation_slice.md`](00-meta/meta_001_foundation_slice.md): primera meta implementable y criterios de done.
 
 ### `01-product`
 
@@ -63,6 +64,8 @@ Profundiza en capacidades funcionales del motor de formulación.
 - [`optimization_engine.md`](03-domain/optimization_engine.md): motor matemático de optimización.
 - [`compatibility_engine.md`](03-domain/compatibility_engine.md): incompatibilidades y evidencias.
 - [`erp_integrations.md`](03-domain/erp_integrations.md): integraciones ERP/SAP.
+- [`jira_connector_onboarding.md`](03-domain/jira_connector_onboarding.md): checklist portable para configurar Jira en nuevos clientes.
+- [`jira_formula_review.md`](03-domain/jira_formula_review.md): envio de formulas a Jira para revision de laboratorio con Excel adjunto.
 
 ### `04-ai`
 
@@ -99,6 +102,7 @@ FormulIA Cloud será una aplicación web SaaS para:
 - Generar alternativas de formulación con IA, RAG documental, búsqueda científica y señales de mercado.
 - Detectar incompatibilidades entre materias primas mediante reglas, documentación y validación técnica.
 - Conectarse a ERP/SAP para sincronizar precios, materias primas, proveedores, unidades y disponibilidad.
+- Enviar formulas/versiones a Jira como tickets de revision de laboratorio con Excel adjunto y sincronizacion de estado.
 - Operar como SaaS multi-tenant con planes, roles, límites de uso y aislamiento de datos.
 
 ## Principio fundamental

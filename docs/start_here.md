@@ -6,15 +6,16 @@ Antes de escribir código, lee estos documentos en este orden:
 
 1. [`README.md`](README.md)
 2. [`00-meta/meta_prompts.md`](00-meta/meta_prompts.md)
-3. [`01-product/product_brief.md`](01-product/product_brief.md)
-4. [`01-product/specs.md`](01-product/specs.md)
-5. [`02-architecture/architecture.md`](02-architecture/architecture.md)
-6. [`02-architecture/data_model.md`](02-architecture/data_model.md)
-7. [`02-architecture/tenancy_billing.md`](02-architecture/tenancy_billing.md)
-8. [`01-product/rules.md`](01-product/rules.md)
-9. [`04-ai/agents.md`](04-ai/agents.md)
-10. [`05-delivery/roadmap.md`](05-delivery/roadmap.md)
-11. [`05-delivery/backlog.md`](05-delivery/backlog.md)
+3. [`00-meta/meta_001_foundation_slice.md`](00-meta/meta_001_foundation_slice.md)
+4. [`01-product/product_brief.md`](01-product/product_brief.md)
+5. [`01-product/specs.md`](01-product/specs.md)
+6. [`02-architecture/architecture.md`](02-architecture/architecture.md)
+7. [`02-architecture/data_model.md`](02-architecture/data_model.md)
+8. [`02-architecture/tenancy_billing.md`](02-architecture/tenancy_billing.md)
+9. [`01-product/rules.md`](01-product/rules.md)
+10. [`04-ai/agents.md`](04-ai/agents.md)
+11. [`05-delivery/roadmap.md`](05-delivery/roadmap.md)
+12. [`05-delivery/backlog.md`](05-delivery/backlog.md)
 
 ## Objetivo inmediato
 
@@ -50,6 +51,15 @@ Tampoco añadas módulos de usuario final, landing comercial o rediseños visual
 - Toda tabla funcional debe incluir `tenant_id` salvo tablas globales explícitas.
 - Toda llamada a IA debe quedar registrada en `ai_runs` y `ai_tool_calls`.
 - Toda respuesta IA que proponga fórmula debe incluir evidencia, supuestos y validaciones.
+
+## Workflow obligatorio por rama
+
+1. Crear rama descriptiva.
+2. Hacer commits atomicos.
+3. Ejecutar tests/checks proporcionales.
+4. Con tests/checks verdes, ejecutar quality/refactor gate contra SOLID, KISS, YAGNI, DRY razonable, boundaries, naming, complejidad y tenant isolation.
+5. Si el gate produce cambios, reejecutar los tests/checks afectados.
+6. Cerrar con worktree limpio y push.
 
 ## Stack recomendado
 

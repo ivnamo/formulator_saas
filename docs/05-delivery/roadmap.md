@@ -65,6 +65,11 @@ Entregables:
 - SAP/OData skeleton.
 - Staging.
 - Precios históricos.
+- Jira ticketing connector para revision de formulas de laboratorio.
+- Envio de snapshot/version de formula con Excel adjunto a tablero Jira.
+- Sincronizacion de estado Jira hacia FormulIA.
+
+Referencia funcional: [`../03-domain/jira_formula_review.md`](../03-domain/jira_formula_review.md).
 
 ## Fase 5 - RAG documental
 

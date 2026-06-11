@@ -8,6 +8,37 @@ Todas las rutas funcionales requieren autenticación y tenant context. El tenant
 X-Tenant-Id: <uuid>
 ```
 
+## Corte META-001
+
+Los primeros endpoints implementables son:
+
+```http
+GET /health
+GET /me
+GET /tenants
+POST /tenants
+GET /parameters
+POST /parameters
+GET /raw-materials
+POST /raw-materials
+GET /raw-materials/{id}
+PATCH /raw-materials/{id}
+POST /raw-materials/{id}/prices
+POST /raw-materials/{id}/parameter-values
+GET /compatibility-rules
+POST /compatibility-rules
+GET /formulas
+POST /formulas
+GET /formulas/{id}
+PATCH /formulas/{id}
+POST /formulas/{id}/calculate
+POST /formulas/calculate
+```
+
+Fuera del primer corte: IA, RAG, ERP, billing real, exportaciones e importador Excel completo.
+
+La API debe validar tenant membership antes de ejecutar cualquier endpoint funcional.
+
 ## Auth / tenants
 
 ```http
@@ -87,6 +118,28 @@ Response:
   "warnings": []
 }
 ```
+
+## Incompatibilidades manuales
+
+```http
+GET /compatibility-rules
+POST /compatibility-rules
+```
+
+META-026 implementa solo `material_pair`:
+
+```json
+{
+  "rule_type": "material_pair",
+  "severity": "blocker",
+  "material_a_id": "uuid",
+  "material_b_id": "uuid",
+  "message": "These materials should not be combined.",
+  "recommended_action": "Replace one of the two materials."
+}
+```
+
+Las reglas son tenant-scoped y se evaluan durante `POST /formulas/calculate` y `POST /formulas/{id}/calculate` como warnings con `severity`, `rule_id` y `recommended_action`.
 
 ## Optimización
 

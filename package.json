@@ -1,0 +1,22 @@
+{
+  "name": "formulia-cloud",
+  "private": true,
+  "version": "0.1.0",
+  "description": "FormulIA Cloud monorepo",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "check": "npm run check --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:web": "npm --workspace apps/web run dev",
+    "build:web": "npm --workspace apps/web run build"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  }
+}
