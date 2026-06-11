@@ -1,5 +1,13 @@
 # Migración desde la app Streamlit actual
 
+## Repositorio fuente
+
+- GitHub: [`ivnamo/formulator`](https://github.com/ivnamo/formulator)
+- Rama de referencia: `main`
+- Uso: fuente legacy para extraer la lógica funcional del editor de fórmulas, conceptos de producto, flujos de usuario y piezas reutilizables durante la migración.
+
+No usar el repositorio fuente como patrón arquitectónico final: FormulIA Cloud debe mantener separación entre backend, frontend, core determinista, datos multi-tenant y módulos de IA.
+
 ## Qué conservar
 
 - Concepto de materias primas.

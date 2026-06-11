@@ -90,6 +90,7 @@ Ordena decisiones, prioridades, testing y migración desde la app actual.
 - [`decisions.md`](05-delivery/decisions.md): decisiones arquitectónicas iniciales.
 - [`open_questions.md`](05-delivery/open_questions.md): preguntas pendientes.
 - [`repo_migration.md`](05-delivery/repo_migration.md): migración desde Streamlit.
+- [`formula_builder_migration_plan.md`](05-delivery/formula_builder_migration_plan.md): plan para recuperar el flujo operativo real del editor de fórmulas legacy.
 
 ## Resumen del producto
 

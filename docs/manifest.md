@@ -92,5 +92,6 @@ Inventario de documentación ordenado por área.
 - [`05-delivery/decisions.md`](05-delivery/decisions.md)
 - [`05-delivery/open_questions.md`](05-delivery/open_questions.md)
 - [`05-delivery/repo_migration.md`](05-delivery/repo_migration.md)
+- [`05-delivery/formula_builder_migration_plan.md`](05-delivery/formula_builder_migration_plan.md)
 - [`05-delivery/frontend_ux_refactor_plan.md`](05-delivery/frontend_ux_refactor_plan.md)
 - [`05-delivery/supabase_auth_sso_setup.md`](05-delivery/supabase_auth_sso_setup.md)

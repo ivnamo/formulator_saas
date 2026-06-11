@@ -16,6 +16,13 @@ Antes de escribir código, lee estos documentos en este orden:
 10. [`04-ai/agents.md`](04-ai/agents.md)
 11. [`05-delivery/roadmap.md`](05-delivery/roadmap.md)
 12. [`05-delivery/backlog.md`](05-delivery/backlog.md)
+13. [`05-delivery/formula_builder_migration_plan.md`](05-delivery/formula_builder_migration_plan.md)
+
+## Fuente legacy de formulación
+
+La app Streamlit de referencia para la migración funcional está en [`ivnamo/formulator`](https://github.com/ivnamo/formulator), rama `main`.
+
+Úsala como fuente de comportamiento del editor de fórmulas, conceptos de producto, flujos existentes y lógica reutilizable. No copies directamente la navegación Streamlit, `session_state` ni la estructura monolítica: la migración objetivo es SaaS multi-tenant con backend, frontend y core determinista separados.
 
 ## Objetivo inmediato
 
