@@ -1558,6 +1558,7 @@ label span {
   color: var(--text);
   cursor: pointer;
   text-align: left;
+  white-space: normal;
 }
 
 .builderStep[data-open="true"] .builderStepHeader {
@@ -1637,6 +1638,13 @@ label span {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.catalogResultMeta div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .parameterViewHeader > span,

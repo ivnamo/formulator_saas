@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import uuid
+import json
 import os
+import uuid
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date
 from difflib import SequenceMatcher
 from typing import Any
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine
 from sqlmodel import Session, select
@@ -266,11 +268,15 @@ def register_routes(app: FastAPI) -> None:
     def list_raw_materials(
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
-    ) -> list[dict[str, Any]]:
+    ) -> Response:
         materials = session.exec(
             select(RawMaterial).where(RawMaterial.tenant_id == tenant.tenant_id)
         ).all()
-        return [_raw_material_read(session, tenant.tenant_id, material) for material in materials]
+        payload = _raw_materials_read(session, tenant.tenant_id, materials)
+        return Response(
+            content=json.dumps(payload, default=str, separators=(",", ":")),
+            media_type="application/json",
+        )
 
     @app.post("/api/v1/raw-materials", response_model=RawMaterialRead, status_code=201)
     def create_raw_material(
@@ -875,6 +881,79 @@ def _raw_material_read(
         )
         .order_by(RawMaterialAlias.alias)
     ).all()
+    return _raw_material_read_from_parts(material, price, values, aliases)
+
+
+def _raw_materials_read(
+    session: Session,
+    tenant_id: uuid.UUID,
+    materials: list[RawMaterial],
+) -> list[dict[str, Any]]:
+    material_ids = [material.id for material in materials]
+    if not material_ids:
+        return []
+
+    prices_by_material: dict[uuid.UUID, RawMaterialPrice] = {}
+    prices = session.exec(
+        select(RawMaterialPrice)
+        .where(
+            RawMaterialPrice.tenant_id == tenant_id,
+            RawMaterialPrice.raw_material_id.in_(material_ids),
+        )
+        .order_by(
+            RawMaterialPrice.raw_material_id,
+            RawMaterialPrice.valid_from.desc(),
+            RawMaterialPrice.created_at.desc(),
+        )
+    ).all()
+    for price in prices:
+        prices_by_material.setdefault(price.raw_material_id, price)
+
+    values_by_material: dict[uuid.UUID, list[tuple[RawMaterialParameterValue, Parameter]]] = (
+        defaultdict(list)
+    )
+    values = session.exec(
+        select(RawMaterialParameterValue, Parameter)
+        .join(Parameter, RawMaterialParameterValue.parameter_id == Parameter.id)
+        .where(
+            RawMaterialParameterValue.tenant_id == tenant_id,
+            RawMaterialParameterValue.raw_material_id.in_(material_ids),
+            Parameter.tenant_id == tenant_id,
+        )
+        .order_by(RawMaterialParameterValue.raw_material_id, Parameter.code)
+    ).all()
+    for value, parameter in values:
+        values_by_material[value.raw_material_id].append((value, parameter))
+
+    aliases_by_material: dict[uuid.UUID, list[RawMaterialAlias]] = defaultdict(list)
+    aliases = session.exec(
+        select(RawMaterialAlias)
+        .where(
+            RawMaterialAlias.tenant_id == tenant_id,
+            RawMaterialAlias.raw_material_id.in_(material_ids),
+        )
+        .order_by(RawMaterialAlias.raw_material_id, RawMaterialAlias.alias)
+    ).all()
+    for alias in aliases:
+        aliases_by_material[alias.raw_material_id].append(alias)
+
+    return [
+        _raw_material_read_from_parts(
+            material,
+            prices_by_material.get(material.id),
+            values_by_material[material.id],
+            aliases_by_material[material.id],
+        )
+        for material in materials
+    ]
+
+
+def _raw_material_read_from_parts(
+    material: RawMaterial,
+    price: RawMaterialPrice | None,
+    values: list[tuple[RawMaterialParameterValue, Parameter]],
+    aliases: list[RawMaterialAlias],
+) -> dict[str, Any]:
     return {
         **_model_dict(material),
         "current_price": _model_dict(price) if price else None,

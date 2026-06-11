@@ -361,6 +361,7 @@ export default function Home() {
   const [catalogPriceFilter, setCatalogPriceFilter] =
     useState<"all" | "with_price" | "missing_price">("all");
   const [catalogParameterFilter, setCatalogParameterFilter] = useState("");
+  const [materialResultLimit, setMaterialResultLimit] = useState(60);
   const [expandedMaterialIds, setExpandedMaterialIds] = useState<string[]>([]);
   const [builderSections, setBuilderSections] =
     useState<Record<BuilderSectionKey, boolean>>(DEFAULT_BUILDER_SECTIONS);
@@ -487,6 +488,17 @@ export default function Home() {
     }
     void loadAuthenticatedWorkspace(session.access_token);
   }, [session?.access_token, workspace.tenant]);
+
+  useEffect(() => {
+    setMaterialResultLimit(60);
+  }, [
+    catalogFamilyFilter,
+    catalogParameterFilter,
+    catalogPriceFilter,
+    formulaMaterialQuery,
+    parameterViewPreset,
+    showOnlyPositiveParameters,
+  ]);
 
   const rawMaterialsById = useMemo(
     () => new Map(workspace.rawMaterials.map((material) => [material.id, material])),
@@ -746,8 +758,8 @@ export default function Home() {
     workspace.rawMaterials,
   ]);
   const materialSearchResults = useMemo(
-    () => materialSearchMatches.slice(0, 60),
-    [materialSearchMatches],
+    () => materialSearchMatches.slice(0, materialResultLimit),
+    [materialResultLimit, materialSearchMatches],
   );
   const parameterRows = useMemo(() => {
     const rows = result
@@ -4332,18 +4344,33 @@ export default function Home() {
                     <span>
                       Mostrando {materialSearchResults.length} de {materialSearchMatches.length}
                     </span>
-                    <button
-                      className="textButton"
-                      type="button"
-                      onClick={() => {
-                        setFormulaMaterialQuery("");
-                        setCatalogFamilyFilter("all");
-                        setCatalogPriceFilter("all");
-                        setCatalogParameterFilter("");
-                      }}
-                    >
-                      Reset filtros
-                    </button>
+                    <div>
+                      {materialSearchResults.length < materialSearchMatches.length ? (
+                        <button
+                          className="textButton"
+                          type="button"
+                          onClick={() =>
+                            setMaterialResultLimit((current) =>
+                              Math.min(current + 60, materialSearchMatches.length),
+                            )
+                          }
+                        >
+                          Ver 60 mas
+                        </button>
+                      ) : null}
+                      <button
+                        className="textButton"
+                        type="button"
+                        onClick={() => {
+                          setFormulaMaterialQuery("");
+                          setCatalogFamilyFilter("all");
+                          setCatalogPriceFilter("all");
+                          setCatalogParameterFilter("");
+                        }}
+                      >
+                        Reset filtros
+                      </button>
+                    </div>
                   </div>
                   <div className="quickMaterialList">
                     {workspace.rawMaterials.length === 0 ? (
