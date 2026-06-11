@@ -169,6 +169,43 @@ export type JiraConnectionTest = {
   checked_at: string;
 };
 
+export type JiraProjectMetadata = {
+  id: string | null;
+  key: string;
+  name: string;
+  project_type_key: string | null;
+  simplified: boolean | null;
+};
+
+export type JiraIssueTypeMetadata = {
+  id: string;
+  name: string;
+  description: string | null;
+  subtask: boolean;
+};
+
+export type JiraFieldMetadata = {
+  field_id: string;
+  name: string;
+  required: boolean;
+  schema_type: string | null;
+  custom: string | null;
+  allowed_values: Array<{
+    id: string | null;
+    key: string | null;
+    name: string | null;
+    value: string | null;
+  }>;
+};
+
+export type JiraMetadataState = {
+  projectKey: string;
+  issueType: string;
+  projects: JiraProjectMetadata[];
+  issueTypes: JiraIssueTypeMetadata[];
+  fields: JiraFieldMetadata[];
+};
+
 export type JiraOAuthAuthorize = {
   authorization_url: string;
   state: string;

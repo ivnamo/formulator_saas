@@ -3,9 +3,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from io import BytesIO
-from typing import Any
+from typing import Any, Callable
 
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 
@@ -39,9 +39,12 @@ from .schemas import (
     JiraConnectionCreate,
     JiraConnectionRead,
     JiraConnectionTestRead,
+    JiraFieldMetadataRead,
+    JiraIssueTypeMetadataRead,
     JiraOAuthAuthorizeRead,
     JiraOAuthCallbackCreate,
     JiraOAuthCallbackRead,
+    JiraProjectMetadataRead,
     JiraConnectionUpdate,
 )
 from .tenant import TenantContext, require_tenant_context
@@ -171,6 +174,56 @@ def register_jira_routes(app: FastAPI) -> None:
             "message": message,
             "checked_at": checked_at,
         }
+
+    @app.get(
+        "/api/v1/integrations/jira/{connection_id}/projects",
+        response_model=list[JiraProjectMetadataRead],
+    )
+    def list_jira_projects(
+        connection_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        _require_integration_admin(tenant)
+        connection = _get_jira_connection(session, tenant.tenant_id, connection_id)
+        return _jira_metadata_or_http(lambda: _jira_projects(connection))
+
+    @app.get(
+        "/api/v1/integrations/jira/{connection_id}/issue-types",
+        response_model=list[JiraIssueTypeMetadataRead],
+    )
+    def list_jira_issue_types(
+        connection_id: uuid.UUID,
+        project_key: str | None = Query(default=None),
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        _require_integration_admin(tenant)
+        connection = _get_jira_connection(session, tenant.tenant_id, connection_id)
+        return _jira_metadata_or_http(
+            lambda: _jira_issue_types(connection, project_key or connection.default_project_key)
+        )
+
+    @app.get(
+        "/api/v1/integrations/jira/{connection_id}/fields",
+        response_model=list[JiraFieldMetadataRead],
+    )
+    def list_jira_fields(
+        connection_id: uuid.UUID,
+        project_key: str | None = Query(default=None),
+        issue_type: str | None = Query(default=None),
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        _require_integration_admin(tenant)
+        connection = _get_jira_connection(session, tenant.tenant_id, connection_id)
+        return _jira_metadata_or_http(
+            lambda: _jira_fields(
+                connection,
+                project_key or connection.default_project_key,
+                issue_type or connection.default_issue_type,
+            )
+        )
 
     @app.get(
         "/api/v1/formulas/{formula_id}/reviews",
@@ -754,6 +807,121 @@ def _live_jira_connection_test_result(connection: JiraConnection) -> tuple[str, 
     return result.status, result.message
 
 
+def _jira_metadata_or_http(action: Callable[[], Any]) -> Any:
+    try:
+        return action()
+    except JiraConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except JiraClientError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+def _jira_projects(connection: JiraConnection) -> list[dict[str, Any]]:
+    response = make_jira_client(connection).list_projects()
+    projects = response.get("values")
+    if not isinstance(projects, list):
+        projects = []
+    return [
+        {
+            "id": str(project.get("id")) if project.get("id") is not None else None,
+            "key": str(project.get("key") or ""),
+            "name": str(project.get("name") or project.get("key") or ""),
+            "project_type_key": _optional_str(project.get("projectTypeKey")),
+            "simplified": (
+                project.get("simplified") if isinstance(project.get("simplified"), bool) else None
+            ),
+        }
+        for project in projects
+        if isinstance(project, dict) and project.get("key")
+    ]
+
+
+def _jira_issue_types(connection: JiraConnection, project_key: str) -> list[dict[str, Any]]:
+    project = make_jira_client(connection).get_project(_normalize_project_key(project_key))
+    issue_types = [
+        _jira_issue_type_read(issue_type)
+        for issue_type in _sequence(project.get("issueTypes"))
+    ]
+    return [issue_type for issue_type in issue_types if issue_type["id"] and issue_type["name"]]
+
+
+def _jira_fields(
+    connection: JiraConnection,
+    project_key: str,
+    issue_type: str,
+) -> list[dict[str, Any]]:
+    normalized_project_key = _normalize_project_key(project_key)
+    requested_issue_type = _clean_required(issue_type, "Issue type")
+    client = make_jira_client(connection)
+    project = client.get_project(normalized_project_key)
+    issue_types = [_jira_issue_type_read(item) for item in _sequence(project.get("issueTypes"))]
+    issue_type_metadata = next(
+        (
+            item
+            for item in issue_types
+            if item["id"] == requested_issue_type or item["name"] == requested_issue_type
+        ),
+        None,
+    )
+    if issue_type_metadata is None:
+        raise JiraClientError(
+            f"Jira issue type {requested_issue_type!r} is not available in project {normalized_project_key}."
+        )
+    metadata = client.get_create_issue_fields(normalized_project_key, issue_type_metadata["id"])
+    return _jira_field_reads(metadata)
+
+
+def _jira_issue_type_read(issue_type: Any) -> dict[str, Any]:
+    if not isinstance(issue_type, dict):
+        return {"id": "", "name": "", "description": None, "subtask": False}
+    return {
+        "id": str(issue_type.get("id") or ""),
+        "name": str(issue_type.get("name") or ""),
+        "description": _optional_str(issue_type.get("description")),
+        "subtask": bool(issue_type.get("subtask")),
+    }
+
+
+def _jira_field_reads(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    fields = metadata.get("fields")
+    if isinstance(fields, dict):
+        raw_fields = [
+            {**field, "fieldId": field.get("fieldId") or field_id}
+            for field_id, field in fields.items()
+            if isinstance(field, dict)
+        ]
+    elif isinstance(fields, list):
+        raw_fields = [field for field in fields if isinstance(field, dict)]
+    else:
+        raw_fields = []
+
+    return [
+        {
+            "field_id": str(field.get("fieldId") or field.get("id") or ""),
+            "name": str(field.get("name") or field.get("fieldId") or field.get("id") or ""),
+            "required": bool(field.get("required")),
+            "schema_type": _optional_str(_mapping(field.get("schema")).get("type")),
+            "custom": _optional_str(_mapping(field.get("schema")).get("custom")),
+            "allowed_values": _jira_allowed_values(field.get("allowedValues")),
+        }
+        for field in raw_fields
+        if field.get("fieldId") or field.get("id")
+    ]
+
+
+def _jira_allowed_values(raw_values: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": _optional_str(value.get("id")),
+            "key": _optional_str(value.get("key")),
+            "name": _optional_str(value.get("name")),
+            "value": _optional_str(value.get("value")),
+        }
+        for value in _sequence(raw_values)
+        if isinstance(value, dict)
+    ]
+
+
 def _jira_connection_read(connection: JiraConnection) -> dict[str, Any]:
     return {
         **connection.model_dump(mode="json"),
@@ -976,6 +1144,21 @@ def _clean_optional(value: str | None) -> str | None:
         return None
     cleaned = value.strip()
     return cleaned or None
+
+
+def _optional_str(value: Any) -> str | None:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None
+
+
+def _mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _sequence(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
 
 
 def _clean_mapping(mapping: dict[str, str]) -> dict[str, str]:

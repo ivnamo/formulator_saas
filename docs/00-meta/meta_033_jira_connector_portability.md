@@ -44,4 +44,4 @@ El backend solo debe conocer el contrato generico de FormulIA y Jira Cloud REST 
 
 ## Siguiente accion recomendada
 
-Anadir lectura de metadatos Jira para ayudar al admin a construir `field_mapping` desde la UI, sin escribir IDs manualmente.
+Cubierta por `META-034`: lectura de metadatos Jira para ayudar al admin a construir `field_mapping` desde la UI, sin escribir IDs manualmente.

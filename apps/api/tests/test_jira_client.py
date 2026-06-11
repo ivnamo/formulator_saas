@@ -156,6 +156,36 @@ def test_check_jira_connection_reports_missing_issue_type(monkeypatch) -> None:
     assert "issue type 'Review' is not available" in result.message
 
 
+def test_jira_client_loads_project_search_and_create_fields(monkeypatch) -> None:
+    captured_urls = []
+
+    def fake_urlopen(request, timeout):  # noqa: ANN001
+        captured_urls.append(request.full_url)
+        if request.full_url.endswith("/rest/api/3/project/search?maxResults=50"):
+            return FakeHttpResponse(b'{"values": [{"key": "LAB"}]}')
+        if request.full_url.endswith(
+            "/rest/api/3/issue/createmeta/LAB/issuetypes/10001?maxResults=100"
+        ):
+            return FakeHttpResponse(b'{"fields": [{"fieldId": "summary"}]}')
+        raise AssertionError(f"Unexpected URL: {request.full_url}")
+
+    monkeypatch.setattr(jira_client, "urlopen", fake_urlopen)
+    client = jira_client.AtlassianJiraClient(
+        base_url="https://example.atlassian.net",
+        auth_email="lab@example.com",
+        api_token="token",
+    )
+
+    assert client.list_projects() == {"values": [{"key": "LAB"}]}
+    assert client.get_create_issue_fields("LAB", "10001") == {
+        "fields": [{"fieldId": "summary"}]
+    }
+    assert captured_urls == [
+        "https://example.atlassian.net/rest/api/3/project/search?maxResults=50",
+        "https://example.atlassian.net/rest/api/3/issue/createmeta/LAB/issuetypes/10001?maxResults=100",
+    ]
+
+
 def test_build_jira_issue_payload_maps_configured_review_fields() -> None:
     payload = jira_client.build_jira_issue_payload(
         {

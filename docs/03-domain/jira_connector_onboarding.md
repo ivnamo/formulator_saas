@@ -127,21 +127,23 @@ El script `scripts/set-jira-oauth-env.ps1` solicita Client ID, Client Secret, Re
 
 1. Crear conexion Jira en FormulIA con URL, auth, project key, issue type y `field_mapping`.
 2. Ejecutar `Test` y validar `/myself`, proyecto y issue type.
-3. Revisar metadatos de campos del proyecto si hay dudas.
-4. Crear una formula de prueba con datos no sensibles.
-5. Enviar un issue controlado y adjuntar Excel.
-6. Confirmar en Jira:
+3. Ejecutar `Metadata` en Integrations para cargar proyectos, issue types y campos disponibles.
+4. Usar el selector de clave FormulIA y el boton de mapeo de cada campo Jira para construir `field_mapping`.
+5. Revisar el JSON resultante y pulsar `Save Jira`.
+6. Crear una formula de prueba con datos no sensibles.
+7. Enviar un issue controlado y adjuntar Excel.
+8. Confirmar en Jira:
    - issue creado en proyecto correcto,
    - issue type correcto,
    - campos obligatorios rellenados,
    - descripcion legible,
    - Excel adjunto,
    - permisos y auditoria aceptables.
-7. Documentar el mapping final del cliente en un entorno seguro, no en repositorio publico.
+9. Documentar el mapping final del cliente en un entorno seguro, no en repositorio publico.
 
 ## Fuera de alcance actual
 
 - Almacenamiento cifrado multi-tenant de OAuth en base de datos.
-- Descubrimiento dinamico completo de metadatos Jira en la UI.
+- Descubrimiento de transiciones/estados Jira en la UI.
 - Webhooks y sincronizacion bidireccional de estados.
 - Transformaciones avanzadas por campo mas alla de los mapeos soportados.

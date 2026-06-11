@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin
+from urllib.parse import quote, urlencode, urljoin
 from urllib.request import Request, urlopen
 
 from .jira_excel import JiraReviewExcel
@@ -55,6 +55,12 @@ class JiraClient(Protocol):
     def get_project(self, project_key: str) -> dict[str, Any]:
         ...
 
+    def list_projects(self) -> dict[str, Any]:
+        ...
+
+    def get_create_issue_fields(self, project_key: str, issue_type_id: str) -> dict[str, Any]:
+        ...
+
     def add_attachment(
         self,
         issue_key: str,
@@ -99,6 +105,18 @@ class AtlassianJiraClient:
 
     def get_project(self, project_key: str) -> dict[str, Any]:
         return self._json_get(f"/rest/api/3/project/{project_key}")
+
+    def list_projects(self) -> dict[str, Any]:
+        query = urlencode({"maxResults": 50})
+        return self._json_get(f"/rest/api/3/project/search?{query}")
+
+    def get_create_issue_fields(self, project_key: str, issue_type_id: str) -> dict[str, Any]:
+        safe_project_key = quote(project_key, safe="")
+        safe_issue_type_id = quote(issue_type_id, safe="")
+        query = urlencode({"maxResults": 100})
+        return self._json_get(
+            f"/rest/api/3/issue/createmeta/{safe_project_key}/issuetypes/{safe_issue_type_id}?{query}"
+        )
 
     def add_attachment(
         self,

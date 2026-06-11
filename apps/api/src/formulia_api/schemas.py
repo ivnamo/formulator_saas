@@ -254,6 +254,37 @@ class JiraConnectionTestRead(BaseModel):
     checked_at: datetime
 
 
+class JiraProjectMetadataRead(BaseModel):
+    id: str | None
+    key: str
+    name: str
+    project_type_key: str | None = None
+    simplified: bool | None = None
+
+
+class JiraIssueTypeMetadataRead(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+    subtask: bool = False
+
+
+class JiraFieldAllowedValueRead(BaseModel):
+    id: str | None = None
+    key: str | None = None
+    name: str | None = None
+    value: str | None = None
+
+
+class JiraFieldMetadataRead(BaseModel):
+    field_id: str
+    name: str
+    required: bool
+    schema_type: str | None = None
+    custom: str | None = None
+    allowed_values: list[JiraFieldAllowedValueRead] = Field(default_factory=list)
+
+
 class JiraOAuthAuthorizeRead(BaseModel):
     authorization_url: str
     state: str

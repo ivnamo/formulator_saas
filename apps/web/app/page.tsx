@@ -53,6 +53,8 @@ import {
   type FormulaReviewRequest,
   type JiraConnection,
   type JiraConnectionForm,
+  type JiraFieldMetadata,
+  type JiraMetadataState,
   type JiraOAuthAuthorize,
   type JiraConnectionTest,
   type MaterialForm,
@@ -74,6 +76,20 @@ import {
   type DraftReviewState,
   type SavedFormulaComparison,
 } from "./workspace-comparison";
+
+const JIRA_MAPPING_KEYS = [
+  "formula_id",
+  "formula_short_id",
+  "formula_name",
+  "formula_version",
+  "formula_status",
+  "jira_project_id",
+  "jira_issue_type",
+  "jira_product_type",
+  "jira_product_type_option",
+  "estimated_cost",
+  "notes",
+] as const;
 
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
@@ -107,6 +123,8 @@ export default function Home() {
   });
   const [jiraConnections, setJiraConnections] = useState<JiraConnection[]>([]);
   const [jiraConnectionForm, setJiraConnectionForm] = useState(emptyJiraConnectionForm);
+  const [jiraMetadata, setJiraMetadata] = useState<JiraMetadataState | null>(null);
+  const [jiraMappingKey, setJiraMappingKey] = useState("jira_project_id");
   const [requirementText, setRequirementText] = useState(
     "Liquido barato con contenido activo minimo 12% y precio maximo 2 EUR/kg. Dame 2 alternativas.",
   );
@@ -266,6 +284,7 @@ export default function Home() {
     jiraConnectionForm.defaultIssueType.trim().length > 0 &&
     !isBusy;
   const canTestJiraConnection = Boolean(activeJiraConnection) && !isBusy;
+  const canLoadJiraMetadata = Boolean(activeJiraConnection) && canEditTenantData;
   const canAuthorizeJiraOAuth =
     Boolean(workspace.tenant) && jiraConnectionForm.authType === "oauth" && !isBusy;
   const canPrepareJiraReview =
@@ -307,6 +326,7 @@ export default function Home() {
       });
       setJiraConnections([]);
       setJiraConnectionForm(emptyJiraConnectionForm);
+      setJiraMetadata(null);
       setRequirementParse(null);
       setAgentPlan(null);
       setDraftReview(null);
@@ -538,6 +558,8 @@ export default function Home() {
         connections.find((connection) => connection.is_active) ?? connections[0] ?? null;
       if (preferredConnection) {
         setJiraConnectionForm(jiraConnectionFormFromRead(preferredConnection));
+      } else {
+        setJiraMetadata(null);
       }
       return connections;
     };
@@ -579,6 +601,7 @@ export default function Home() {
         ...current.filter((item) => item.id !== connection.id),
       ]);
       setJiraConnectionForm(jiraConnectionFormFromRead(connection));
+      setJiraMetadata(null);
       setMessage("Jira connection saved");
     });
   }
@@ -600,6 +623,58 @@ export default function Home() {
       await refreshJiraConnections({ silent: true });
       setMessage(`${result.status}: ${result.message}`);
     });
+  }
+
+  async function loadJiraMetadata() {
+    if (!activeJiraConnection) {
+      setError("Save Jira connection first");
+      return;
+    }
+    const projectKey =
+      jiraConnectionForm.defaultProjectKey.trim() || activeJiraConnection.default_project_key;
+    const issueType =
+      jiraConnectionForm.defaultIssueType.trim() || activeJiraConnection.default_issue_type;
+    const query = new URLSearchParams({
+      project_key: projectKey,
+      issue_type: issueType,
+    });
+
+    await runAction("Loading Jira metadata", async () => {
+      const [projects, issueTypes, fields] = await Promise.all([
+        request<JiraMetadataState["projects"]>(
+          `/api/v1/integrations/jira/${activeJiraConnection.id}/projects`,
+          { method: "GET", headers },
+        ),
+        request<JiraMetadataState["issueTypes"]>(
+          `/api/v1/integrations/jira/${activeJiraConnection.id}/issue-types?${query.toString()}`,
+          { method: "GET", headers },
+        ),
+        request<JiraMetadataState["fields"]>(
+          `/api/v1/integrations/jira/${activeJiraConnection.id}/fields?${query.toString()}`,
+          { method: "GET", headers },
+        ),
+      ]);
+      setJiraMetadata({ projectKey, issueType, projects, issueTypes, fields });
+      setMessage(`Jira metadata loaded: ${fields.length} fields`);
+    });
+  }
+
+  function mapJiraField(field: JiraFieldMetadata) {
+    try {
+      const currentMapping = parseJsonObject(
+        jiraConnectionForm.fieldMappingJson,
+        "Jira field mapping",
+      );
+      const nextMapping = { ...currentMapping, [jiraMappingKey]: field.field_id };
+      setJiraConnectionForm((current) => ({
+        ...current,
+        fieldMappingJson: JSON.stringify(nextMapping, null, 2),
+      }));
+      setStatus("idle");
+      setMessage(`Mapped ${jiraMappingKey} to ${field.field_id}`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Invalid Jira field mapping JSON");
+    }
   }
 
   async function authorizeJiraOAuth() {
@@ -1859,6 +1934,15 @@ export default function Home() {
                 <button
                   className="secondaryButton"
                   type="button"
+                  onClick={loadJiraMetadata}
+                  disabled={!canLoadJiraMetadata}
+                >
+                  <ListChecks size={17} />
+                  Metadata
+                </button>
+                <button
+                  className="secondaryButton"
+                  type="button"
                   onClick={authorizeJiraOAuth}
                   disabled={!canAuthorizeJiraOAuth}
                 >
@@ -1893,6 +1977,87 @@ export default function Home() {
             ) : (
               <div className="empty">No Jira connection saved.</div>
             )}
+            {jiraMetadata ? (
+              <div className="jiraMetadataPanel">
+                <div className="jiraMetadataHeader">
+                  <div>
+                    <span>Metadata</span>
+                    <strong>
+                      {jiraMetadata.projectKey} / {jiraMetadata.issueType}
+                    </strong>
+                  </div>
+                  <label>
+                    <span>FormulIA field</span>
+                    <select
+                      value={jiraMappingKey}
+                      onChange={(event) => setJiraMappingKey(event.target.value)}
+                      disabled={!canEditTenantData}
+                    >
+                      {JIRA_MAPPING_KEYS.map((key) => (
+                        <option key={key} value={key}>
+                          {key}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="jiraMetadataColumns">
+                  <div>
+                    <span>Projects</span>
+                    <div className="jiraMetadataList">
+                      {jiraMetadata.projects.map((project) => (
+                        <div className="jiraMetadataRow" key={project.key}>
+                          <code>{project.key}</code>
+                          <strong>{project.name}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <span>Issue types</span>
+                    <div className="jiraMetadataList">
+                      {jiraMetadata.issueTypes.map((issueType) => (
+                        <div className="jiraMetadataRow" key={issueType.id}>
+                          <code>{issueType.id}</code>
+                          <strong>{issueType.name}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="jiraMetadataFields">
+                    <span>Fields</span>
+                    <div className="jiraMetadataList">
+                      {jiraMetadata.fields.map((field) => (
+                        <div className="jiraMetadataRow" key={field.field_id}>
+                          <code>{field.field_id}</code>
+                          <strong>{field.name}</strong>
+                          <small>
+                            {field.required ? "Required" : "Optional"}
+                            {field.schema_type ? ` · ${field.schema_type}` : ""}
+                            {field.allowed_values.length > 0
+                              ? ` · ${field.allowed_values
+                                  .map((value) => value.value ?? value.name ?? value.key ?? value.id)
+                                  .filter(Boolean)
+                                  .slice(0, 4)
+                                  .join(", ")}`
+                              : ""}
+                          </small>
+                          <button
+                            className="iconButton"
+                            type="button"
+                            onClick={() => mapJiraField(field)}
+                            disabled={!canEditTenantData}
+                            title={`Map ${jiraMappingKey}`}
+                          >
+                            <Plus size={15} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section id="materials" className="panel materialPanel">

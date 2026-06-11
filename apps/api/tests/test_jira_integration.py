@@ -28,6 +28,70 @@ class FakeJiraClient:
         self.created_payloads: list[dict] = []
         self.attachments: list[dict] = []
 
+    def list_projects(self) -> dict:
+        return {
+            "values": [
+                {
+                    "id": "10000",
+                    "key": "LAB",
+                    "name": "Formula Lab",
+                    "projectTypeKey": "software",
+                    "simplified": True,
+                }
+            ]
+        }
+
+    def get_project(self, project_key: str) -> dict:
+        assert project_key == "LAB"
+        return {
+            "key": "LAB",
+            "name": "Formula Lab",
+            "issueTypes": [
+                {
+                    "id": "10001",
+                    "name": "Review",
+                    "description": "Formula review",
+                    "subtask": False,
+                },
+                {
+                    "id": "10002",
+                    "name": "Prototype",
+                    "description": "Prototype review",
+                    "subtask": False,
+                },
+            ],
+        }
+
+    def get_create_issue_fields(self, project_key: str, issue_type_id: str) -> dict:
+        assert project_key == "LAB"
+        assert issue_type_id == "10001"
+        return {
+            "fields": [
+                {
+                    "fieldId": "summary",
+                    "name": "Summary",
+                    "required": True,
+                    "schema": {"type": "string"},
+                },
+                {
+                    "fieldId": "customfield_20011",
+                    "name": "Functional project",
+                    "required": True,
+                    "schema": {"type": "string", "custom": "text"},
+                },
+                {
+                    "fieldId": "customfield_20012",
+                    "name": "Product type",
+                    "required": False,
+                    "schema": {"type": "option", "custom": "select"},
+                    "allowedValues": [
+                        {"id": "1", "value": "Nuevo"},
+                        {"id": "2", "value": "Mod A"},
+                    ],
+                },
+            ]
+        }
+
     def create_issue(self, payload: dict) -> JiraIssueResult:
         self.created_payloads.append(payload)
         return JiraIssueResult(
@@ -203,6 +267,76 @@ def test_owner_configures_and_tests_jira_connection(monkeypatch) -> None:
     assert tested.status_code == 200
     assert tested.json()["status"] == "ready_for_client"
     assert "Connected to Jira" in tested.json()["message"]
+
+
+def test_owner_loads_jira_connector_metadata(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient()
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    connection = create_jira_connection(client, tenant_id)
+    request_headers = headers(USER_A, tenant_id)
+
+    projects = client.get(
+        f"/api/v1/integrations/jira/{connection['id']}/projects",
+        headers=request_headers,
+    )
+    issue_types = client.get(
+        f"/api/v1/integrations/jira/{connection['id']}/issue-types",
+        headers=request_headers,
+        params={"project_key": "lab"},
+    )
+    fields = client.get(
+        f"/api/v1/integrations/jira/{connection['id']}/fields",
+        headers=request_headers,
+        params={"project_key": "LAB", "issue_type": "Review"},
+    )
+
+    assert projects.status_code == 200
+    assert projects.json() == [
+        {
+            "id": "10000",
+            "key": "LAB",
+            "name": "Formula Lab",
+            "project_type_key": "software",
+            "simplified": True,
+        }
+    ]
+    assert issue_types.status_code == 200
+    assert issue_types.json()[0] == {
+        "id": "10001",
+        "name": "Review",
+        "description": "Formula review",
+        "subtask": False,
+    }
+    assert fields.status_code == 200
+    assert fields.json()[1] == {
+        "field_id": "customfield_20011",
+        "name": "Functional project",
+        "required": True,
+        "schema_type": "string",
+        "custom": "text",
+        "allowed_values": [],
+    }
+    assert fields.json()[2]["allowed_values"] == [
+        {"id": "1", "key": None, "name": None, "value": "Nuevo"},
+        {"id": "2", "key": None, "name": None, "value": "Mod A"},
+    ]
+
+
+def test_jira_connector_metadata_requires_admin(monkeypatch) -> None:
+    client = make_client()
+    use_fake_jira_client(monkeypatch, FakeJiraClient())
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    add_member(client, tenant_id, USER_B, "formulator")
+    connection = create_jira_connection(client, tenant_id)
+
+    response = client.get(
+        f"/api/v1/integrations/jira/{connection['id']}/projects",
+        headers=headers(USER_B, tenant_id),
+    )
+
+    assert response.status_code == 403
 
 
 def test_jira_oauth_authorize_url_requires_admin_and_returns_redirect(monkeypatch) -> None:

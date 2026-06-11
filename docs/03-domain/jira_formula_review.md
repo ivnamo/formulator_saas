@@ -333,6 +333,8 @@ GET /integrations/jira/{id}/issue-types
 GET /integrations/jira/{id}/fields
 ```
 
+Los endpoints de metadata son de lectura, requieren rol admin/owner y sirven para construir `field_mapping` desde la UI sin exponer credenciales.
+
 ```http
 POST /formulas/{formula_id}/reviews/jira
 GET /formulas/{formula_id}/reviews
