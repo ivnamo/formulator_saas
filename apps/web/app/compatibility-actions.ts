@@ -1,5 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import type { CompatibilityRuleForm } from "./compatibility-panel";
+import type { CompatibilityRuleForm } from "./compatibility-state";
 import { request } from "./workspace-api";
 import type {
   CalculationResult,

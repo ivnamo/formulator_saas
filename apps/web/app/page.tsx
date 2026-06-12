@@ -6,7 +6,6 @@ import { request } from "./workspace-api";
 import {
   emptyJiraConnectionForm,
   formatDateTime,
-  type CompatibilityRuleRead,
   type AiRun,
   type AgentPlan,
   type JiraConnection,
@@ -60,6 +59,7 @@ import { useWorkspaceActionStatus } from "./workspace-action-status";
 import { useWorkspaceCoreState } from "./workspace-core-state";
 import { useRawMaterialWorkspaceState } from "./raw-material-state";
 import { useFormulaWorkspaceState } from "./formula-workspace-state";
+import { useCompatibilityState } from "./compatibility-state";
 
 export default function Home() {
   const {
@@ -130,14 +130,12 @@ export default function Home() {
     formulaReviewArtifacts,
     setFormulaReviewArtifacts,
   } = useFormulaWorkspaceState();
-  const [compatibilityRules, setCompatibilityRules] = useState<CompatibilityRuleRead[]>([]);
-  const [compatibilityRuleForm, setCompatibilityRuleForm] = useState({
-    materialAId: "",
-    materialBId: "",
-    severity: "warning",
-    message: "",
-    recommendedAction: "",
-  });
+  const {
+    compatibilityRules,
+    setCompatibilityRules,
+    compatibilityRuleForm,
+    setCompatibilityRuleForm,
+  } = useCompatibilityState();
   const [jiraConnections, setJiraConnections] = useState<JiraConnection[]>([]);
   const [jiraConnectionForm, setJiraConnectionForm] = useState(emptyJiraConnectionForm);
   const [jiraMetadata, setJiraMetadata] = useState<JiraMetadataState | null>(null);

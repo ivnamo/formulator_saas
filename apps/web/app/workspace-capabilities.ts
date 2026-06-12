@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { CompatibilityRuleForm } from "./compatibility-panel";
+import type { CompatibilityRuleForm } from "./compatibility-state";
 import type { DraftReviewState } from "./workspace-comparison";
 import { isTenantAdminRole } from "./tenant-roles";
 import type { FormulaCompareSelection } from "./saved-formula-comparison-state";

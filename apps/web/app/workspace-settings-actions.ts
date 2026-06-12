@@ -1,5 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import type { CompatibilityRuleForm } from "./compatibility-panel";
+import { emptyCompatibilityRuleForm, type CompatibilityRuleForm } from "./compatibility-state";
 import { request } from "./workspace-api";
 import { getSupabaseBrowserClient } from "./supabase-client";
 import { isTenantAdminRole } from "./tenant-roles";
@@ -79,16 +79,6 @@ function mergeParameters(
   return Array.from(next.values()).sort((left, right) => left.code.localeCompare(right.code));
 }
 
-function emptyCompatibilityRuleForm(): CompatibilityRuleForm {
-  return {
-    materialAId: "",
-    materialBId: "",
-    severity: "warning",
-    message: "",
-    recommendedAction: "",
-  };
-}
-
 export function useWorkspaceSettingsActions({
   workspace,
   workspaceName,
@@ -153,7 +143,7 @@ export function useWorkspaceSettingsActions({
       setFormulaReviewRequests([]);
       setFormulaReviewArtifacts({});
       setCompatibilityRules([]);
-      setCompatibilityRuleForm(emptyCompatibilityRuleForm());
+      setCompatibilityRuleForm(emptyCompatibilityRuleForm);
       setJiraConnections([]);
       setTenantInvitations([]);
       setJiraConnectionForm(emptyJiraConnectionForm);

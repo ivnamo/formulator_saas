@@ -1,14 +1,7 @@
 import { Save } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
+import type { CompatibilityRuleForm } from "./compatibility-state";
 import type { CompatibilityRuleRead, RawMaterial } from "./workspace-model";
-
-export type CompatibilityRuleForm = {
-  materialAId: string;
-  materialBId: string;
-  severity: string;
-  message: string;
-  recommendedAction: string;
-};
 
 type CompatibilityPanelProps = {
   active: boolean;
