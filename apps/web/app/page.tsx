@@ -90,6 +90,7 @@ import {
   selectVisibleParameterCodes,
 } from "./formula-builder-derived";
 import { useRawMaterialCatalog } from "./formula-builder-catalog";
+import { useFormulaLineActions } from "./formula-builder-line-actions";
 import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
 import { ExcelImportPanel } from "./excel-import-panel";
 import { useExcelImportState } from "./excel-import-state";
@@ -238,6 +239,19 @@ export default function Home() {
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null);
   const [draftReview, setDraftReview] = useState<DraftReviewState | null>(null);
   const [aiRuns, setAiRuns] = useState<AiRun[]>([]);
+  const {
+    addFormulaLine,
+    removeFormulaLine,
+    updateFormulaLine,
+    moveFormulaLine,
+    duplicateFormulaLine,
+  } = useFormulaLineActions({
+    setWorkspace,
+    setBuilderSections,
+    setResult,
+    ensureRawMaterialDetail,
+    markDraftReviewPending,
+  });
   const {
     formulaCompareSelection,
     comparisonConstraintForm,
@@ -1454,81 +1468,6 @@ export default function Home() {
       setResult(reviewedResult);
       setMessage("Draft review confirmed");
     });
-  }
-
-  async function addFormulaLine(rawMaterialId: string) {
-    await ensureRawMaterialDetail(rawMaterialId);
-    setWorkspace((current) => ({
-      ...current,
-      formulaLines: [
-        ...current.formulaLines,
-        { localId: makeLocalId(), rawMaterialId, percentage: 0 },
-      ],
-    }));
-    setBuilderSections((current) => ({
-      ...current,
-      formula: true,
-      calculation: true,
-    }));
-    markDraftReviewPending();
-    setResult(null);
-  }
-
-  function removeFormulaLine(localId: string) {
-    setWorkspace((current) => ({
-      ...current,
-      formulaLines: current.formulaLines.filter((line) => line.localId !== localId),
-    }));
-    markDraftReviewPending();
-    setResult(null);
-  }
-
-  function updateFormulaLine(localId: string, percentage: number) {
-    setWorkspace((current) => ({
-      ...current,
-      formulaLines: current.formulaLines.map((line) =>
-        line.localId === localId ? { ...line, percentage } : line,
-      ),
-    }));
-    markDraftReviewPending();
-    setResult(null);
-  }
-
-  function moveFormulaLine(localId: string, direction: -1 | 1) {
-    setWorkspace((current) => {
-      const index = current.formulaLines.findIndex((line) => line.localId === localId);
-      const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.formulaLines.length) {
-        return current;
-      }
-      const nextLines = [...current.formulaLines];
-      const [line] = nextLines.splice(index, 1);
-      nextLines.splice(nextIndex, 0, line);
-      return {
-        ...current,
-        formulaLines: nextLines,
-      };
-    });
-    markDraftReviewPending();
-    setResult(null);
-  }
-
-  function duplicateFormulaLine(localId: string) {
-    setWorkspace((current) => {
-      const index = current.formulaLines.findIndex((line) => line.localId === localId);
-      if (index < 0) {
-        return current;
-      }
-      const line = current.formulaLines[index];
-      const nextLines = [...current.formulaLines];
-      nextLines.splice(index + 1, 0, { ...line, localId: makeLocalId() });
-      return {
-        ...current,
-        formulaLines: nextLines,
-      };
-    });
-    markDraftReviewPending();
-    setResult(null);
   }
 
   async function calculateAdHocFormula(

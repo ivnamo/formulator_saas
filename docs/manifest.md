@@ -67,6 +67,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_054_formula_materials_step_refactor.md`](00-meta/meta_054_formula_materials_step_refactor.md)
 - [`00-meta/meta_055_formula_composition_step_refactor.md`](00-meta/meta_055_formula_composition_step_refactor.md)
 - [`00-meta/meta_056_formula_calculation_step_refactor.md`](00-meta/meta_056_formula_calculation_step_refactor.md)
+- [`00-meta/meta_057_formula_line_actions_hook.md`](00-meta/meta_057_formula_line_actions_hook.md)
 
 ## Producto
 
