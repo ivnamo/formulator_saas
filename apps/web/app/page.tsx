@@ -1,21 +1,7 @@
 "use client";
 
-import {
-  AlertTriangle,
-  BrainCircuit,
-  ChevronDown,
-  Database,
-  FlaskConical,
-  FolderOpen,
-  KeyRound,
-  Loader2,
-  LogOut,
-  RefreshCw,
-  Settings2,
-  Upload,
-  UserCircle,
-} from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useCallback, useState } from "react";
 import { request } from "./workspace-api";
 import {
   emptyJiraConnectionForm,
@@ -79,38 +65,7 @@ import {
   useWorkspaceAuthSession,
 } from "./workspace-auth-session";
 import { useWorkspaceCapabilities } from "./workspace-capabilities";
-
-type WorkspaceView =
-  | "formula"
-  | "materials"
-  | "import"
-  | "results"
-  | "settings"
-  | "library"
-  | "compatibility"
-  | "ai";
-
-const VIEW_TITLES: Record<WorkspaceView, string> = {
-  formula: "Formula Builder",
-  materials: "Materias primas",
-  import: "Importar Excel",
-  results: "Resultados",
-  settings: "Configuracion",
-  library: "Biblioteca",
-  compatibility: "Compatibilidad",
-  ai: "Asistente IA",
-};
-
-const VIEW_DESCRIPTIONS: Record<WorkspaceView, string> = {
-  formula: "Mesa unica para formular, calcular, guardar y enviar a revision.",
-  materials: "Consulta y crea materias primas para formular.",
-  import: "Sube formulas historicas y resuelve coincidencias.",
-  results: "Vista legacy de resultados calculados.",
-  settings: "Configura workspace, parametros e integraciones.",
-  library: "Abre formulas guardadas y compara escenarios.",
-  compatibility: "Gestiona reglas manuales de compatibilidad.",
-  ai: "Convierte requisitos en restricciones y borradores revisables.",
-};
+import { AppShell, type WorkspaceView } from "./app-shell";
 
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
@@ -625,124 +580,17 @@ export default function Home() {
   }
 
   return (
-    <main className="shell">
-      <aside className="sidebar" aria-label="Workspace navigation">
-        <div className="brand">
-          <div className="brandMark">F</div>
-          <div>
-            <strong>FormulIA Cloud</strong>
-            <span>Platform</span>
-          </div>
-        </div>
-        <nav className="nav">
-          <button
-            className={`navItem ${activeView === "formula" ? "active" : ""}`}
-            type="button"
-            onClick={() => setActiveView("formula")}
-          >
-            <FlaskConical size={18} /> Formula actual
-          </button>
-          <button
-            className={`navItem ${activeView === "materials" ? "active" : ""}`}
-            type="button"
-            onClick={() => setActiveView("materials")}
-          >
-            <Database size={18} /> Materias primas
-          </button>
-          <button
-            className={`navItem ${activeView === "import" ? "active" : ""}`}
-            type="button"
-            onClick={() => setActiveView("import")}
-          >
-            <Upload size={18} /> Importar Excel
-          </button>
-          <button
-            className={`navItem ${activeView === "settings" ? "active" : ""}`}
-            type="button"
-            onClick={() => setActiveView("settings")}
-          >
-            <Settings2 size={18} /> Configuracion
-          </button>
-          <details className="navDisclosure">
-            <summary>Herramientas avanzadas</summary>
-            <button
-              className={`navItem ${activeView === "library" ? "active" : ""}`}
-              type="button"
-              onClick={() => setActiveView("library")}
-            >
-              <FolderOpen size={18} /> Biblioteca
-            </button>
-            <button
-              className={`navItem ${activeView === "compatibility" ? "active" : ""}`}
-              type="button"
-              onClick={() => setActiveView("compatibility")}
-            >
-              <AlertTriangle size={18} /> Compatibilidad
-            </button>
-            <button
-              className={`navItem ${activeView === "ai" ? "active" : ""}`}
-              type="button"
-              onClick={() => setActiveView("ai")}
-            >
-              <BrainCircuit size={18} /> Asistente IA
-            </button>
-          </details>
-        </nav>
-      </aside>
-
-      <section className="workspace" id="workspace">
-        <header className="topbar">
-          <div>
-            <h1>{VIEW_TITLES[activeView]}</h1>
-            <p>
-              {workspace.tenant
-                ? `${workspace.formulaName} - ${VIEW_DESCRIPTIONS[activeView]} - ${workspace.tenant.name}`
-                : VIEW_DESCRIPTIONS[activeView]}
-            </p>
-          </div>
-          <details className="accountMenu">
-            <summary>
-              <span className="accountAvatar">
-                <UserCircle size={20} />
-              </span>
-              <span className="accountIdentity">
-                <strong>{session?.user.email ?? "Sesion activa"}</strong>
-                <small>{workspace.tenant?.role ?? "sin rol"}</small>
-              </span>
-              <ChevronDown size={15} />
-            </summary>
-            <div className="accountMenuPanel">
-              <button
-                className="accountMenuItem"
-                type="button"
-                onClick={() => setActiveView("settings")}
-              >
-                <Settings2 size={16} />
-                Cuenta y workspace
-              </button>
-              <a className="accountMenuItem" href="/update-password">
-                <KeyRound size={16} />
-                Cambiar contrasena
-              </a>
-              <button
-                className="accountMenuItem danger"
-                type="button"
-                onClick={signOut}
-                disabled={isBusy}
-              >
-                <LogOut size={16} />
-                Cerrar sesion
-              </button>
-            </div>
-          </details>
-        </header>
-
-        <div className="statusLine" data-state={status}>
-          {status === "error" ? <AlertTriangle size={16} /> : <RefreshCw size={16} />}
-          <span>{message}</span>
-        </div>
-
-        <div className="grid">
+    <AppShell
+      activeView={activeView}
+      workspace={workspace}
+      sessionEmail={session.user.email}
+      status={status}
+      message={message}
+      isBusy={isBusy}
+      onViewChange={setActiveView}
+      onSignOut={signOut}
+    >
+      <div className="grid">
           <SettingsPanel
             active={activeView === "settings"}
             workspace={workspace}
@@ -995,8 +843,7 @@ export default function Home() {
           </section>
 
           <CalculationResultsPanel active={activeView === "results"} result={result} />
-        </div>
-      </section>
-    </main>
+      </div>
+    </AppShell>
   );
 }
