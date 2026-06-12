@@ -86,6 +86,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_073_app_shell_component.md`](00-meta/meta_073_app_shell_component.md)
 - [`00-meta/meta_074_workspace_action_status_hook.md`](00-meta/meta_074_workspace_action_status_hook.md)
 - [`00-meta/meta_075_workspace_core_state_hook.md`](00-meta/meta_075_workspace_core_state_hook.md)
+- [`00-meta/meta_076_raw_material_state_hook.md`](00-meta/meta_076_raw_material_state_hook.md)
 
 ## Producto
 

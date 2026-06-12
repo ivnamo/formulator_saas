@@ -17,7 +17,6 @@ import {
   type JiraConnection,
   type JiraConnectionForm,
   type JiraMetadataState,
-  type MaterialForm,
   type RequirementParse,
 } from "./workspace-model";
 import { type DraftReviewState } from "./workspace-comparison";
@@ -64,6 +63,7 @@ import { useWorkspaceCapabilities } from "./workspace-capabilities";
 import { AppShell, type WorkspaceView } from "./app-shell";
 import { useWorkspaceActionStatus } from "./workspace-action-status";
 import { useWorkspaceCoreState } from "./workspace-core-state";
+import { useRawMaterialWorkspaceState } from "./raw-material-state";
 
 export default function Home() {
   const {
@@ -78,12 +78,14 @@ export default function Home() {
     invitationForm,
     setInvitationForm,
   } = useWorkspaceCoreState();
-  const [materialForm, setMaterialForm] = useState<MaterialForm>({
-    code: "",
-    name: "",
-    price: "",
-    parameterValue: "",
-  });
+  const {
+    materialForm,
+    setMaterialForm,
+    detailedMaterialIds,
+    setDetailedMaterialIds,
+    aliasInputs,
+    setAliasInputs,
+  } = useRawMaterialWorkspaceState();
   const {
     formulaMaterialQuery,
     parameterViewPreset,
@@ -120,9 +122,7 @@ export default function Home() {
     resetCatalogFilters,
     toggleBuilderSection,
   } = useFormulaBuilderUiState();
-  const [detailedMaterialIds, setDetailedMaterialIds] = useState<string[]>([]);
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
   const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
   const [formulaReviewRequests, setFormulaReviewRequests] = useState<FormulaReviewRequest[]>([]);
