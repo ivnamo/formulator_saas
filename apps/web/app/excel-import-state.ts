@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   withResolvedImportRow,
   type ExcelImportPreview,
@@ -12,29 +12,32 @@ export function useExcelImportState() {
   const [availableImportSheets, setAvailableImportSheets] = useState<string[]>([]);
   const [selectedImportSheet, setSelectedImportSheet] = useState("");
 
-  function resetImportState() {
+  const resetImportState = useCallback(() => {
     setImportPreview(null);
     setImportFile(null);
     setImportFileName("");
     setAvailableImportSheets([]);
     setSelectedImportSheet("");
-  }
+  }, []);
 
-  function setPendingFile(file: File, sheets: ExcelImportSheets, selectedSheet: string) {
-    setImportFile(file);
-    setImportFileName(file.name);
-    setAvailableImportSheets(sheets.sheets);
-    setSelectedImportSheet(selectedSheet);
-    setImportPreview(null);
-  }
+  const setPendingFile = useCallback(
+    (file: File, sheets: ExcelImportSheets, selectedSheet: string) => {
+      setImportFile(file);
+      setImportFileName(file.name);
+      setAvailableImportSheets(sheets.sheets);
+      setSelectedImportSheet(selectedSheet);
+      setImportPreview(null);
+    },
+    [],
+  );
 
-  function setPreview(preview: ExcelImportPreview) {
+  const setPreview = useCallback((preview: ExcelImportPreview) => {
     setImportPreview(preview);
     setAvailableImportSheets(preview.available_sheets);
     setSelectedImportSheet(preview.sheet_name);
-  }
+  }, []);
 
-  function resolveImportRow(rowNumber: number, rawMaterialId: string) {
+  const resolveImportRow = useCallback((rowNumber: number, rawMaterialId: string) => {
     if (!rawMaterialId) {
       return false;
     }
@@ -42,7 +45,7 @@ export function useExcelImportState() {
       current ? withResolvedImportRow(current, rowNumber, rawMaterialId) : current,
     );
     return true;
-  }
+  }, []);
 
   return {
     importPreview,

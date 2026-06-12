@@ -75,6 +75,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_062_ai_assistant_actions_hook.md`](00-meta/meta_062_ai_assistant_actions_hook.md)
 - [`00-meta/meta_063_compatibility_actions_hook.md`](00-meta/meta_063_compatibility_actions_hook.md)
 - [`00-meta/meta_064_raw_material_actions_hook.md`](00-meta/meta_064_raw_material_actions_hook.md)
+- [`00-meta/meta_065_workspace_settings_actions_hook.md`](00-meta/meta_065_workspace_settings_actions_hook.md)
 
 ## Producto
 
