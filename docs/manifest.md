@@ -93,6 +93,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_080_jira_connection_state_hook.md`](00-meta/meta_080_jira_connection_state_hook.md)
 - [`00-meta/meta_081_formula_builder_workspace_component.md`](00-meta/meta_081_formula_builder_workspace_component.md)
 - [`00-meta/meta_082_workspace_state_reset_actions.md`](00-meta/meta_082_workspace_state_reset_actions.md)
+- [`00-meta/meta_083_workspace_panels_component.md`](00-meta/meta_083_workspace_panels_component.md)
 
 ## Producto
 

@@ -8,15 +8,8 @@ import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
 import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
-import { ExcelImportPanel } from "./excel-import-panel";
 import { useExcelImportState } from "./excel-import-state";
-import { AiAssistantPanel } from "./ai-assistant-panel";
-import { SettingsPanel } from "./settings-panel";
-import { RawMaterialsPanel } from "./raw-materials-panel";
-import { CompatibilityPanel } from "./compatibility-panel";
-import { CalculationResultsPanel } from "./calculation-results-panel";
-import { FormulaBuilderWorkspace } from "./formula-builder-workspace";
-import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
+import { WorkspacePanels } from "./workspace-panels";
 import {
   useSavedFormulaComparisonDerivedState,
   useSavedFormulaComparisonState,
@@ -562,144 +555,133 @@ export default function Home() {
       onSignOut={signOut}
     >
       <div className="grid">
-          <SettingsPanel
-            active={activeView === "settings"}
-            workspace={workspace}
-            workspaceName={workspaceName}
-            sessionEmail={session.user.email}
-            invitationForm={invitationForm}
-            tenantInvitations={tenantInvitations}
-            parameterForm={parameterForm}
-            activeJiraConnection={activeJiraConnection}
-            jiraConnectionForm={jiraConnectionForm}
-            jiraMetadata={jiraMetadata}
-            jiraMappingKey={jiraMappingKey}
-            isBusy={isBusy}
-            canEditTenantData={canEditTenantData}
-            canManageTenantUsers={canManageTenantUsers}
-            canSaveJiraConnection={canSaveJiraConnection}
-            canTestJiraConnection={canTestJiraConnection}
-            canLoadJiraMetadata={canLoadJiraMetadata}
-            canAuthorizeJiraOAuth={canAuthorizeJiraOAuth}
-            showInvitationAdminPanel={showInvitationAdminPanel}
-            onWorkspaceNameChange={setWorkspaceName}
-            onCreateWorkspace={createWorkspace}
-            onInvitationFormChange={setInvitationForm}
-            onCreateTenantInvitation={createTenantInvitation}
-            onParameterFormChange={setParameterForm}
-            onCreateParameter={createParameter}
-            onJiraConnectionFormChange={setJiraConnectionForm}
-            onSaveJiraConnection={saveJiraConnection}
-            onRefreshJiraConnections={refreshJiraConnections}
-            onTestJiraConnection={testJiraConnection}
-            onLoadJiraMetadata={loadJiraMetadata}
-            onAuthorizeJiraOAuth={authorizeJiraOAuth}
-            onJiraMappingKeyChange={setJiraMappingKey}
-            onMapJiraField={mapJiraField}
-          />
-
-          <RawMaterialsPanel
-            active={activeView === "materials"}
-            rawMaterials={workspace.rawMaterials}
-            parameter={workspace.parameter}
-            materialForm={materialForm}
-            aliasInputs={aliasInputs}
-            canEditTenantData={canEditTenantData}
-            isBusy={isBusy}
-            onMaterialFormChange={setMaterialForm}
-            onAliasInputsChange={setAliasInputs}
-            onCreateMaterial={createMaterial}
-            onAddFormulaLine={addFormulaLine}
-            onCreateAlias={createAlias}
-          />
-
-          <CompatibilityPanel
-            active={activeView === "compatibility"}
-            rules={compatibilityRules}
-            rawMaterials={workspace.rawMaterials}
-            rawMaterialsById={rawMaterialsById}
-            form={compatibilityRuleForm}
-            canEditTenantData={canEditTenantData}
-            canCreateRule={canCreateCompatibilityRule}
-            onFormChange={setCompatibilityRuleForm}
-            onCreateRule={createCompatibilityRule}
-          />
-
-          <SavedFormulaComparisonPanel
-            active={activeView === "library"}
-            formulas={formulas}
-            calculationHistory={calculationHistory}
-            formulaCompareSelection={formulaCompareSelection}
-            comparisonConstraintForm={comparisonConstraintForm}
-            comparisonMaterialOptions={comparisonMaterialOptions}
-            canEditTenantData={canEditTenantData}
-            canCompareSavedFormulas={canCompareSavedFormulas}
-            isBusy={isBusy}
-            savedFormulaComparison={savedFormulaComparison}
-            comparisonComplianceSummary={comparisonComplianceSummary}
-            comparisonConstraintEvaluations={comparisonConstraintEvaluations}
-            comparisonConstraintIssueCount={comparisonConstraintIssueCount}
-            visibleComparisonConstraintEvaluations={visibleComparisonConstraintEvaluations}
-            showOnlyConstraintIssues={showOnlyConstraintIssues}
-            onSelectFormula={selectFormulaForComparison}
-            onRefreshLibrary={refreshFormulaLibrary}
-            onCompareSavedFormulas={compareSavedFormulas}
-            onOpenFormula={openFormula}
-            onUpdateConstraint={updateComparisonConstraint}
-            onShowOnlyConstraintIssuesChange={setShowOnlyConstraintIssues}
-          />
-
-          <ExcelImportPanel
-            active={activeView === "import"}
-            importPreview={importPreview}
-            importFileName={importFileName}
-            availableImportSheets={availableImportSheets}
-            selectedImportSheet={selectedImportSheet}
-            rawMaterials={workspace.rawMaterials}
-            canEditTenantData={canEditTenantData}
-            canSelectImportSheet={canSelectImportSheet}
-            canSaveImport={canSaveImport}
-            isBusy={isBusy}
-            onSelectFile={selectExcelImportFile}
-            onPreviewSheet={previewSelectedImportSheet}
-            onSaveImport={saveExcelImport}
-            onResolveRow={resolveImportRow}
-            onCreateMaterialFromRow={createMaterialFromImportRow}
-            onAcceptSuggestion={acceptImportSuggestion}
-            onCreateAliasFromRow={createAliasFromImportRow}
-          />
-
-          <AiAssistantPanel
-            active={activeView === "ai"}
-            requirementText={requirementText}
-            requirementParse={requirementParse}
-            agentPlan={agentPlan}
-            aiRuns={aiRuns}
-            canParseRequirements={canParseRequirements}
-            canPlanRequirements={canPlanRequirements}
-            canEditTenantData={canEditTenantData}
-            isBusy={isBusy}
-            onRequirementTextChange={setRequirementText}
-            onParseRequirements={parseRequirements}
-            onPlanRequirements={planRequirements}
-            onRefreshAiRuns={refreshAiRuns}
-            onReuseInfeasibilityAction={reuseInfeasibilityAction}
-            onApplyOptimizerDraft={applyOptimizerDraft}
-          />
-
-          <FormulaBuilderWorkspace
-            active={activeView === "formula"}
-            totalPercentage={totalPercentage}
-            isFormulaBalanced={isFormulaBalanced}
-            basics={{
+        <WorkspacePanels
+          activeView={activeView}
+          settings={{
+            workspace,
+            workspaceName,
+            sessionEmail: session.user.email,
+            invitationForm,
+            tenantInvitations,
+            parameterForm,
+            activeJiraConnection,
+            jiraConnectionForm,
+            jiraMetadata,
+            jiraMappingKey,
+            isBusy,
+            canEditTenantData,
+            canManageTenantUsers,
+            canSaveJiraConnection,
+            canTestJiraConnection,
+            canLoadJiraMetadata,
+            canAuthorizeJiraOAuth,
+            showInvitationAdminPanel,
+            onWorkspaceNameChange: setWorkspaceName,
+            onCreateWorkspace: createWorkspace,
+            onInvitationFormChange: setInvitationForm,
+            onCreateTenantInvitation: createTenantInvitation,
+            onParameterFormChange: setParameterForm,
+            onCreateParameter: createParameter,
+            onJiraConnectionFormChange: setJiraConnectionForm,
+            onSaveJiraConnection: saveJiraConnection,
+            onRefreshJiraConnections: refreshJiraConnections,
+            onTestJiraConnection: testJiraConnection,
+            onLoadJiraMetadata: loadJiraMetadata,
+            onAuthorizeJiraOAuth: authorizeJiraOAuth,
+            onJiraMappingKeyChange: setJiraMappingKey,
+            onMapJiraField: mapJiraField,
+          }}
+          rawMaterials={{
+            rawMaterials: workspace.rawMaterials,
+            parameter: workspace.parameter,
+            materialForm,
+            aliasInputs,
+            canEditTenantData,
+            isBusy,
+            onMaterialFormChange: setMaterialForm,
+            onAliasInputsChange: setAliasInputs,
+            onCreateMaterial: createMaterial,
+            onAddFormulaLine: addFormulaLine,
+            onCreateAlias: createAlias,
+          }}
+          compatibility={{
+            rules: compatibilityRules,
+            rawMaterials: workspace.rawMaterials,
+            rawMaterialsById,
+            form: compatibilityRuleForm,
+            canEditTenantData,
+            canCreateRule: canCreateCompatibilityRule,
+            onFormChange: setCompatibilityRuleForm,
+            onCreateRule: createCompatibilityRule,
+          }}
+          library={{
+            formulas,
+            calculationHistory,
+            formulaCompareSelection,
+            comparisonConstraintForm,
+            comparisonMaterialOptions,
+            canEditTenantData,
+            canCompareSavedFormulas,
+            isBusy,
+            savedFormulaComparison,
+            comparisonComplianceSummary,
+            comparisonConstraintEvaluations,
+            comparisonConstraintIssueCount,
+            visibleComparisonConstraintEvaluations,
+            showOnlyConstraintIssues,
+            onSelectFormula: selectFormulaForComparison,
+            onRefreshLibrary: refreshFormulaLibrary,
+            onCompareSavedFormulas: compareSavedFormulas,
+            onOpenFormula: openFormula,
+            onUpdateConstraint: updateComparisonConstraint,
+            onShowOnlyConstraintIssuesChange: setShowOnlyConstraintIssues,
+          }}
+          excelImport={{
+            importPreview,
+            importFileName,
+            availableImportSheets,
+            selectedImportSheet,
+            rawMaterials: workspace.rawMaterials,
+            canEditTenantData,
+            canSelectImportSheet,
+            canSaveImport,
+            isBusy,
+            onSelectFile: selectExcelImportFile,
+            onPreviewSheet: previewSelectedImportSheet,
+            onSaveImport: saveExcelImport,
+            onResolveRow: resolveImportRow,
+            onCreateMaterialFromRow: createMaterialFromImportRow,
+            onAcceptSuggestion: acceptImportSuggestion,
+            onCreateAliasFromRow: createAliasFromImportRow,
+          }}
+          aiAssistant={{
+            requirementText,
+            requirementParse,
+            agentPlan,
+            aiRuns,
+            canParseRequirements,
+            canPlanRequirements,
+            canEditTenantData,
+            isBusy,
+            onRequirementTextChange: setRequirementText,
+            onParseRequirements: parseRequirements,
+            onPlanRequirements: planRequirements,
+            onRefreshAiRuns: refreshAiRuns,
+            onReuseInfeasibilityAction: reuseInfeasibilityAction,
+            onApplyOptimizerDraft: applyOptimizerDraft,
+          }}
+          formulaBuilder={{
+            totalPercentage,
+            isFormulaBalanced,
+            basics: {
               isOpen: builderSections.basics,
               isBusy,
               hasActiveJiraConnection: Boolean(activeJiraConnection),
               values: formulaBasicsValue,
               onToggle: toggleBuilderSection,
               onChange: updateFormulaBasics,
-            }}
-            materials={{
+            },
+            materials: {
               isOpen: builderSections.materials,
               catalogLoading,
               catalogTotal,
@@ -752,8 +734,8 @@ export default function Home() {
               onAddFormulaLine: addFormulaLine,
               onToggleExpandedMaterial: toggleExpandedMaterial,
               onClearComparison: clearComparisonMaterials,
-            }}
-            composition={{
+            },
+            composition: {
               isOpen: builderSections.formula,
               lineCount: workspace.formulaLines.length,
               totalPercentage,
@@ -784,8 +766,8 @@ export default function Home() {
               onUpdateLine: updateFormulaLine,
               onDuplicateLine: duplicateFormulaLine,
               onRemoveLine: removeFormulaLine,
-            }}
-            calculation={{
+            },
+            calculation: {
               isOpen: builderSections.calculation,
               isBackendResult: Boolean(result),
               parameterRows,
@@ -802,10 +784,10 @@ export default function Home() {
               onShowOnlyPositiveChange: setShowOnlyPositiveParameters,
               onSelectParameterView: selectCurrentParameterView,
               onSaveFormula: saveFormula,
-            }}
-          />
-
-          <CalculationResultsPanel active={activeView === "results"} result={result} />
+            },
+          }}
+          results={{ result }}
+        />
       </div>
     </AppShell>
   );
