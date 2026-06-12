@@ -5,7 +5,6 @@ import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
 import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
 import { useExcelImportState } from "./excel-import-state";
-import { WorkspacePanels } from "./workspace-panels";
 import {
   useSavedFormulaComparisonDerivedState,
   useSavedFormulaComparisonState,
@@ -25,7 +24,6 @@ import {
   useWorkspaceAuthSession,
 } from "./workspace-auth-session";
 import { useWorkspaceCapabilities } from "./workspace-capabilities";
-import { AppShell } from "./app-shell";
 import { useWorkspaceCoreState } from "./workspace-core-state";
 import { useRawMaterialWorkspaceState } from "./raw-material-state";
 import { useFormulaWorkspaceState } from "./formula-workspace-state";
@@ -33,6 +31,7 @@ import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
 import { useJiraConnectionState } from "./jira-connection-state";
 import { WorkspaceAuthGate } from "./workspace-auth-gate";
+import { WorkspaceHomeView } from "./workspace-home-view";
 import { useWorkspaceShellState } from "./workspace-shell-state";
 
 export function WorkspaceHome() {
@@ -521,7 +520,7 @@ export function WorkspaceHome() {
   }
 
   return (
-    <AppShell
+    <WorkspaceHomeView
       activeView={activeView}
       workspace={workspace}
       sessionEmail={session.user.email}
@@ -530,11 +529,8 @@ export function WorkspaceHome() {
       isBusy={isBusy}
       onViewChange={setActiveView}
       onSignOut={signOut}
-    >
-      <div className="grid">
-        <WorkspacePanels
-          activeView={activeView}
-          settings={{
+      panels={{
+        settings: {
             workspace,
             workspaceName,
             sessionEmail: session.user.email,
@@ -567,8 +563,8 @@ export function WorkspaceHome() {
             onAuthorizeJiraOAuth: authorizeJiraOAuth,
             onJiraMappingKeyChange: setJiraMappingKey,
             onMapJiraField: mapJiraField,
-          }}
-          rawMaterials={{
+        },
+        rawMaterials: {
             rawMaterials: workspace.rawMaterials,
             parameter: workspace.parameter,
             materialForm,
@@ -580,8 +576,8 @@ export function WorkspaceHome() {
             onCreateMaterial: createMaterial,
             onAddFormulaLine: addFormulaLine,
             onCreateAlias: createAlias,
-          }}
-          compatibility={{
+        },
+        compatibility: {
             rules: compatibilityRules,
             rawMaterials: workspace.rawMaterials,
             rawMaterialsById,
@@ -590,8 +586,8 @@ export function WorkspaceHome() {
             canCreateRule: canCreateCompatibilityRule,
             onFormChange: setCompatibilityRuleForm,
             onCreateRule: createCompatibilityRule,
-          }}
-          library={{
+        },
+        library: {
             formulas,
             calculationHistory,
             formulaCompareSelection,
@@ -612,8 +608,8 @@ export function WorkspaceHome() {
             onOpenFormula: openFormula,
             onUpdateConstraint: updateComparisonConstraint,
             onShowOnlyConstraintIssuesChange: setShowOnlyConstraintIssues,
-          }}
-          excelImport={{
+        },
+        excelImport: {
             importPreview,
             importFileName,
             availableImportSheets,
@@ -630,8 +626,8 @@ export function WorkspaceHome() {
             onCreateMaterialFromRow: createMaterialFromImportRow,
             onAcceptSuggestion: acceptImportSuggestion,
             onCreateAliasFromRow: createAliasFromImportRow,
-          }}
-          aiAssistant={{
+        },
+        aiAssistant: {
             requirementText,
             requirementParse,
             agentPlan,
@@ -646,8 +642,8 @@ export function WorkspaceHome() {
             onRefreshAiRuns: refreshAiRuns,
             onReuseInfeasibilityAction: reuseInfeasibilityAction,
             onApplyOptimizerDraft: applyOptimizerDraft,
-          }}
-          formulaBuilder={{
+        },
+        formulaBuilder: {
             totalPercentage,
             isFormulaBalanced,
             basics: {
@@ -762,10 +758,9 @@ export function WorkspaceHome() {
               onSelectParameterView: selectCurrentParameterView,
               onSaveFormula: saveFormula,
             },
-          }}
-          results={{ result }}
-        />
-      </div>
-    </AppShell>
+        },
+        results: { result },
+      }}
+    />
   );
 }

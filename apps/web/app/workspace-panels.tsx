@@ -9,7 +9,7 @@ import { RawMaterialsPanel } from "./raw-materials-panel";
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import { SettingsPanel } from "./settings-panel";
 
-type WorkspacePanelsProps = {
+export type WorkspacePanelsProps = {
   activeView: WorkspaceView;
   settings: Omit<ComponentProps<typeof SettingsPanel>, "active">;
   rawMaterials: Omit<ComponentProps<typeof RawMaterialsPanel>, "active">;
