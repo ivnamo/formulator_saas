@@ -15,13 +15,12 @@ import {
   Upload,
   UserCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { request } from "./workspace-api";
 import {
   emptyJiraConnectionForm,
   emptyWorkspace,
   formatDateTime,
-  mergeRawMaterials,
   normalizeCode,
   parseOptionalNumber,
   type CalculationResult,
@@ -36,7 +35,6 @@ import {
   type JiraConnectionForm,
   type JiraMetadataState,
   type MaterialForm,
-  type RawMaterial,
   type RequirementParse,
   type Status,
   type TenantInvitationRead,
@@ -68,7 +66,7 @@ import {
   isFormulaPercentageBalanced,
   selectVisibleParameterCodes,
 } from "./formula-builder-derived";
-import { useRawMaterialCatalog } from "./formula-builder-catalog";
+import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
 import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
 import { ExcelImportPanel } from "./excel-import-panel";
@@ -268,29 +266,13 @@ export default function Home() {
   });
   const { session, authChecked, authHeaders, headers, uploadHeaders } =
     useWorkspaceAuthSession(workspace.tenant);
-  const catalogParameterConditionKey = useMemo(
-    () =>
-      catalogParameterConditions
-        .map((condition) => `${condition.code}|${condition.min}|${condition.max}`)
-        .join("||"),
-    [catalogParameterConditions],
-  );
-  const mergeCatalogMaterials = useCallback((materials: RawMaterial[]) => {
-    setWorkspace((current) => ({
-      ...current,
-      rawMaterials: mergeRawMaterials(current.rawMaterials, materials),
-    }));
-  }, []);
-  const handleCatalogError = useCallback((errorMessage: string) => {
-    setError(errorMessage);
-  }, []);
   const {
     catalogMaterialIds,
     catalogTotal,
     catalogFamilies,
     catalogLoading,
     refreshCatalog,
-  } = useRawMaterialCatalog({
+  } = useFormulaBuilderCatalogState({
     enabled: Boolean(workspace.tenant && session?.access_token),
     headers,
     query: formulaMaterialQuery,
@@ -301,8 +283,10 @@ export default function Home() {
     parameterConditions: catalogParameterConditions,
     materialResultLimit,
     showOnlyPositiveParameters,
-    onMaterialsLoaded: mergeCatalogMaterials,
-    onError: handleCatalogError,
+    parameterViewPreset,
+    setWorkspace,
+    setMaterialResultLimit,
+    setError,
   });
   const {
     createWorkspace,
@@ -353,19 +337,6 @@ export default function Home() {
     tenant: workspace.tenant,
     loadAuthenticatedWorkspace,
   });
-
-  useEffect(() => {
-    setMaterialResultLimit(60);
-  }, [
-    catalogFamilyFilter,
-    catalogParameterConditionKey,
-    catalogPriceMax,
-    catalogPriceMin,
-    catalogPriceFilter,
-    formulaMaterialQuery,
-    parameterViewPreset,
-    showOnlyPositiveParameters,
-  ]);
 
   const rawMaterialsById = useMemo(
     () => buildRawMaterialsById(workspace.rawMaterials),

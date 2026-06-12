@@ -1,4 +1,4 @@
-import { useReducer, type Dispatch, type SetStateAction } from "react";
+import { useMemo, useReducer, type Dispatch, type SetStateAction } from "react";
 import {
   DEFAULT_BUILDER_SECTIONS,
   type BuilderSectionKey,
@@ -51,7 +51,7 @@ type FormulaBuilderUiAction =
     }
   | { type: "selectParameterView"; key: ParameterViewPresetKey; fallbackCodes: string[] }
   | { type: "toggleCustomParameterCode"; code: string }
-  | { type: "addCatalogParameterCondition"; code: string }
+  | { type: "addCatalogParameterCondition"; code?: string }
   | {
       type: "updateCatalogParameterCondition";
       id: string;
@@ -81,39 +81,45 @@ const initialFormulaBuilderUiState: FormulaBuilderUiState = {
 
 export function useFormulaBuilderUiState() {
   const [state, dispatch] = useReducer(formulaBuilderUiReducer, initialFormulaBuilderUiState);
+  const actions = useMemo(
+    () => ({
+      setFormulaMaterialQuery: makeSetter(dispatch, "setFormulaMaterialQuery"),
+      setParameterViewPreset: makeSetter(dispatch, "setParameterViewPreset"),
+      setCustomParameterCodes: makeSetter(dispatch, "setCustomParameterCodes"),
+      setShowOnlyPositiveParameters: makeSetter(dispatch, "setShowOnlyPositiveParameters"),
+      setCatalogFamilyFilter: makeSetter(dispatch, "setCatalogFamilyFilter"),
+      setCatalogPriceFilter: makeSetter(dispatch, "setCatalogPriceFilter"),
+      setCatalogPriceMin: makeSetter(dispatch, "setCatalogPriceMin"),
+      setCatalogPriceMax: makeSetter(dispatch, "setCatalogPriceMax"),
+      setCatalogParameterToAdd: makeSetter(dispatch, "setCatalogParameterToAdd"),
+      setCatalogParameterConditions: makeSetter(dispatch, "setCatalogParameterConditions"),
+      setMaterialResultLimit: makeSetter(dispatch, "setMaterialResultLimit"),
+      setSelectedMaterialId: makeSetter(dispatch, "setSelectedMaterialId"),
+      setComparisonMaterialIds: makeSetter(dispatch, "setComparisonMaterialIds"),
+      setExpandedMaterialIds: makeSetter(dispatch, "setExpandedMaterialIds"),
+      setBuilderSections: makeSetter(dispatch, "setBuilderSections"),
+      selectParameterView: (key: ParameterViewPresetKey, fallbackCodes: string[]) =>
+        dispatch({ type: "selectParameterView", key, fallbackCodes }),
+      toggleCustomParameterCode: (code: string) =>
+        dispatch({ type: "toggleCustomParameterCode", code }),
+      addCatalogParameterCondition: (code?: string) =>
+        dispatch({ type: "addCatalogParameterCondition", code }),
+      updateCatalogParameterCondition: (
+        id: string,
+        patch: Partial<Omit<CatalogParameterCondition, "id">>,
+      ) => dispatch({ type: "updateCatalogParameterCondition", id, patch }),
+      removeCatalogParameterCondition: (id: string) =>
+        dispatch({ type: "removeCatalogParameterCondition", id }),
+      resetCatalogFilters: () => dispatch({ type: "resetCatalogFilters" }),
+      toggleBuilderSection: (section: BuilderSectionKey) =>
+        dispatch({ type: "toggleBuilderSection", section }),
+    }),
+    [dispatch],
+  );
 
   return {
     ...state,
-    setFormulaMaterialQuery: makeSetter(dispatch, "setFormulaMaterialQuery"),
-    setParameterViewPreset: makeSetter(dispatch, "setParameterViewPreset"),
-    setCustomParameterCodes: makeSetter(dispatch, "setCustomParameterCodes"),
-    setShowOnlyPositiveParameters: makeSetter(dispatch, "setShowOnlyPositiveParameters"),
-    setCatalogFamilyFilter: makeSetter(dispatch, "setCatalogFamilyFilter"),
-    setCatalogPriceFilter: makeSetter(dispatch, "setCatalogPriceFilter"),
-    setCatalogPriceMin: makeSetter(dispatch, "setCatalogPriceMin"),
-    setCatalogPriceMax: makeSetter(dispatch, "setCatalogPriceMax"),
-    setCatalogParameterToAdd: makeSetter(dispatch, "setCatalogParameterToAdd"),
-    setCatalogParameterConditions: makeSetter(dispatch, "setCatalogParameterConditions"),
-    setMaterialResultLimit: makeSetter(dispatch, "setMaterialResultLimit"),
-    setSelectedMaterialId: makeSetter(dispatch, "setSelectedMaterialId"),
-    setComparisonMaterialIds: makeSetter(dispatch, "setComparisonMaterialIds"),
-    setExpandedMaterialIds: makeSetter(dispatch, "setExpandedMaterialIds"),
-    setBuilderSections: makeSetter(dispatch, "setBuilderSections"),
-    selectParameterView: (key: ParameterViewPresetKey, fallbackCodes: string[]) =>
-      dispatch({ type: "selectParameterView", key, fallbackCodes }),
-    toggleCustomParameterCode: (code: string) =>
-      dispatch({ type: "toggleCustomParameterCode", code }),
-    addCatalogParameterCondition: (code = state.catalogParameterToAdd) =>
-      dispatch({ type: "addCatalogParameterCondition", code }),
-    updateCatalogParameterCondition: (
-      id: string,
-      patch: Partial<Omit<CatalogParameterCondition, "id">>,
-    ) => dispatch({ type: "updateCatalogParameterCondition", id, patch }),
-    removeCatalogParameterCondition: (id: string) =>
-      dispatch({ type: "removeCatalogParameterCondition", id }),
-    resetCatalogFilters: () => dispatch({ type: "resetCatalogFilters" }),
-    toggleBuilderSection: (section: BuilderSectionKey) =>
-      dispatch({ type: "toggleBuilderSection", section }),
+    ...actions,
   };
 }
 
@@ -185,7 +191,7 @@ function formulaBuilderUiReducer(
           : [...state.customParameterCodes, action.code],
       };
     case "addCatalogParameterCondition": {
-      const normalizedCode = action.code.trim();
+      const normalizedCode = (action.code ?? state.catalogParameterToAdd).trim();
       if (
         !normalizedCode ||
         state.catalogParameterConditions.some((condition) => condition.code === normalizedCode)
