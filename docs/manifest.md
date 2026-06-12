@@ -102,6 +102,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_089_workspace_home_view_component.md`](00-meta/meta_089_workspace_home_view_component.md)
 - [`00-meta/meta_090_workspace_panel_props_constant.md`](00-meta/meta_090_workspace_panel_props_constant.md)
 - [`00-meta/meta_091_jira_integration_panel.md`](00-meta/meta_091_jira_integration_panel.md)
+- [`00-meta/meta_092_formula_builder_panel_props.md`](00-meta/meta_092_formula_builder_panel_props.md)
 
 ## Producto
 
