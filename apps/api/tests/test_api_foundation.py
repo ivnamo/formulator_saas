@@ -172,6 +172,68 @@ def test_raw_material_list_includes_current_price_parameters_and_aliases() -> No
     assert listed_material["aliases"] == ["Urea 46"]
 
 
+def test_raw_material_catalog_is_light_and_filterable() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "B", "name": "Boron", "unit": "%"},
+    ).json()
+    priced = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Boron Solution", "code": "BOR", "family": "Micros"},
+    ).json()
+    missing_price = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Plain Water", "code": "WATER", "family": "Carrier"},
+    ).json()
+
+    client.post(
+        f"/api/v1/raw-materials/{priced['id']}/prices",
+        headers=headers,
+        json={"price": 2.5, "currency": "EUR", "unit": "kg"},
+    )
+    client.post(
+        f"/api/v1/raw-materials/{priced['id']}/parameter-values",
+        headers=headers,
+        json={"parameter_id": parameter["id"], "value": 1.2},
+    )
+    client.post(
+        f"/api/v1/raw-materials/{missing_price['id']}/parameter-values",
+        headers=headers,
+        json={"parameter_id": parameter["id"], "value": 0},
+    )
+
+    filtered = client.get(
+        "/api/v1/raw-materials/catalog?price_filter=with_price&parameter=B&only_positive=true",
+        headers=headers,
+    )
+    missing = client.get(
+        "/api/v1/raw-materials/catalog?price_filter=missing_price&parameter=B&only_positive=false",
+        headers=headers,
+    )
+
+    assert filtered.status_code == 200
+    filtered_payload = filtered.json()
+    assert filtered_payload["total"] == 1
+    assert filtered_payload["items"][0]["name"] == "Boron Solution"
+    assert filtered_payload["items"][0]["current_price"]["price"] == 2.5
+    assert filtered_payload["items"][0]["parameter_count"] == 1
+    assert filtered_payload["items"][0]["positive_parameter_count"] == 1
+    assert filtered_payload["families"] == ["Carrier", "Micros"]
+    assert "parameters" not in filtered_payload["items"][0]
+
+    assert missing.status_code == 200
+    missing_payload = missing.json()
+    assert missing_payload["total"] == 1
+    assert missing_payload["items"][0]["name"] == "Plain Water"
+    assert missing_payload["items"][0]["positive_parameter_count"] == 0
+
+
 def test_compatibility_rules_are_tenant_scoped() -> None:
     client = make_client()
     tenant_a = create_tenant(client, USER_A, "tenant-a")

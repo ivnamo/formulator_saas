@@ -9,7 +9,7 @@ from datetime import date
 from difflib import SequenceMatcher
 from typing import Any
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine
 from sqlmodel import Session, select
@@ -80,6 +80,7 @@ from .schemas import (
     ParameterCreate,
     ParameterRead,
     RawMaterialCreate,
+    RawMaterialCatalogRead,
     RawMaterialAliasCreate,
     RawMaterialAliasRead,
     RawMaterialParameterValueCreate,
@@ -276,6 +277,34 @@ def register_routes(app: FastAPI) -> None:
         return Response(
             content=json.dumps(payload, default=str, separators=(",", ":")),
             media_type="application/json",
+        )
+
+    @app.get("/api/v1/raw-materials/catalog", response_model=RawMaterialCatalogRead)
+    def list_raw_material_catalog(
+        q: str | None = Query(default=None),
+        family: str | None = Query(default=None),
+        price_filter: str = Query(default="all"),
+        parameter: str | None = Query(default=None),
+        only_positive: bool = Query(default=True),
+        limit: int = Query(default=60, ge=1, le=250),
+        offset: int = Query(default=0, ge=0),
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        materials = session.exec(
+            select(RawMaterial).where(RawMaterial.tenant_id == tenant.tenant_id)
+        ).all()
+        return _raw_material_catalog_read(
+            session,
+            tenant.tenant_id,
+            materials,
+            q=q,
+            family=family,
+            price_filter=price_filter,
+            parameter=parameter,
+            only_positive=only_positive,
+            limit=limit,
+            offset=offset,
         )
 
     @app.post("/api/v1/raw-materials", response_model=RawMaterialRead, status_code=201)
@@ -970,6 +999,129 @@ def _raw_material_read_from_parts(
             for value, parameter in values
         ],
         "aliases": [alias.alias for alias in aliases],
+    }
+
+
+def _raw_material_catalog_read(
+    session: Session,
+    tenant_id: uuid.UUID,
+    materials: list[RawMaterial],
+    *,
+    q: str | None,
+    family: str | None,
+    price_filter: str,
+    parameter: str | None,
+    only_positive: bool,
+    limit: int,
+    offset: int,
+) -> dict[str, Any]:
+    material_ids = [material.id for material in materials]
+    if not material_ids:
+        return {"items": [], "total": 0, "limit": limit, "offset": offset, "families": []}
+
+    prices_by_material: dict[uuid.UUID, RawMaterialPrice] = {}
+    prices = session.exec(
+        select(RawMaterialPrice)
+        .where(
+            RawMaterialPrice.tenant_id == tenant_id,
+            RawMaterialPrice.raw_material_id.in_(material_ids),
+        )
+        .order_by(
+            RawMaterialPrice.raw_material_id,
+            RawMaterialPrice.valid_from.desc(),
+            RawMaterialPrice.created_at.desc(),
+        )
+    ).all()
+    for price in prices:
+        prices_by_material.setdefault(price.raw_material_id, price)
+
+    aliases_by_material: dict[uuid.UUID, list[RawMaterialAlias]] = defaultdict(list)
+    aliases = session.exec(
+        select(RawMaterialAlias)
+        .where(
+            RawMaterialAlias.tenant_id == tenant_id,
+            RawMaterialAlias.raw_material_id.in_(material_ids),
+        )
+        .order_by(RawMaterialAlias.raw_material_id, RawMaterialAlias.alias)
+    ).all()
+    for alias in aliases:
+        aliases_by_material[alias.raw_material_id].append(alias)
+
+    parameter_stats_by_material: dict[uuid.UUID, dict[str, Any]] = defaultdict(
+        lambda: {"count": 0, "positive_count": 0, "codes": set(), "positive_codes": set()}
+    )
+    values = session.exec(
+        select(RawMaterialParameterValue, Parameter)
+        .join(Parameter, RawMaterialParameterValue.parameter_id == Parameter.id)
+        .where(
+            RawMaterialParameterValue.tenant_id == tenant_id,
+            RawMaterialParameterValue.raw_material_id.in_(material_ids),
+            Parameter.tenant_id == tenant_id,
+        )
+    ).all()
+    for value, value_parameter in values:
+        stats = parameter_stats_by_material[value.raw_material_id]
+        code_key = _match_key(value_parameter.code)
+        stats["count"] += 1
+        stats["codes"].add(code_key)
+        if abs(value.value) > 0.0001:
+            stats["positive_count"] += 1
+            stats["positive_codes"].add(code_key)
+
+    query = _normalize(q or "")
+    family_filter = (family or "all").strip()
+    parameter_filter = _match_key(parameter)
+    normalized_price_filter = price_filter.strip().casefold()
+
+    filtered = []
+    for material in materials:
+        price = prices_by_material.get(material.id)
+        aliases_for_material = aliases_by_material[material.id]
+        stats = parameter_stats_by_material[material.id]
+
+        if family_filter and family_filter != "all" and material.family != family_filter:
+            continue
+        if normalized_price_filter == "with_price" and price is None:
+            continue
+        if normalized_price_filter == "missing_price" and price is not None:
+            continue
+        if parameter_filter:
+            parameter_codes = stats["positive_codes"] if only_positive else stats["codes"]
+            if parameter_filter not in parameter_codes:
+                continue
+        if query:
+            candidates = [
+                material.name,
+                material.normalized_name,
+                material.code or "",
+                material.external_code or "",
+                material.family or "",
+                material.subfamily or "",
+                *(alias.alias for alias in aliases_for_material),
+            ]
+            if not any(query in _normalize(candidate) for candidate in candidates):
+                continue
+
+        filtered.append(
+            {
+                **_model_dict(material),
+                "current_price": _model_dict(price) if price else None,
+                "parameter_count": int(stats["count"]),
+                "positive_parameter_count": int(stats["positive_count"]),
+                "aliases": [alias.alias for alias in aliases_for_material],
+            }
+        )
+
+    total = len(filtered)
+    return {
+        "items": filtered[offset : offset + limit],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "families": sorted(
+            {material.family for material in materials if material.family},
+            key=lambda value: value.casefold(),
+        ),
     }
 
 

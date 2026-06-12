@@ -318,6 +318,12 @@ label span {
   border-color: var(--border);
 }
 
+.iconButton[data-selected="true"] {
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--teal-dark);
+  border-color: var(--teal);
+}
+
 .iconButton.danger {
   color: var(--danger);
 }
@@ -1796,6 +1802,13 @@ label span {
   padding-left: 0;
 }
 
+.catalogWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.48fr);
+  gap: 10px;
+  align-items: start;
+}
+
 .quickMaterialList {
   display: grid;
   gap: 6px;
@@ -1915,6 +1928,137 @@ label span {
   font-size: 12px;
   font-weight: 800;
   text-align: right;
+}
+
+.materialInspector,
+.materialComparePanel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfc;
+  padding: 12px;
+}
+
+.materialInspectorHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.materialInspectorHeader > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.materialInspectorHeader span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.materialInspectorHeader strong {
+  min-width: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.materialInspectorHeader small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.materialInspectorStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.materialInspectorStats div {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: white;
+  padding: 8px;
+}
+
+.materialInspectorStats span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.materialInspectorStats strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.materialInspectorTable {
+  display: grid;
+  gap: 5px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.materialInspectorTable div,
+.materialCompareGrid div {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: white;
+  padding: 7px;
+}
+
+.materialInspectorTable span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialInspectorTable small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.materialInspectorTable code {
+  color: var(--teal-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialCompareGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 6px;
+}
+
+.materialCompareGrid strong {
+  min-width: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.materialCompareGrid code {
+  color: var(--teal-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialCompareGrid span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .parameterBadgeList {
@@ -2502,6 +2646,7 @@ label span {
   .complianceSummary,
   .comparisonColumns,
   .comparisonList div,
+  .catalogWorkspace,
   .constraintEvaluationList > div:not(.constraintEvaluationHeader):not(.constraintEvaluationEmpty),
   .constraintEvaluationHeader,
   .draftComparisonStats,
@@ -2552,6 +2697,7 @@ label span {
   }
 
   .draftReviewHeader,
+  .materialInspectorHeader,
   .draftReviewActions {
     flex-direction: column;
   }

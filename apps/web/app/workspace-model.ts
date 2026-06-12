@@ -22,6 +22,8 @@ export type RawMaterial = {
   isObsolete: boolean;
   price: number | null;
   parameterValue: number | null;
+  parameterCount: number;
+  positiveParameterCount: number;
   parameters: Record<string, RawMaterialParameterValue>;
   aliases: string[];
 };
@@ -45,6 +47,7 @@ export type FormulaLine = {
 export type WorkspaceState = {
   tenant: Tenant | null;
   parameter: Parameter | null;
+  parameters: Parameter[];
   rawMaterials: RawMaterial[];
   formulaId: string | null;
   formulaName: string;
@@ -108,6 +111,38 @@ export type RawMaterialRead = {
   aliases: string[];
 };
 
+export type RawMaterialCatalogItemRead = {
+  id: string;
+  tenant_id: string;
+  code: string | null;
+  external_code: string | null;
+  name: string;
+  family: string | null;
+  subfamily: string | null;
+  physical_state: string | null;
+  is_active: boolean;
+  is_obsolete: boolean;
+  current_price: {
+    price: number;
+    currency: string;
+    unit: string;
+    supplier: string | null;
+    source: string;
+    valid_from: string;
+  } | null;
+  parameter_count: number;
+  positive_parameter_count: number;
+  aliases: string[];
+};
+
+export type RawMaterialCatalogRead = {
+  items: RawMaterialCatalogItemRead[];
+  total: number;
+  limit: number;
+  offset: number;
+  families: string[];
+};
+
 export function toWorkspaceRawMaterial(
   material: RawMaterialRead,
   values: { price?: number | null; parameterValue?: number | null } = {},
@@ -122,6 +157,9 @@ export function toWorkspaceRawMaterial(
     isObsolete: material.is_obsolete,
     price: values.price ?? material.current_price?.price ?? null,
     parameterValue: values.parameterValue ?? null,
+    parameterCount: material.parameters.length,
+    positiveParameterCount: material.parameters.filter((parameter) => Math.abs(parameter.value) > 0.0001)
+      .length,
     parameters: Object.fromEntries(
       material.parameters.map((parameter) => [
         parameter.code,
@@ -138,6 +176,47 @@ export function toWorkspaceRawMaterial(
     ),
     aliases: material.aliases,
   };
+}
+
+export function toWorkspaceRawMaterialCatalogItem(
+  material: RawMaterialCatalogItemRead,
+): RawMaterial {
+  return {
+    id: material.id,
+    code: material.code,
+    externalCode: material.external_code,
+    name: material.name,
+    family: material.family,
+    isActive: material.is_active,
+    isObsolete: material.is_obsolete,
+    price: material.current_price?.price ?? null,
+    parameterValue: null,
+    parameterCount: material.parameter_count,
+    positiveParameterCount: material.positive_parameter_count,
+    parameters: {},
+    aliases: material.aliases,
+  };
+}
+
+export function mergeRawMaterials(
+  current: RawMaterial[],
+  incoming: RawMaterial[],
+): RawMaterial[] {
+  const next = new Map(current.map((material) => [material.id, material]));
+  for (const material of incoming) {
+    const existing = next.get(material.id);
+    next.set(material.id, {
+      ...existing,
+      ...material,
+      parameters:
+        Object.keys(material.parameters).length > 0
+          ? material.parameters
+          : (existing?.parameters ?? material.parameters),
+      aliases:
+        material.aliases.length > 0 || !existing ? material.aliases : existing.aliases,
+    });
+  }
+  return Array.from(next.values());
 }
 
 export function withRawMaterialAlias(
@@ -542,6 +621,7 @@ export type MaterialForm = {
 export const emptyWorkspace: WorkspaceState = {
   tenant: null,
   parameter: null,
+  parameters: [],
   rawMaterials: [],
   formulaId: null,
   formulaName: "Manual Formula",

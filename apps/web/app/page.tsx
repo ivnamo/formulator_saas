@@ -41,9 +41,11 @@ import {
   emptyWorkspace,
   formatDateTime,
   makeLocalId,
+  mergeRawMaterials,
   normalizeCode,
   parseOptionalNumber,
   slugify,
+  toWorkspaceRawMaterialCatalogItem,
   toWorkspaceRawMaterial,
   withRawMaterialAlias,
   withResolvedImportRow,
@@ -69,6 +71,7 @@ import {
   type JiraConnectionTest,
   type MaterialForm,
   type RawMaterial,
+  type RawMaterialCatalogRead,
   type RawMaterialAliasRead,
   type ParameterRead,
   type RawMaterialRead,
@@ -338,6 +341,17 @@ function materialParametersForView(
     .slice(0, limit);
 }
 
+function mergeParameters(
+  parameters: WorkspaceState["parameters"],
+  parameter: ParameterRead,
+): WorkspaceState["parameters"] {
+  const next = new Map<string, WorkspaceState["parameters"][number]>(
+    parameters.map((item) => [item.id, item]),
+  );
+  next.set(parameter.id, parameter);
+  return Array.from(next.values()).sort((left, right) => left.code.localeCompare(right.code));
+}
+
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
   const [workspaceName, setWorkspaceName] = useState("Workspace Lab");
@@ -362,6 +376,14 @@ export default function Home() {
     useState<"all" | "with_price" | "missing_price">("all");
   const [catalogParameterFilter, setCatalogParameterFilter] = useState("");
   const [materialResultLimit, setMaterialResultLimit] = useState(60);
+  const [catalogMaterialIds, setCatalogMaterialIds] = useState<string[]>([]);
+  const [catalogTotal, setCatalogTotal] = useState(0);
+  const [catalogFamilies, setCatalogFamilies] = useState<string[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogRefreshKey, setCatalogRefreshKey] = useState(0);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [comparisonMaterialIds, setComparisonMaterialIds] = useState<string[]>([]);
+  const [detailedMaterialIds, setDetailedMaterialIds] = useState<string[]>([]);
   const [expandedMaterialIds, setExpandedMaterialIds] = useState<string[]>([]);
   const [builderSections, setBuilderSections] =
     useState<Record<BuilderSectionKey, boolean>>(DEFAULT_BUILDER_SECTIONS);
@@ -500,6 +522,78 @@ export default function Home() {
     showOnlyPositiveParameters,
   ]);
 
+  useEffect(() => {
+    if (!workspace.tenant || !session?.access_token) {
+      setCatalogMaterialIds([]);
+      setCatalogTotal(0);
+      setCatalogFamilies([]);
+      return;
+    }
+
+    let cancelled = false;
+    const searchParams = new URLSearchParams({
+      limit: String(materialResultLimit),
+      offset: "0",
+      price_filter: catalogPriceFilter,
+      only_positive: String(showOnlyPositiveParameters),
+    });
+    const query = formulaMaterialQuery.trim();
+    const parameter = catalogParameterFilter.trim();
+    if (query) {
+      searchParams.set("q", query);
+    }
+    if (catalogFamilyFilter !== "all") {
+      searchParams.set("family", catalogFamilyFilter);
+    }
+    if (parameter) {
+      searchParams.set("parameter", parameter);
+    }
+
+    setCatalogLoading(true);
+    request<RawMaterialCatalogRead>(`/api/v1/raw-materials/catalog?${searchParams}`, {
+      method: "GET",
+      headers,
+    })
+      .then((catalog) => {
+        if (cancelled) {
+          return;
+        }
+        const materials = catalog.items.map(toWorkspaceRawMaterialCatalogItem);
+        setCatalogMaterialIds(materials.map((material) => material.id));
+        setCatalogTotal(catalog.total);
+        setCatalogFamilies(catalog.families);
+        setWorkspace((current) => ({
+          ...current,
+          rawMaterials: mergeRawMaterials(current.rawMaterials, materials),
+        }));
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setError(error instanceof Error ? error.message : "Could not load raw materials");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCatalogLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    catalogFamilyFilter,
+    catalogParameterFilter,
+    catalogPriceFilter,
+    catalogRefreshKey,
+    formulaMaterialQuery,
+    headers,
+    materialResultLimit,
+    session?.access_token,
+    showOnlyPositiveParameters,
+    workspace.tenant,
+  ]);
+
   const rawMaterialsById = useMemo(
     () => new Map(workspace.rawMaterials.map((material) => [material.id, material])),
     [workspace.rawMaterials],
@@ -533,6 +627,16 @@ export default function Home() {
         positiveMaterialCount: number;
       }
     >();
+    for (const parameter of workspace.parameters) {
+      catalog.set(parameter.code, {
+        code: parameter.code,
+        name: parameter.name,
+        unit: parameter.unit,
+        family: parameterFamilyForCode(parameter.code),
+        materialCount: 0,
+        positiveMaterialCount: 0,
+      });
+    }
     for (const material of workspace.rawMaterials) {
       for (const parameter of Object.values(material.parameters)) {
         const existing = catalog.get(parameter.code);
@@ -553,16 +657,6 @@ export default function Home() {
         });
       }
     }
-    if (workspace.parameter && !catalog.has(workspace.parameter.code)) {
-      catalog.set(workspace.parameter.code, {
-        code: workspace.parameter.code,
-        name: workspace.parameter.name,
-        unit: workspace.parameter.unit,
-        family: parameterFamilyForCode(workspace.parameter.code),
-        materialCount: 0,
-        positiveMaterialCount: 0,
-      });
-    }
     return Array.from(catalog.values()).sort((left, right) => {
       const familyDelta = parameterFamilyRank(left.family) - parameterFamilyRank(right.family);
       if (familyDelta !== 0) {
@@ -570,7 +664,7 @@ export default function Home() {
       }
       return left.code.localeCompare(right.code);
     });
-  }, [workspace.parameter, workspace.rawMaterials]);
+  }, [workspace.parameters, workspace.rawMaterials]);
   const visibleParameterCodes = useMemo(() => {
     const preset = PARAMETER_VIEW_PRESETS.find((option) => option.key === parameterViewPreset);
     if (!preset || preset.key === "all") {
@@ -675,92 +769,27 @@ export default function Home() {
       warnings: previewWarnings,
     };
   }, [formulaLineDetails, visibleParameterCodeSet]);
-  const materialSearchMatches = useMemo(() => {
-    const query = normalizeLookup(formulaMaterialQuery);
-    const normalizedParameterFilter = normalizeParameterLookup(catalogParameterFilter);
+  const materialSearchResults = useMemo(() => {
     const selectedIds = new Set(workspace.formulaLines.map((line) => line.rawMaterialId));
-    const matches = workspace.rawMaterials.filter((material) => {
-      if (selectedIds.has(material.id)) {
-        return false;
-      }
-      if (catalogPriceFilter === "with_price" && material.price === null) {
-        return false;
-      }
-      if (catalogPriceFilter === "missing_price" && material.price !== null) {
-        return false;
-      }
-      if (catalogFamilyFilter !== "all" && material.family !== catalogFamilyFilter) {
-        return false;
-      }
-      if (query) {
-        const searchable = [
-          material.code,
-          material.externalCode,
-          material.name,
-          material.family,
-          ...material.aliases,
-        ]
-          .map(normalizeLookup)
-          .join(" ");
-        if (!searchable.includes(query)) {
-          return false;
-        }
-      }
-      if (normalizedParameterFilter) {
-        const matchingParameters = Object.values(material.parameters).filter((parameter) => {
-          const normalizedCode = normalizeParameterLookup(parameter.code);
-          const normalizedName = normalizeParameterLookup(parameter.name);
-          const normalizedFamily = normalizeParameterLookup(parameterFamilyForCode(parameter.code));
-          const matchesParameter =
-            normalizedParameterFilter.length <= 4
-              ? normalizedCode === normalizedParameterFilter ||
-                normalizedCode.startsWith(normalizedParameterFilter)
-              : normalizedCode.includes(normalizedParameterFilter) ||
-                normalizedName.includes(normalizedParameterFilter) ||
-                normalizedFamily.includes(normalizedParameterFilter);
-          return (
-            matchesParameter &&
-            parameterMatchesPositiveFilter(parameter.value, showOnlyPositiveParameters)
-          );
-        });
-        if (matchingParameters.length === 0) {
-          return false;
-        }
-      }
-      return true;
-    });
-    return matches.sort((left, right) => {
-      const leftVisibleValues = materialParametersForView(
-        left,
+    return catalogMaterialIds
+      .map((id) => rawMaterialsById.get(id))
+      .filter((material): material is RawMaterial => Boolean(material))
+      .filter((material) => !selectedIds.has(material.id));
+  }, [catalogMaterialIds, rawMaterialsById, workspace.formulaLines]);
+  const selectedMaterial = selectedMaterialId
+    ? (rawMaterialsById.get(selectedMaterialId) ?? null)
+    : null;
+  const selectedMaterialParameters = selectedMaterial
+    ? materialParametersForView(
+        selectedMaterial,
         visibleParameterCodes,
         showOnlyPositiveParameters,
-        100,
-      ).length;
-      const rightVisibleValues = materialParametersForView(
-        right,
-        visibleParameterCodes,
-        showOnlyPositiveParameters,
-        100,
-      ).length;
-      if (leftVisibleValues !== rightVisibleValues) {
-        return rightVisibleValues - leftVisibleValues;
-      }
-      return left.name.localeCompare(right.name);
-    });
-  }, [
-    catalogFamilyFilter,
-    catalogParameterFilter,
-    catalogPriceFilter,
-    formulaMaterialQuery,
-    showOnlyPositiveParameters,
-    visibleParameterCodes,
-    workspace.formulaLines,
-    workspace.rawMaterials,
-  ]);
-  const materialSearchResults = useMemo(
-    () => materialSearchMatches.slice(0, materialResultLimit),
-    [materialResultLimit, materialSearchMatches],
-  );
+        200,
+      )
+    : [];
+  const comparisonMaterials = comparisonMaterialIds
+    .map((id) => rawMaterialsById.get(id))
+    .filter((material): material is RawMaterial => Boolean(material));
   const parameterRows = useMemo(() => {
     const rows = result
       ? result.parameters.map((parameter) => ({
@@ -776,15 +805,8 @@ export default function Home() {
     });
   }, [localPreview.parameters, result, showOnlyPositiveParameters, visibleParameterCodeSet]);
   const catalogMaterialFamilies = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          workspace.rawMaterials
-            .map((material) => material.family)
-            .filter((family): family is string => Boolean(family)),
-        ),
-      ).sort(),
-    [workspace.rawMaterials],
+    () => catalogFamilies,
+    [catalogFamilies],
   );
   const draftComparison = useMemo(
     () => buildDraftComparison(draftReview, workspace.formulaLines, rawMaterialsById),
@@ -930,12 +952,61 @@ export default function Home() {
     }));
   }
 
-  function toggleExpandedMaterial(rawMaterialId: string) {
+  async function ensureRawMaterialDetail(rawMaterialId: string): Promise<RawMaterial | null> {
+    const existing = rawMaterialsById.get(rawMaterialId);
+    if (existing && detailedMaterialIds.includes(rawMaterialId)) {
+      return existing;
+    }
+    if (!workspace.tenant) {
+      return existing ?? null;
+    }
+
+    try {
+      const material = await request<RawMaterialRead>(`/api/v1/raw-materials/${rawMaterialId}`, {
+        method: "GET",
+        headers,
+      });
+      const detailed = toWorkspaceRawMaterial(material, {
+        parameterValue: workspace.parameter
+          ? (material.parameters.find((parameter) => parameter.code === workspace.parameter?.code)
+              ?.value ?? null)
+          : null,
+      });
+      setWorkspace((current) => ({
+        ...current,
+        rawMaterials: mergeRawMaterials(current.rawMaterials, [detailed]),
+      }));
+      setDetailedMaterialIds((current) =>
+        current.includes(rawMaterialId) ? current : [...current, rawMaterialId],
+      );
+      return detailed;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not load raw material detail");
+      return existing ?? null;
+    }
+  }
+
+  async function inspectMaterial(rawMaterialId: string) {
+    setSelectedMaterialId(rawMaterialId);
+    await ensureRawMaterialDetail(rawMaterialId);
+  }
+
+  async function toggleCompareMaterial(rawMaterialId: string) {
+    setComparisonMaterialIds((current) =>
+      current.includes(rawMaterialId)
+        ? current.filter((id) => id !== rawMaterialId)
+        : [...current.slice(-2), rawMaterialId],
+    );
+    await ensureRawMaterialDetail(rawMaterialId);
+  }
+
+  async function toggleExpandedMaterial(rawMaterialId: string) {
     setExpandedMaterialIds((current) =>
       current.includes(rawMaterialId)
         ? current.filter((candidate) => candidate !== rawMaterialId)
         : [...current, rawMaterialId],
     );
+    await ensureRawMaterialDetail(rawMaterialId);
   }
 
   async function createWorkspace() {
@@ -1011,12 +1082,8 @@ export default function Home() {
         return;
       }
       const tenantHeaders = { ...baseHeaders, "X-Tenant-Id": tenant.id };
-      const [parameters, materials, invitations] = await Promise.all([
+      const [parameters, invitations] = await Promise.all([
         request<ParameterRead[]>("/api/v1/parameters", {
-          method: "GET",
-          headers: tenantHeaders,
-        }),
-        request<RawMaterialRead[]>("/api/v1/raw-materials", {
           method: "GET",
           headers: tenantHeaders,
         }),
@@ -1033,16 +1100,16 @@ export default function Home() {
         ...emptyWorkspace,
         tenant,
         parameter: activeParameter,
-        rawMaterials: materials.map((material) =>
-          toWorkspaceRawMaterial(material, {
-            parameterValue: activeParameter
-              ? (material.parameters.find((parameter) => parameter.code === activeParameter.code)
-                  ?.value ?? null)
-              : null,
-          }),
-        ),
+        parameters,
+        rawMaterials: [],
         formulaName: `${tenant.name} Formula`,
       });
+      setCatalogMaterialIds([]);
+      setCatalogTotal(0);
+      setCatalogFamilies([]);
+      setSelectedMaterialId(null);
+      setComparisonMaterialIds([]);
+      setDetailedMaterialIds([]);
       setWorkspaceName(tenant.name);
       setResult(null);
       setFormulas([]);
@@ -1127,11 +1194,13 @@ export default function Home() {
       setWorkspace((current) => ({
         ...current,
         parameter,
+        parameters: mergeParameters(current.parameters, parameter),
       }));
       setComparisonConstraintForm((current) => ({
         ...current,
         parameterCode: parameter.code,
       }));
+      setCatalogRefreshKey((current) => current + 1);
       setResult(null);
       setMessage("Parameter ready");
     });
@@ -1182,8 +1251,7 @@ export default function Home() {
 
       setWorkspace((current) => ({
         ...current,
-        rawMaterials: [
-          ...current.rawMaterials,
+        rawMaterials: mergeRawMaterials(current.rawMaterials, [
           {
             ...toWorkspaceRawMaterial(material, {
               price,
@@ -1204,8 +1272,12 @@ export default function Home() {
                   }
                 : {},
           },
-        ],
+        ]),
       }));
+      setDetailedMaterialIds((current) =>
+        current.includes(material.id) ? current : [...current, material.id],
+      );
+      setCatalogRefreshKey((current) => current + 1);
       setMaterialForm({ code: "", name: "", price: "", parameterValue: "" });
       setResult(null);
       resetImportState();
@@ -1238,8 +1310,12 @@ export default function Home() {
       });
       setWorkspace((current) => ({
         ...current,
-        rawMaterials: [...current.rawMaterials, toWorkspaceRawMaterial(material)],
+        rawMaterials: mergeRawMaterials(current.rawMaterials, [toWorkspaceRawMaterial(material)]),
       }));
+      setDetailedMaterialIds((current) =>
+        current.includes(material.id) ? current : [...current, material.id],
+      );
+      setCatalogRefreshKey((current) => current + 1);
       setImportPreview((current) =>
         current ? withResolvedImportRow(current, row.row_number, material.id) : current,
       );
@@ -1268,6 +1344,7 @@ export default function Home() {
         ...current,
         rawMaterials: withRawMaterialAlias(current.rawMaterials, rawMaterialId, created.alias),
       }));
+      setCatalogRefreshKey((current) => current + 1);
       setAliasInputs((current) => ({ ...current, [rawMaterialId]: "" }));
       resetImportState();
       setMessage("Alias ready");
@@ -1729,7 +1806,8 @@ export default function Home() {
     });
   }
 
-  function addFormulaLine(rawMaterialId: string) {
+  async function addFormulaLine(rawMaterialId: string) {
+    await ensureRawMaterialDetail(rawMaterialId);
     setWorkspace((current) => ({
       ...current,
       formulaLines: [
@@ -1940,6 +2018,10 @@ export default function Home() {
               isObsolete: false,
               price: material?.price_eur_per_kg ?? null,
               parameterValue: activeParameter?.value ?? null,
+              parameterCount: Object.keys(activeParameterMap).length,
+              positiveParameterCount: Object.values(activeParameterMap).filter(
+                (parameter) => Math.abs(parameter.value) > 0.0001,
+              ).length,
               parameters: activeParameterMap,
               aliases: [],
             };
@@ -2087,6 +2169,9 @@ export default function Home() {
         calculation: true,
       }));
       resetImportState();
+      await Promise.all(
+        formula.items.map((item) => ensureRawMaterialDetail(item.raw_material_id)),
+      );
       await loadCalculationHistory(formula.id);
       await loadFormulaReviewRequests(formula.id);
       setMessage("Formula opened");
@@ -3130,7 +3215,7 @@ export default function Home() {
                       <button
                         className="iconButton"
                         type="button"
-                        onClick={() => addFormulaLine(material.id)}
+                        onClick={() => void addFormulaLine(material.id)}
                         disabled={isBusy}
                         title="Add to formula"
                         aria-label={`Add ${material.name} to formula`}
@@ -4227,7 +4312,8 @@ export default function Home() {
                 <span>
                   <strong>2. Materias primas</strong>
                   <small>
-                    {materialSearchMatches.length} disponibles - {visibleParameterSummary}
+                    {catalogLoading ? "Cargando catalogo" : `${catalogTotal} disponibles`} -{" "}
+                    {visibleParameterSummary}
                   </small>
                 </span>
                 <ChevronDown size={18} />
@@ -4342,16 +4428,17 @@ export default function Home() {
                   </details>
                   <div className="catalogResultMeta">
                     <span>
-                      Mostrando {materialSearchResults.length} de {materialSearchMatches.length}
+                      Mostrando {materialSearchResults.length} de {catalogTotal}
+                      {catalogLoading ? " - cargando" : ""}
                     </span>
                     <div>
-                      {materialSearchResults.length < materialSearchMatches.length ? (
+                      {materialResultLimit < catalogTotal ? (
                         <button
                           className="textButton"
                           type="button"
                           onClick={() =>
                             setMaterialResultLimit((current) =>
-                              Math.min(current + 60, materialSearchMatches.length),
+                              Math.min(current + 60, catalogTotal),
                             )
                           }
                         >
@@ -4372,33 +4459,42 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
-                  <div className="quickMaterialList">
-                    {workspace.rawMaterials.length === 0 ? (
-                      <div className="empty">Crea o importa materias primas para empezar.</div>
-                    ) : materialSearchResults.length === 0 ? (
-                      <div className="empty">No hay materias disponibles con ese filtro.</div>
-                    ) : (
-                      materialSearchResults.map((material) => {
+                  <div className="catalogWorkspace">
+                    <div className="quickMaterialList">
+                      {catalogLoading && materialSearchResults.length === 0 ? (
+                        <div className="empty">Cargando materias primas...</div>
+                      ) : workspace.rawMaterials.length === 0 && catalogTotal === 0 ? (
+                        <div className="empty">Crea o importa materias primas para empezar.</div>
+                      ) : materialSearchResults.length === 0 ? (
+                        <div className="empty">No hay materias disponibles con ese filtro.</div>
+                      ) : (
+                        materialSearchResults.map((material) => {
                         const isSelected = workspace.formulaLines.some(
                           (line) => line.rawMaterialId === material.id,
                         );
-                        const parameterPreview = materialParametersForView(
-                          material,
-                          visibleParameterCodes,
-                          showOnlyPositiveParameters,
-                          5,
-                        );
-                        const detailParameters = materialParametersForView(
-                          material,
-                          visibleParameterCodes,
-                          showOnlyPositiveParameters,
-                          120,
-                        );
+                        const hasMaterialDetail = detailedMaterialIds.includes(material.id);
+                        const parameterPreview = hasMaterialDetail
+                          ? materialParametersForView(
+                              material,
+                              visibleParameterCodes,
+                              showOnlyPositiveParameters,
+                              5,
+                            )
+                          : [];
+                        const detailParameters = hasMaterialDetail
+                          ? materialParametersForView(
+                              material,
+                              visibleParameterCodes,
+                              showOnlyPositiveParameters,
+                              120,
+                            )
+                          : [];
                         const isExpanded = expandedMaterialIds.includes(material.id);
+                        const isCompared = comparisonMaterialIds.includes(material.id);
                         return (
                           <div
                             className="quickMaterial"
-                            data-selected={isSelected}
+                            data-selected={isSelected || selectedMaterialId === material.id}
                             key={material.id}
                           >
                             <span className="quickMaterialMain">
@@ -4417,22 +4513,43 @@ export default function Home() {
                               ) : (
                                 <span className="parameterBadgeList emptyBadges">
                                   <em>
-                                    {showOnlyPositiveParameters
-                                      ? "Sin valores > 0 en esta vista"
-                                      : "Sin parametros en esta vista"}
+                                    {hasMaterialDetail
+                                      ? showOnlyPositiveParameters
+                                        ? "Sin valores > 0 en esta vista"
+                                        : "Sin parametros en esta vista"
+                                      : `${material.positiveParameterCount} valores > 0 de ${material.parameterCount}`}
                                   </em>
                                 </span>
                               )}
                             </span>
                             <span className="quickMaterialMeta">
                               <code>{formatFormulaNumber(material.price, " EUR/kg")}</code>
-                              <small>{Object.keys(material.parameters).length} parametros</small>
+                              <small>{material.parameterCount} parametros</small>
                             </span>
                             <div className="quickMaterialActions">
                               <button
+                                className="iconButton"
+                                type="button"
+                                onClick={() => void inspectMaterial(material.id)}
+                                title="Inspeccionar materia"
+                                aria-label={`Inspeccionar ${material.name}`}
+                              >
+                                <ListChecks size={16} />
+                              </button>
+                              <button
+                                className="iconButton"
+                                type="button"
+                                data-selected={isCompared}
+                                onClick={() => void toggleCompareMaterial(material.id)}
+                                title="Comparar materia"
+                                aria-label={`Comparar ${material.name}`}
+                              >
+                                <Copy size={15} />
+                              </button>
+                              <button
                                 className="secondaryButton compactButton"
                                 type="button"
-                                onClick={() => addFormulaLine(material.id)}
+                                onClick={() => void addFormulaLine(material.id)}
                                 disabled={isBusy || isSelected}
                               >
                                 <Plus size={15} />
@@ -4441,7 +4558,7 @@ export default function Home() {
                               <button
                                 className="iconButton"
                                 type="button"
-                                onClick={() => toggleExpandedMaterial(material.id)}
+                                onClick={() => void toggleExpandedMaterial(material.id)}
                                 aria-label={`Ver parametros de ${material.name}`}
                                 title="Ver parametros"
                               >
@@ -4450,7 +4567,12 @@ export default function Home() {
                             </div>
                             {isExpanded ? (
                               <div className="materialParameterDetail">
-                                {detailParameters.length ? (
+                                {!hasMaterialDetail ? (
+                                  <div>
+                                    <span>Cargando detalle</span>
+                                    <code>-</code>
+                                  </div>
+                                ) : detailParameters.length ? (
                                   detailParameters.map((parameter) => (
                                     <div key={parameter.code}>
                                       <span>
@@ -4470,8 +4592,121 @@ export default function Home() {
                             ) : null}
                           </div>
                         );
-                      })
-                    )}
+                        })
+                      )}
+                    </div>
+                    {selectedMaterial ? (
+                      <aside className="materialInspector">
+                        <div className="materialInspectorHeader">
+                          <div>
+                            <span>Materia seleccionada</span>
+                            <strong>{selectedMaterial.name}</strong>
+                            <small>
+                              {selectedMaterial.code ?? "-"}
+                              {selectedMaterial.externalCode
+                                ? ` - ERP ${selectedMaterial.externalCode}`
+                                : ""}
+                              {selectedMaterial.family ? ` - ${selectedMaterial.family}` : ""}
+                            </small>
+                          </div>
+                          <button
+                            className="secondaryButton compactButton"
+                            type="button"
+                            onClick={() => void addFormulaLine(selectedMaterial.id)}
+                            disabled={
+                              isBusy ||
+                              workspace.formulaLines.some(
+                                (line) => line.rawMaterialId === selectedMaterial.id,
+                              )
+                            }
+                          >
+                            <Plus size={15} />
+                            Anadir
+                          </button>
+                        </div>
+                        <div className="materialInspectorStats">
+                          <div>
+                            <span>Precio</span>
+                            <strong>
+                              {formatFormulaNumber(selectedMaterial.price, " EUR/kg")}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>Parametros</span>
+                            <strong>{selectedMaterial.parameterCount}</strong>
+                          </div>
+                          <div>
+                            <span>&gt; 0</span>
+                            <strong>{selectedMaterial.positiveParameterCount}</strong>
+                          </div>
+                        </div>
+                        <div className="materialInspectorTable">
+                          {selectedMaterialParameters.length ? (
+                            selectedMaterialParameters.map((parameter) => (
+                              <div key={parameter.code}>
+                                <span>
+                                  {parameterDisplayCode(parameter.code)}
+                                  <small>{parameterFamilyForCode(parameter.code)}</small>
+                                </span>
+                                <code>{formatParameterValue(parameter)}</code>
+                              </div>
+                            ))
+                          ) : (
+                            <div>
+                              <span>
+                                {detailedMaterialIds.includes(selectedMaterial.id)
+                                  ? "Sin parametros para esta vista"
+                                  : "Abre el detalle para cargar parametros"}
+                              </span>
+                              <code>-</code>
+                            </div>
+                          )}
+                        </div>
+                      </aside>
+                    ) : null}
+                    {comparisonMaterials.length ? (
+                      <aside className="materialComparePanel">
+                        <div className="materialInspectorHeader">
+                          <div>
+                            <span>Comparacion rapida</span>
+                            <strong>{comparisonMaterials.length} materias</strong>
+                            <small>Usa los mismos parametros visibles.</small>
+                          </div>
+                          <button
+                            className="textButton"
+                            type="button"
+                            onClick={() => setComparisonMaterialIds([])}
+                          >
+                            Limpiar
+                          </button>
+                        </div>
+                        <div className="materialCompareGrid">
+                          {comparisonMaterials.map((material) => {
+                            const parameters = materialParametersForView(
+                              material,
+                              visibleParameterCodes,
+                              showOnlyPositiveParameters,
+                              8,
+                            );
+                            return (
+                              <div key={material.id}>
+                                <strong>{material.name}</strong>
+                                <code>{formatFormulaNumber(material.price, " EUR/kg")}</code>
+                                {parameters.length ? (
+                                  parameters.map((parameter) => (
+                                    <span key={parameter.code}>
+                                      {formatParameterValue(parameter)}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span>Sin parametros en esta vista</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </aside>
+                    ) : null}
                   </div>
                 </div>
               ) : null}

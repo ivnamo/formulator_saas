@@ -104,6 +104,31 @@ class RawMaterialRead(RawMaterialCreate):
     aliases: list[str] = Field(default_factory=list)
 
 
+class RawMaterialCatalogItemRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    code: str | None
+    external_code: str | None
+    name: str
+    family: str | None
+    subfamily: str | None
+    physical_state: str | None
+    is_active: bool
+    is_obsolete: bool
+    current_price: dict[str, Any] | None = None
+    parameter_count: int
+    positive_parameter_count: int
+    aliases: list[str] = Field(default_factory=list)
+
+
+class RawMaterialCatalogRead(BaseModel):
+    items: list[RawMaterialCatalogItemRead]
+    total: int
+    limit: int
+    offset: int
+    families: list[str] = Field(default_factory=list)
+
+
 class RawMaterialAliasCreate(BaseModel):
     alias: str = Field(min_length=1)
     source: str = "manual"
