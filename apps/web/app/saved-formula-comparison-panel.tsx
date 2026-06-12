@@ -1,16 +1,11 @@
 import { FolderOpen, History, ListChecks, RefreshCw } from "lucide-react";
-import {
-  formatOptionalValue,
-  formatResultPrice,
-  formatSignedDelta,
-  formatSignedInteger,
-} from "./formula-formatters";
 import type {
   ComparisonConstraintField,
   ComparisonConstraintForm,
   FormulaCompareSelection,
   FormulaCompareSelectionField,
 } from "./saved-formula-comparison-state";
+import { SavedFormulaComparisonResult } from "./saved-formula-comparison-result";
 import {
   formatDateTime,
   type FormulaCalculationHistory,
@@ -50,17 +45,6 @@ type SavedFormulaComparisonPanelProps = {
   onUpdateConstraint: (field: ComparisonConstraintField, value: string) => void;
   onShowOnlyConstraintIssuesChange: (checked: boolean) => void;
 };
-
-function formatComplianceLeader(leader: "baseline" | "candidate" | "tie"): string {
-  if (leader === "tie") {
-    return "Tie";
-  }
-  return leader === "baseline" ? "Base leads" : "Candidate leads";
-}
-
-function formatComplianceLeaderBadge(leader: "baseline" | "candidate" | "tie"): string {
-  return leader === "baseline" ? "base" : leader;
-}
 
 export function SavedFormulaComparisonPanel({
   active,
@@ -269,183 +253,15 @@ export function SavedFormulaComparisonPanel({
         </div>
       </div>
       {savedFormulaComparison ? (
-        <div className="savedFormulaComparison">
-          <div className="comparisonHeader">
-            <div>
-              <span>Base</span>
-              <strong>{savedFormulaComparison.baseline.name}</strong>
-            </div>
-            <div>
-              <span>Candidate</span>
-              <strong>{savedFormulaComparison.candidate.name}</strong>
-            </div>
-          </div>
-          <div className="comparisonStats">
-            <div>
-              <span>Price</span>
-              <strong>
-                {formatResultPrice(savedFormulaComparison.baselineResult)} /{" "}
-                {formatResultPrice(savedFormulaComparison.candidateResult)}
-              </strong>
-              <code>
-                {formatSignedDelta(
-                  savedFormulaComparison.priceDelta,
-                  ` ${savedFormulaComparison.candidateResult.currency}/kg`,
-                )}
-              </code>
-            </div>
-            <div>
-              <span>Total</span>
-              <strong>
-                {savedFormulaComparison.baselineResult.total_percentage.toFixed(1)}% /{" "}
-                {savedFormulaComparison.candidateResult.total_percentage.toFixed(1)}%
-              </strong>
-              <code>{formatSignedDelta(savedFormulaComparison.totalDelta, "%")}</code>
-            </div>
-            <div>
-              <span>Lines</span>
-              <strong>
-                {savedFormulaComparison.baseline.items.length} /{" "}
-                {savedFormulaComparison.candidate.items.length}
-              </strong>
-              <code>
-                {formatSignedInteger(
-                  savedFormulaComparison.candidate.items.length -
-                    savedFormulaComparison.baseline.items.length,
-                )}
-              </code>
-            </div>
-          </div>
-          {comparisonComplianceSummary ? (
-            <div className="complianceSummary">
-              <div>
-                <span>Compliance</span>
-                <strong>{formatComplianceLeader(comparisonComplianceSummary.leader)}</strong>
-                <code data-state={comparisonComplianceSummary.leader}>
-                  {formatComplianceLeaderBadge(comparisonComplianceSummary.leader)}
-                </code>
-              </div>
-              <div>
-                <span>Base score</span>
-                <strong>
-                  {comparisonComplianceSummary.baseline.passed}/
-                  {comparisonComplianceSummary.baseline.total} passed
-                </strong>
-                <code data-state={comparisonComplianceSummary.baseline.status}>
-                  {comparisonComplianceSummary.baseline.failed} failed,{" "}
-                  {comparisonComplianceSummary.baseline.missing} missing
-                </code>
-              </div>
-              <div>
-                <span>Candidate score</span>
-                <strong>
-                  {comparisonComplianceSummary.candidate.passed}/
-                  {comparisonComplianceSummary.candidate.total} passed
-                </strong>
-                <code data-state={comparisonComplianceSummary.candidate.status}>
-                  {comparisonComplianceSummary.candidate.failed} failed,{" "}
-                  {comparisonComplianceSummary.candidate.missing} missing
-                </code>
-              </div>
-            </div>
-          ) : null}
-          {comparisonConstraintEvaluations.length ? (
-            <div className="constraintEvaluationList">
-              <div className="constraintEvaluationHeader">
-                <strong className="comparisonTitle">Constraints</strong>
-                <label className="constraintFilter">
-                  <input
-                    checked={showOnlyConstraintIssues}
-                    onChange={(event) =>
-                      onShowOnlyConstraintIssuesChange(event.target.checked)
-                    }
-                    type="checkbox"
-                  />
-                  <span>Needs attention</span>
-                  <code>{comparisonConstraintIssueCount}</code>
-                </label>
-              </div>
-              {visibleComparisonConstraintEvaluations.length ? (
-                visibleComparisonConstraintEvaluations.map((evaluation) => (
-                  <div key={evaluation.key}>
-                    <span>{evaluation.label}</span>
-                    <strong>{evaluation.rule}</strong>
-                    <span>
-                      {formatOptionalValue(evaluation.baselineValue, evaluation.unit)}
-                      <code data-state={evaluation.baselineStatus}>
-                        {evaluation.baselineStatus}
-                      </code>
-                      {evaluation.baselineExplanation ? (
-                        <small>{evaluation.baselineExplanation}</small>
-                      ) : null}
-                    </span>
-                    <span>
-                      {formatOptionalValue(evaluation.candidateValue, evaluation.unit)}
-                      <code data-state={evaluation.candidateStatus}>
-                        {evaluation.candidateStatus}
-                      </code>
-                      {evaluation.candidateExplanation ? (
-                        <small>{evaluation.candidateExplanation}</small>
-                      ) : null}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="constraintEvaluationEmpty">
-                  No constraints need attention.
-                </div>
-              )}
-            </div>
-          ) : null}
-          <div className="comparisonColumns">
-            <div className="comparisonList">
-              <div className="comparisonTitle">Parameters</div>
-              {savedFormulaComparison.parameterChanges.length ? (
-                savedFormulaComparison.parameterChanges.map((parameter) => (
-                  <div key={parameter.code}>
-                    <span>{parameter.code}</span>
-                    <strong>
-                      {formatOptionalValue(parameter.baseline, parameter.unit)} /{" "}
-                      {formatOptionalValue(parameter.candidate, parameter.unit)}
-                    </strong>
-                    <code>
-                      {formatSignedDelta(
-                        parameter.delta,
-                        parameter.unit ? ` ${parameter.unit}` : "",
-                      )}
-                    </code>
-                  </div>
-                ))
-              ) : (
-                <div>
-                  <span>Parameters</span>
-                  <strong>No calculated parameters</strong>
-                  <code>-</code>
-                </div>
-              )}
-            </div>
-            <div className="comparisonList">
-              <div className="comparisonTitle">Materials</div>
-              {savedFormulaComparison.lineChanges.length ? (
-                savedFormulaComparison.lineChanges.map((line) => (
-                  <div key={line.rawMaterialId}>
-                    <span>{line.name}</span>
-                    <strong>
-                      {line.proposed.toFixed(1)}% / {line.reviewed.toFixed(1)}%
-                    </strong>
-                    <code>{formatSignedDelta(line.delta, "%")}</code>
-                  </div>
-                ))
-              ) : (
-                <div>
-                  <span>Formula lines</span>
-                  <strong>No percentage changes</strong>
-                  <code>0.00%</code>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <SavedFormulaComparisonResult
+          comparison={savedFormulaComparison}
+          complianceSummary={comparisonComplianceSummary}
+          constraintEvaluations={comparisonConstraintEvaluations}
+          constraintIssueCount={comparisonConstraintIssueCount}
+          visibleConstraintEvaluations={visibleComparisonConstraintEvaluations}
+          showOnlyConstraintIssues={showOnlyConstraintIssues}
+          onShowOnlyConstraintIssuesChange={onShowOnlyConstraintIssuesChange}
+        />
       ) : null}
     </section>
   );
