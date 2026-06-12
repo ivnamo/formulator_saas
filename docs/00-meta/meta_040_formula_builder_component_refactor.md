@@ -20,13 +20,15 @@ El Formula Builder ya recupera el flujo operativo de legacy, pero quedo concentr
   - `ParameterPresetPicker`,
   - `FormulaProgressSummary`,
   - `FormulaLineTable`.
+  - `MaterialCatalogControls`.
+  - `MaterialCatalogWorkspace`.
+  - `FormulaCalculationPanel`.
 - Mantener en `page.tsx` la orquestacion de estado, API, guardado, calculo y Jira.
 - Registrar la regla solodev en README y ADR.
 
 ## Fuera de alcance
 
 - Rehacer el estado del builder con reducers.
-- Extraer la busqueda completa de materias primas.
 - Separar Jira review o draft review.
 - Cambiar CSS, layout o textos visibles.
 - Cambiar contratos API.
@@ -35,9 +37,12 @@ El Formula Builder ya recupera el flujo operativo de legacy, pero quedo concentr
 
 1. `page.tsx` deja de contener presets/familias/helpers del builder.
 2. La tabla de lineas de formula vive en componente presentacional.
-3. La UI mantiene los mismos handlers y comportamiento.
-4. Typecheck web pasa.
-5. La rama queda con commit atomico, push y worktree limpio.
+3. Los controles de busqueda/filtros del catalogo viven en componente presentacional.
+4. La lista/inspector/comparador de materias vive en componente presentacional.
+5. El panel de calculo vivo y guardado vive en componente presentacional.
+6. La UI mantiene los mismos handlers y comportamiento.
+7. Typecheck web pasa.
+8. La rama queda con commit atomico, push y worktree limpio.
 
 ## Validacion esperada
 
@@ -49,9 +54,7 @@ El Formula Builder ya recupera el flujo operativo de legacy, pero quedo concentr
 
 Extraer en una siguiente rama:
 
-- `FormulaMaterialSearch`
-- `MaterialInspector`
-- `MaterialComparePanel`
-- `FormulaCalculationPanel`
+- `DraftReviewPanel`,
+- `JiraReviewPanel`.
 
-Despues de ese segundo corte, valorar un reducer para estado local del builder.
+Despues de ese segundo corte, valorar un reducer para estado local del builder y mover helpers de calculo preview fuera de `Home`.

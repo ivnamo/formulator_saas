@@ -12,7 +12,6 @@ import {
   Download,
   ExternalLink,
   FileSpreadsheet,
-  Filter,
   FlaskConical,
   FolderOpen,
   History,
@@ -23,10 +22,8 @@ import {
   Plus,
   RefreshCw,
   Save,
-  Search,
   Send,
   Settings2,
-  Trash2,
   Upload,
   UserCircle,
 } from "lucide-react";
@@ -94,9 +91,7 @@ import {
   DEFAULT_BUILDER_SECTIONS,
   PARAMETER_VIEW_PRESETS,
   formatFormulaNumber,
-  formatParameterValue,
   materialParametersForView,
-  parameterDisplayCode,
   parameterFamilyForCode,
   parameterFamilyRank,
   type BuilderSectionKey,
@@ -105,8 +100,11 @@ import {
 } from "./formula-builder-model";
 import {
   BuilderStep,
+  FormulaCalculationPanel,
   FormulaLineTable,
   FormulaProgressSummary,
+  MaterialCatalogControls,
+  MaterialCatalogWorkspace,
   ParameterPresetPicker,
 } from "./formula-builder-components";
 
@@ -4268,481 +4266,66 @@ export default function Home() {
                       </div>
                     ) : null}
                   </div>
-                  <label className="fullWidthLabel">
-                    <span>Buscar y anadir materia prima</span>
-                    <div className="searchInputWrap">
-                      <Search size={16} />
-                      <input
-                        value={formulaMaterialQuery}
-                        onChange={(event) => setFormulaMaterialQuery(event.target.value)}
-                        placeholder="Nombre, codigo, SAP/ERP, alias o familia"
-                        disabled={!workspace.tenant || isBusy}
-                      />
-                    </div>
-                  </label>
-                  <details className="materialFilterPanel">
-                    <summary>
-                      <Filter size={16} />
-                      Filtros avanzados
-                      {catalogParameterConditions.length ? (
-                        <code>{catalogParameterConditions.length}</code>
-                      ) : null}
-                    </summary>
-                    <div className="materialFilterGrid">
-                      <label>
-                        <span>Familia materia</span>
-                        <select
-                          value={catalogFamilyFilter}
-                          onChange={(event) => setCatalogFamilyFilter(event.target.value)}
-                        >
-                          <option value="all">Todas</option>
-                          {catalogMaterialFamilies.map((family) => (
-                            <option key={family} value={family}>
-                              {family}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        <span>Precio</span>
-                        <select
-                          value={catalogPriceFilter}
-                          onChange={(event) =>
-                            setCatalogPriceFilter(
-                              event.target.value as "all" | "with_price" | "missing_price",
-                            )
-                          }
-                        >
-                          <option value="all">Todos</option>
-                          <option value="with_price">Con precio</option>
-                          <option value="missing_price">Sin precio</option>
-                        </select>
-                      </label>
-                      <label>
-                        <span>Precio min</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={catalogPriceMin}
-                          onChange={(event) => setCatalogPriceMin(event.target.value)}
-                          placeholder="0.00"
-                        />
-                      </label>
-                      <label>
-                        <span>Precio max</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={catalogPriceMax}
-                          onChange={(event) => setCatalogPriceMax(event.target.value)}
-                          placeholder="Sin limite"
-                        />
-                      </label>
-                      <label className="parameterFilterAdd">
-                        <span>Parametro tecnico</span>
-                        <select
-                          value={catalogParameterToAdd}
-                          onChange={(event) => setCatalogParameterToAdd(event.target.value)}
-                        >
-                          <option value="">Selecciona parametro</option>
-                          {parameterCatalog.map((parameter) => (
-                            <option key={parameter.code} value={parameter.code}>
-                              {parameterDisplayCode(parameter.code)} - {parameter.family}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <button
-                        className="secondaryButton compactButton"
-                        type="button"
-                        onClick={() => addCatalogParameterCondition()}
-                        disabled={!catalogParameterToAdd}
-                      >
-                        <Plus size={15} />
-                        Anadir filtro
-                      </button>
-                    </div>
-                    {catalogParameterConditions.length ? (
-                      <div className="parameterRangeFilters">
-                        {catalogParameterConditions.map((condition) => {
-                          const parameter = parameterCatalog.find(
-                            (candidate) => candidate.code === condition.code,
-                          );
-                          return (
-                            <div key={condition.id} className="parameterRangeFilter">
-                              <label>
-                                <span>Parametro</span>
-                                <select
-                                  value={condition.code}
-                                  onChange={(event) =>
-                                    updateCatalogParameterCondition(condition.id, {
-                                      code: event.target.value,
-                                    })
-                                  }
-                                >
-                                  {parameterCatalog.map((candidate) => (
-                                    <option key={candidate.code} value={candidate.code}>
-                                      {parameterDisplayCode(candidate.code)}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                              <label>
-                                <span>Min</span>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={condition.min}
-                                  onChange={(event) =>
-                                    updateCatalogParameterCondition(condition.id, {
-                                      min: event.target.value,
-                                    })
-                                  }
-                                  placeholder="sin min"
-                                />
-                              </label>
-                              <label>
-                                <span>Max</span>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={condition.max}
-                                  onChange={(event) =>
-                                    updateCatalogParameterCondition(condition.id, {
-                                      max: event.target.value,
-                                    })
-                                  }
-                                  placeholder="sin max"
-                                />
-                              </label>
-                              <span>
-                                {parameter?.unit ?? ""}
-                                <small>{parameter?.family ?? "Parametro"}</small>
-                              </span>
-                              <button
-                                className="iconButton danger"
-                                type="button"
-                                onClick={() => removeCatalogParameterCondition(condition.id)}
-                                title="Quitar filtro"
-                                aria-label={`Quitar filtro ${condition.code}`}
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="filterHint">
-                        Ejemplo: B entre 4 y 10, y Sum AA libres con minimo 0.01.
-                      </p>
-                    )}
-                    <div className="quickFilterChips" aria-label="Parametros visibles para filtrar">
-                      {parameterCatalog
-                        .filter((parameter) => visibleParameterCodeSet.has(parameter.code))
-                        .slice(0, 12)
-                        .map((parameter) => (
-                          <button
-                            key={parameter.code}
-                            className="segmentedChip"
-                            type="button"
-                            data-selected={catalogParameterConditions.some(
-                              (condition) => condition.code === parameter.code,
-                            )}
-                            onClick={() => addCatalogParameterCondition(parameter.code)}
-                          >
-                            {parameterDisplayCode(parameter.code)}
-                          </button>
-                        ))}
-                    </div>
-                  </details>
-                  <div className="catalogResultMeta">
-                    <span>
-                      Mostrando {materialSearchResults.length} de {catalogTotal}
-                      {catalogLoading ? " - cargando" : ""}
-                    </span>
-                    <div>
-                      {materialResultLimit < catalogTotal ? (
-                        <button
-                          className="textButton"
-                          type="button"
-                          onClick={() =>
-                            setMaterialResultLimit((current) =>
-                              Math.min(current + 60, catalogTotal),
-                            )
-                          }
-                        >
-                          Ver 60 mas
-                        </button>
-                      ) : null}
-                      <button
-                        className="textButton"
-                        type="button"
-                        onClick={() => {
-                          setFormulaMaterialQuery("");
-                          setCatalogFamilyFilter("all");
-                          setCatalogPriceFilter("all");
-                          setCatalogPriceMin("");
-                          setCatalogPriceMax("");
-                          setCatalogParameterToAdd("");
-                          setCatalogParameterConditions([]);
-                        }}
-                      >
-                        Reset filtros
-                      </button>
-                    </div>
-                  </div>
-                  <div className="catalogWorkspace">
-                    <div className="quickMaterialList">
-                      {catalogLoading && materialSearchResults.length === 0 ? (
-                        <div className="empty">Cargando materias primas...</div>
-                      ) : workspace.rawMaterials.length === 0 && catalogTotal === 0 ? (
-                        <div className="empty">Crea o importa materias primas para empezar.</div>
-                      ) : materialSearchResults.length === 0 ? (
-                        <div className="empty">No hay materias disponibles con ese filtro.</div>
-                      ) : (
-                        materialSearchResults.map((material) => {
-                        const isSelected = workspace.formulaLines.some(
-                          (line) => line.rawMaterialId === material.id,
-                        );
-                        const hasMaterialDetail = detailedMaterialIds.includes(material.id);
-                        const parameterPreview = hasMaterialDetail
-                          ? materialParametersForView(
-                              material,
-                              visibleParameterCodes,
-                              showOnlyPositiveParameters,
-                              5,
-                            )
-                          : [];
-                        const detailParameters = hasMaterialDetail
-                          ? materialParametersForView(
-                              material,
-                              visibleParameterCodes,
-                              showOnlyPositiveParameters,
-                              120,
-                            )
-                          : [];
-                        const isExpanded = expandedMaterialIds.includes(material.id);
-                        const isCompared = comparisonMaterialIds.includes(material.id);
-                        return (
-                          <div
-                            className="quickMaterial"
-                            data-selected={isSelected || selectedMaterialId === material.id}
-                            key={material.id}
-                          >
-                            <span className="quickMaterialMain">
-                              <strong>{material.name}</strong>
-                              <small>
-                                {material.code ?? "-"}
-                                {material.externalCode ? ` - ${material.externalCode}` : ""}
-                                {material.family ? ` - ${material.family}` : ""}
-                              </small>
-                              {parameterPreview.length ? (
-                                <span className="parameterBadgeList">
-                                  {parameterPreview.map((parameter) => (
-                                    <em key={parameter.code}>{formatParameterValue(parameter)}</em>
-                                  ))}
-                                </span>
-                              ) : (
-                                <span className="parameterBadgeList emptyBadges">
-                                  <em>
-                                    {hasMaterialDetail
-                                      ? showOnlyPositiveParameters
-                                        ? "Sin valores > 0 en esta vista"
-                                        : "Sin parametros en esta vista"
-                                      : `${material.positiveParameterCount} valores > 0 de ${material.parameterCount}`}
-                                  </em>
-                                </span>
-                              )}
-                            </span>
-                            <span className="quickMaterialMeta">
-                              <code>{formatFormulaNumber(material.price, " EUR/kg")}</code>
-                              <small>{material.parameterCount} parametros</small>
-                            </span>
-                            <div className="quickMaterialActions">
-                              <button
-                                className="iconButton"
-                                type="button"
-                                onClick={() => void inspectMaterial(material.id)}
-                                title="Inspeccionar materia"
-                                aria-label={`Inspeccionar ${material.name}`}
-                              >
-                                <ListChecks size={16} />
-                              </button>
-                              <button
-                                className="iconButton"
-                                type="button"
-                                data-selected={isCompared}
-                                onClick={() => void toggleCompareMaterial(material.id)}
-                                title="Comparar materia"
-                                aria-label={`Comparar ${material.name}`}
-                              >
-                                <Copy size={15} />
-                              </button>
-                              <button
-                                className="secondaryButton compactButton"
-                                type="button"
-                                onClick={() => void addFormulaLine(material.id)}
-                                disabled={isBusy || isSelected}
-                              >
-                                <Plus size={15} />
-                                {isSelected ? "En formula" : "Anadir"}
-                              </button>
-                              <button
-                                className="iconButton"
-                                type="button"
-                                onClick={() => void toggleExpandedMaterial(material.id)}
-                                aria-label={`Ver parametros de ${material.name}`}
-                                title="Ver parametros"
-                              >
-                                <ChevronDown size={16} />
-                              </button>
-                            </div>
-                            {isExpanded ? (
-                              <div className="materialParameterDetail">
-                                {!hasMaterialDetail ? (
-                                  <div>
-                                    <span>Cargando detalle</span>
-                                    <code>-</code>
-                                  </div>
-                                ) : detailParameters.length ? (
-                                  detailParameters.map((parameter) => (
-                                    <div key={parameter.code}>
-                                      <span>
-                                        {parameterDisplayCode(parameter.code)}
-                                        <small>{parameterFamilyForCode(parameter.code)}</small>
-                                      </span>
-                                      <code>{formatParameterValue(parameter)}</code>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div>
-                                    <span>Sin parametros para la vista actual</span>
-                                    <code>-</code>
-                                  </div>
-                                )}
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                        })
-                      )}
-                    </div>
-                    {selectedMaterial ? (
-                      <aside className="materialInspector">
-                        <div className="materialInspectorHeader">
-                          <div>
-                            <span>Materia seleccionada</span>
-                            <strong>{selectedMaterial.name}</strong>
-                            <small>
-                              {selectedMaterial.code ?? "-"}
-                              {selectedMaterial.externalCode
-                                ? ` - ERP ${selectedMaterial.externalCode}`
-                                : ""}
-                              {selectedMaterial.family ? ` - ${selectedMaterial.family}` : ""}
-                            </small>
-                          </div>
-                          <button
-                            className="secondaryButton compactButton"
-                            type="button"
-                            onClick={() => void addFormulaLine(selectedMaterial.id)}
-                            disabled={
-                              isBusy ||
-                              workspace.formulaLines.some(
-                                (line) => line.rawMaterialId === selectedMaterial.id,
-                              )
-                            }
-                          >
-                            <Plus size={15} />
-                            Anadir
-                          </button>
-                        </div>
-                        <div className="materialInspectorStats">
-                          <div>
-                            <span>Precio</span>
-                            <strong>
-                              {formatFormulaNumber(selectedMaterial.price, " EUR/kg")}
-                            </strong>
-                          </div>
-                          <div>
-                            <span>Parametros</span>
-                            <strong>{selectedMaterial.parameterCount}</strong>
-                          </div>
-                          <div>
-                            <span>&gt; 0</span>
-                            <strong>{selectedMaterial.positiveParameterCount}</strong>
-                          </div>
-                        </div>
-                        <div className="materialInspectorTable">
-                          {selectedMaterialParameters.length ? (
-                            selectedMaterialParameters.map((parameter) => (
-                              <div key={parameter.code}>
-                                <span>
-                                  {parameterDisplayCode(parameter.code)}
-                                  <small>{parameterFamilyForCode(parameter.code)}</small>
-                                </span>
-                                <code>{formatParameterValue(parameter)}</code>
-                              </div>
-                            ))
-                          ) : (
-                            <div>
-                              <span>
-                                {detailedMaterialIds.includes(selectedMaterial.id)
-                                  ? "Sin parametros para esta vista"
-                                  : "Abre el detalle para cargar parametros"}
-                              </span>
-                              <code>-</code>
-                            </div>
-                          )}
-                        </div>
-                      </aside>
-                    ) : null}
-                    {comparisonMaterials.length ? (
-                      <aside className="materialComparePanel">
-                        <div className="materialInspectorHeader">
-                          <div>
-                            <span>Comparacion rapida</span>
-                            <strong>{comparisonMaterials.length} materias</strong>
-                            <small>Usa los mismos parametros visibles.</small>
-                          </div>
-                          <button
-                            className="textButton"
-                            type="button"
-                            onClick={() => setComparisonMaterialIds([])}
-                          >
-                            Limpiar
-                          </button>
-                        </div>
-                        <div className="materialCompareGrid">
-                          {comparisonMaterials.map((material) => {
-                            const parameters = materialParametersForView(
-                              material,
-                              visibleParameterCodes,
-                              showOnlyPositiveParameters,
-                              8,
-                            );
-                            return (
-                              <div key={material.id}>
-                                <strong>{material.name}</strong>
-                                <code>{formatFormulaNumber(material.price, " EUR/kg")}</code>
-                                {parameters.length ? (
-                                  parameters.map((parameter) => (
-                                    <span key={parameter.code}>
-                                      {formatParameterValue(parameter)}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span>Sin parametros en esta vista</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </aside>
-                    ) : null}
-                  </div>
+                  <MaterialCatalogControls
+                    query={formulaMaterialQuery}
+                    canSearch={Boolean(workspace.tenant) && !isBusy}
+                    catalogParameterConditions={catalogParameterConditions}
+                    catalogFamilyFilter={catalogFamilyFilter}
+                    catalogMaterialFamilies={catalogMaterialFamilies}
+                    catalogPriceFilter={catalogPriceFilter}
+                    catalogPriceMin={catalogPriceMin}
+                    catalogPriceMax={catalogPriceMax}
+                    catalogParameterToAdd={catalogParameterToAdd}
+                    parameterCatalog={parameterCatalog}
+                    visibleParameterCodeSet={visibleParameterCodeSet}
+                    resultCount={materialSearchResults.length}
+                    catalogTotal={catalogTotal}
+                    catalogLoading={catalogLoading}
+                    materialResultLimit={materialResultLimit}
+                    onQueryChange={setFormulaMaterialQuery}
+                    onFamilyFilterChange={setCatalogFamilyFilter}
+                    onPriceFilterChange={setCatalogPriceFilter}
+                    onPriceMinChange={setCatalogPriceMin}
+                    onPriceMaxChange={setCatalogPriceMax}
+                    onParameterToAddChange={setCatalogParameterToAdd}
+                    onAddCondition={addCatalogParameterCondition}
+                    onUpdateCondition={updateCatalogParameterCondition}
+                    onRemoveCondition={removeCatalogParameterCondition}
+                    onLoadMore={() =>
+                      setMaterialResultLimit((current) => Math.min(current + 60, catalogTotal))
+                    }
+                    onResetFilters={() => {
+                      setFormulaMaterialQuery("");
+                      setCatalogFamilyFilter("all");
+                      setCatalogPriceFilter("all");
+                      setCatalogPriceMin("");
+                      setCatalogPriceMax("");
+                      setCatalogParameterToAdd("");
+                      setCatalogParameterConditions([]);
+                    }}
+                  />
+                  <MaterialCatalogWorkspace
+                    catalogLoading={catalogLoading}
+                    catalogTotal={catalogTotal}
+                    materials={materialSearchResults}
+                    workspaceMaterialCount={workspace.rawMaterials.length}
+                    formulaLines={workspace.formulaLines}
+                    selectedMaterialId={selectedMaterialId}
+                    selectedMaterial={selectedMaterial}
+                    selectedMaterialParameters={selectedMaterialParameters}
+                    comparisonMaterials={comparisonMaterials}
+                    detailedMaterialIds={detailedMaterialIds}
+                    expandedMaterialIds={expandedMaterialIds}
+                    comparisonMaterialIds={comparisonMaterialIds}
+                    visibleParameterCodes={visibleParameterCodes}
+                    showOnlyPositiveParameters={showOnlyPositiveParameters}
+                    isBusy={isBusy}
+                    onInspectMaterial={inspectMaterial}
+                    onToggleCompareMaterial={toggleCompareMaterial}
+                    onAddFormulaLine={addFormulaLine}
+                    onToggleExpandedMaterial={toggleExpandedMaterial}
+                    onClearComparison={() => setComparisonMaterialIds([])}
+                  />
             </BuilderStep>
             <BuilderStep
               section="formula"
@@ -4999,101 +4582,23 @@ export default function Home() {
               bodyClassName="builderCalculationPanel"
               onToggle={toggleBuilderSection}
             >
-                  <div className="panelHeader">
-                    <h2>Calculo vivo</h2>
-                    <span>{result ? "Backend" : "Preview"}</span>
-                  </div>
-                  <div className="parameterControls">
-                    <div>
-                      <strong>{selectedParameterPreset.label}</strong>
-                      <span>{visibleParameterSummary}</span>
-                    </div>
-                    <label className="switchControl">
-                      <input
-                        type="checkbox"
-                        checked={showOnlyPositiveParameters}
-                        onChange={(event) => setShowOnlyPositiveParameters(event.target.checked)}
-                      />
-                      <span>Solo parametros &gt; 0</span>
-                    </label>
-                    <ParameterPresetPicker
-                      value={parameterViewPreset}
-                      onChange={selectParameterView}
-                      compact
-                    />
-                  </div>
-                  <div className="parameterList">
-                    {parameterRows.length ? (
-                      parameterRows.map((parameter) => (
-                        <div key={`${parameter.source}-${parameter.code}`}>
-                          <Beaker size={18} />
-                          <span>
-                            {parameterDisplayCode(parameter.code)}
-                            <small>{parameter.family}</small>
-                          </span>
-                          <code>
-                            {parameter.value.toFixed(2)} {parameter.unit ?? ""}
-                          </code>
-                        </div>
-                      ))
-                    ) : (
-                      <div>
-                        <Beaker size={18} />
-                        <span>
-                          No calculated parameters
-                        </span>
-                        <code>-</code>
-                      </div>
-                    )}
-                  </div>
-                  <div className="warningList">
-                    {visibleWarnings.length ? (
-                      visibleWarnings.map((warning, index) => {
-                        const severity = normalizeWarningSeverity(warning);
-                        return (
-                          <div
-                            data-severity={severity}
-                            key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}-${index}`}
-                          >
-                            <AlertTriangle size={16} />
-                            <span>
-                              <strong>{severity}</strong>
-                              {warning.message}
-                              {warning.recommended_action ? (
-                                <small>{warning.recommended_action}</small>
-                              ) : null}
-                            </span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div>No warnings</div>
-                    )}
-                  </div>
-                  <div className="formulaSavePanel" data-balanced={isFormulaBalanced}>
-                    <div>
-                      <span>Guardar formula</span>
-                      <strong>
-                        {isFormulaBalanced
-                          ? "Lista para guardar"
-                          : `No se puede guardar: suma ${totalPercentage.toFixed(1)}%`}
-                      </strong>
-                      <small>
-                        {isFormulaBalanced
-                          ? "Se guardara la formula y se recalculara el precio final oficial."
-                          : "El guardado queda bloqueado hasta que la formula sume 100.0%."}
-                      </small>
-                    </div>
-                    <button
-                      className="primaryButton"
-                      type="button"
-                      onClick={saveFormula}
-                      disabled={!canSaveFormula}
-                    >
-                      {isBusy ? <Loader2 className="spin" size={17} /> : <Save size={17} />}
-                      Guardar formula
-                    </button>
-                  </div>
+                  <FormulaCalculationPanel
+                    isBackendResult={Boolean(result)}
+                    parameterRows={parameterRows}
+                    visibleWarnings={visibleWarnings}
+                    selectedPresetLabel={selectedParameterPreset.label}
+                    visibleParameterSummary={visibleParameterSummary}
+                    showOnlyPositiveParameters={showOnlyPositiveParameters}
+                    parameterViewPreset={parameterViewPreset}
+                    isFormulaBalanced={isFormulaBalanced}
+                    totalPercentage={totalPercentage}
+                    isBusy={isBusy}
+                    canSaveFormula={canSaveFormula}
+                    onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
+                    onSelectParameterView={selectParameterView}
+                    normalizeWarningSeverity={normalizeWarningSeverity}
+                    onSaveFormula={saveFormula}
+                  />
             </BuilderStep>
           </section>
 
