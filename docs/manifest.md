@@ -116,6 +116,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_103_workspace_model_utils.md`](00-meta/meta_103_workspace_model_utils.md)
 - [`00-meta/meta_104_jira_connection_model.md`](00-meta/meta_104_jira_connection_model.md)
 - [`00-meta/meta_105_ai_workflow_model.md`](00-meta/meta_105_ai_workflow_model.md)
+- [`00-meta/meta_106_formula_domain_model.md`](00-meta/meta_106_formula_domain_model.md)
 
 ## Producto
 
