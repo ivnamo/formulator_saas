@@ -105,6 +105,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_092_formula_builder_panel_props.md`](00-meta/meta_092_formula_builder_panel_props.md)
 - [`00-meta/meta_093_saved_comparison_result_component.md`](00-meta/meta_093_saved_comparison_result_component.md)
 - [`00-meta/meta_094_ai_agent_plan_panel.md`](00-meta/meta_094_ai_agent_plan_panel.md)
+- [`00-meta/meta_095_jira_panel_sections.md`](00-meta/meta_095_jira_panel_sections.md)
 
 ## Producto
 
