@@ -1,7 +1,5 @@
 "use client";
 
-import { request } from "./workspace-api";
-import { formatDateTime } from "./workspace-model";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
@@ -238,7 +236,6 @@ export default function Home() {
     selectedParameterPreset,
     formulaBasicsValue,
     visibleParameterSummary,
-    localPreview,
     materialSearchResults,
     selectedMaterial,
     selectedMaterialParameters,
@@ -265,7 +262,6 @@ export default function Home() {
   });
   const {
     comparisonMaterialOptions,
-    comparisonConstraints,
     comparisonConstraintEvaluations,
     comparisonComplianceSummary,
     comparisonConstraintIssueCount,
@@ -469,7 +465,6 @@ export default function Home() {
     setMessage,
   });
   const {
-    prepareJiraReview,
     sendCurrentFormulaToJira,
     generateJiraReviewExcel,
     downloadJiraReviewArtifact,

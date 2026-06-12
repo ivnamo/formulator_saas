@@ -45,49 +45,6 @@ export function useJiraReviewActions({
   setError,
   setMessage,
 }: JiraReviewActionsOptions) {
-  const prepareJiraReview = useCallback(async () => {
-    if (!workspace.tenant || !workspace.formulaId) {
-      setError("Save the formula before preparing Jira review");
-      return;
-    }
-    if (!activeJiraConnection) {
-      setError("Configure Jira before preparing review");
-      return;
-    }
-    if (result === null) {
-      setError("Save and calculate before preparing Jira review");
-      return;
-    }
-
-    await runAction("Preparing Jira review", async () => {
-      const review = await request<FormulaReviewRequest>(
-        `/api/v1/formulas/${workspace.formulaId}/reviews/jira`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({}),
-        },
-      );
-      setFormulaReviewRequests((current) => [
-        review,
-        ...current.filter((item) => item.id !== review.id),
-      ]);
-      setFormulaReviewArtifacts((current) => ({ ...current, [review.id]: [] }));
-      setMessage("Jira review prepared");
-    });
-  }, [
-    activeJiraConnection,
-    headers,
-    result,
-    runAction,
-    setError,
-    setFormulaReviewArtifacts,
-    setFormulaReviewRequests,
-    setMessage,
-    workspace.formulaId,
-    workspace.tenant,
-  ]);
-
   const sendCurrentFormulaToJira = useCallback(async () => {
     if (!workspace.tenant || !workspace.formulaId) {
       setError("Save and calculate the formula before sending to Jira");
@@ -254,7 +211,6 @@ export function useJiraReviewActions({
   );
 
   return {
-    prepareJiraReview,
     sendCurrentFormulaToJira,
     generateJiraReviewExcel,
     downloadJiraReviewArtifact,
