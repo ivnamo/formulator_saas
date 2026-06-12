@@ -176,10 +176,15 @@ def test_raw_material_catalog_is_light_and_filterable() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
     headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
-    parameter = client.post(
+    boron = client.post(
         "/api/v1/parameters",
         headers=headers,
         json={"code": "B", "name": "Boron", "unit": "%"},
+    ).json()
+    amino = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "Sum AA libres", "name": "Free amino acids", "unit": "%"},
     ).json()
     priced = client.post(
         "/api/v1/raw-materials",
@@ -200,20 +205,30 @@ def test_raw_material_catalog_is_light_and_filterable() -> None:
     client.post(
         f"/api/v1/raw-materials/{priced['id']}/parameter-values",
         headers=headers,
-        json={"parameter_id": parameter["id"], "value": 1.2},
+        json={"parameter_id": boron["id"], "value": 5.5},
     )
     client.post(
-        f"/api/v1/raw-materials/{missing_price['id']}/parameter-values",
+        f"/api/v1/raw-materials/{priced['id']}/parameter-values",
         headers=headers,
-        json={"parameter_id": parameter["id"], "value": 0},
+        json={"parameter_id": amino["id"], "value": 0.2},
     )
 
     filtered = client.get(
-        "/api/v1/raw-materials/catalog?price_filter=with_price&parameter=B&only_positive=true",
+        "/api/v1/raw-materials/catalog",
+        params=[
+            ("price_filter", "with_price"),
+            ("parameter_range", "B|4|10"),
+            ("parameter_range", "Sum AA libres|0.01|"),
+        ],
         headers=headers,
     )
     missing = client.get(
         "/api/v1/raw-materials/catalog?price_filter=missing_price&parameter=B&only_positive=false",
+        headers=headers,
+    )
+    zero_boron = client.get(
+        "/api/v1/raw-materials/catalog",
+        params=[("parameter_range", "B|0|0")],
         headers=headers,
     )
 
@@ -222,8 +237,8 @@ def test_raw_material_catalog_is_light_and_filterable() -> None:
     assert filtered_payload["total"] == 1
     assert filtered_payload["items"][0]["name"] == "Boron Solution"
     assert filtered_payload["items"][0]["current_price"]["price"] == 2.5
-    assert filtered_payload["items"][0]["parameter_count"] == 1
-    assert filtered_payload["items"][0]["positive_parameter_count"] == 1
+    assert filtered_payload["items"][0]["parameter_count"] == 2
+    assert filtered_payload["items"][0]["positive_parameter_count"] == 2
     assert filtered_payload["families"] == ["Carrier", "Micros"]
     assert "parameters" not in filtered_payload["items"][0]
 
@@ -231,7 +246,13 @@ def test_raw_material_catalog_is_light_and_filterable() -> None:
     missing_payload = missing.json()
     assert missing_payload["total"] == 1
     assert missing_payload["items"][0]["name"] == "Plain Water"
+    assert missing_payload["items"][0]["parameter_count"] == 2
     assert missing_payload["items"][0]["positive_parameter_count"] == 0
+
+    assert zero_boron.status_code == 200
+    zero_boron_payload = zero_boron.json()
+    assert zero_boron_payload["total"] == 1
+    assert zero_boron_payload["items"][0]["name"] == "Plain Water"
 
 
 def test_compatibility_rules_are_tenant_scoped() -> None:

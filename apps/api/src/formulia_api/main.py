@@ -284,7 +284,10 @@ def register_routes(app: FastAPI) -> None:
         q: str | None = Query(default=None),
         family: str | None = Query(default=None),
         price_filter: str = Query(default="all"),
+        price_min: float | None = Query(default=None),
+        price_max: float | None = Query(default=None),
         parameter: str | None = Query(default=None),
+        parameter_range: list[str] = Query(default_factory=list),
         only_positive: bool = Query(default=True),
         limit: int = Query(default=60, ge=1, le=250),
         offset: int = Query(default=0, ge=0),
@@ -301,7 +304,10 @@ def register_routes(app: FastAPI) -> None:
             q=q,
             family=family,
             price_filter=price_filter,
+            price_min=price_min,
+            price_max=price_max,
             parameter=parameter,
+            parameter_range=parameter_range,
             only_positive=only_positive,
             limit=limit,
             offset=offset,
@@ -1010,7 +1016,10 @@ def _raw_material_catalog_read(
     q: str | None,
     family: str | None,
     price_filter: str,
+    price_min: float | None,
+    price_max: float | None,
     parameter: str | None,
+    parameter_range: list[str],
     only_positive: bool,
     limit: int,
     offset: int,
@@ -1047,8 +1056,23 @@ def _raw_material_catalog_read(
     for alias in aliases:
         aliases_by_material[alias.raw_material_id].append(alias)
 
+    active_parameters = session.exec(
+        select(Parameter).where(
+            Parameter.tenant_id == tenant_id,
+            Parameter.is_active.is_(True),
+        )
+    ).all()
+    active_parameter_keys = {_match_key(parameter.code) for parameter in active_parameters}
+    active_parameter_count = len(active_parameter_keys)
+
     parameter_stats_by_material: dict[uuid.UUID, dict[str, Any]] = defaultdict(
-        lambda: {"count": 0, "positive_count": 0, "codes": set(), "positive_codes": set()}
+        lambda: {
+            "count": active_parameter_count,
+            "positive_count": 0,
+            "codes": set(active_parameter_keys),
+            "positive_codes": set(),
+            "values": {},
+        }
     )
     values = session.exec(
         select(RawMaterialParameterValue, Parameter)
@@ -1062,15 +1086,18 @@ def _raw_material_catalog_read(
     for value, value_parameter in values:
         stats = parameter_stats_by_material[value.raw_material_id]
         code_key = _match_key(value_parameter.code)
-        stats["count"] += 1
         stats["codes"].add(code_key)
+        stats["values"][code_key] = value.value
         if abs(value.value) > 0.0001:
-            stats["positive_count"] += 1
             stats["positive_codes"].add(code_key)
+    for stats in parameter_stats_by_material.values():
+        stats["count"] = max(int(stats["count"]), len(stats["codes"]))
+        stats["positive_count"] = len(stats["positive_codes"])
 
     query = _normalize(q or "")
     family_filter = (family or "all").strip()
     parameter_filter = _match_key(parameter)
+    range_filters = _parse_catalog_parameter_ranges(parameter_range)
     normalized_price_filter = price_filter.strip().casefold()
 
     filtered = []
@@ -1085,10 +1112,21 @@ def _raw_material_catalog_read(
             continue
         if normalized_price_filter == "missing_price" and price is not None:
             continue
+        if price_min is not None and (price is None or price.price < price_min):
+            continue
+        if price_max is not None and (price is None or price.price > price_max):
+            continue
         if parameter_filter:
-            parameter_codes = stats["positive_codes"] if only_positive else stats["codes"]
-            if parameter_filter not in parameter_codes:
-                continue
+            if parameter_filter in active_parameter_keys:
+                value = stats["values"].get(parameter_filter, 0)
+                if only_positive and abs(value) <= 0.0001:
+                    continue
+            else:
+                parameter_codes = stats["positive_codes"] if only_positive else stats["codes"]
+                if parameter_filter not in parameter_codes:
+                    continue
+        if not _catalog_parameter_ranges_match(stats["values"], range_filters):
+            continue
         if query:
             candidates = [
                 material.name,
@@ -1123,6 +1161,45 @@ def _raw_material_catalog_read(
             key=lambda value: value.casefold(),
         ),
     }
+
+
+def _parse_catalog_parameter_ranges(
+    raw_ranges: list[str],
+) -> list[tuple[str, float | None, float | None]]:
+    ranges: list[tuple[str, float | None, float | None]] = []
+    for raw_range in raw_ranges:
+        parts = raw_range.split("|")
+        if not parts:
+            continue
+        code = _match_key(parts[0])
+        if not code:
+            continue
+        min_value = _parse_float_filter(parts[1]) if len(parts) > 1 else None
+        max_value = _parse_float_filter(parts[2]) if len(parts) > 2 else None
+        ranges.append((code, min_value, max_value))
+    return ranges
+
+
+def _parse_float_filter(value: str | None) -> float | None:
+    if value is None or value.strip() == "":
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def _catalog_parameter_ranges_match(
+    values: dict[str, float],
+    range_filters: list[tuple[str, float | None, float | None]],
+) -> bool:
+    for code, min_value, max_value in range_filters:
+        value = values.get(code, 0)
+        if min_value is not None and value < min_value:
+            return False
+        if max_value is not None and value > max_value:
+            return False
+    return True
 
 
 def _get_formula(session: Session, tenant_id: uuid.UUID, formula_id: uuid.UUID) -> Formula:

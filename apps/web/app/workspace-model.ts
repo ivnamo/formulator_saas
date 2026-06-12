@@ -146,7 +146,35 @@ export type RawMaterialCatalogRead = {
 export function toWorkspaceRawMaterial(
   material: RawMaterialRead,
   values: { price?: number | null; parameterValue?: number | null } = {},
+  activeParameters: Parameter[] = [],
 ): RawMaterial {
+  const parameterMap = new Map<string, RawMaterialParameterValue>();
+  for (const parameter of material.parameters) {
+    parameterMap.set(parameter.code, {
+      parameterId: parameter.parameter_id,
+      code: parameter.code,
+      name: parameter.name,
+      value: parameter.value,
+      unit: parameter.unit,
+      source: parameter.source,
+      confidence: parameter.confidence,
+    });
+  }
+  for (const parameter of activeParameters) {
+    if (!parameterMap.has(parameter.code)) {
+      parameterMap.set(parameter.code, {
+        parameterId: parameter.id,
+        code: parameter.code,
+        name: parameter.name,
+        value: 0,
+        unit: parameter.unit,
+        source: null,
+        confidence: null,
+      });
+    }
+  }
+  const parameters = Object.fromEntries(parameterMap);
+
   return {
     id: material.id,
     code: material.code,
@@ -157,23 +185,11 @@ export function toWorkspaceRawMaterial(
     isObsolete: material.is_obsolete,
     price: values.price ?? material.current_price?.price ?? null,
     parameterValue: values.parameterValue ?? null,
-    parameterCount: material.parameters.length,
-    positiveParameterCount: material.parameters.filter((parameter) => Math.abs(parameter.value) > 0.0001)
-      .length,
-    parameters: Object.fromEntries(
-      material.parameters.map((parameter) => [
-        parameter.code,
-        {
-          parameterId: parameter.parameter_id,
-          code: parameter.code,
-          name: parameter.name,
-          value: parameter.value,
-          unit: parameter.unit,
-          source: parameter.source,
-          confidence: parameter.confidence,
-        },
-      ]),
-    ),
+    parameterCount: parameterMap.size,
+    positiveParameterCount: Array.from(parameterMap.values()).filter(
+      (parameter) => Math.abs(parameter.value) > 0.0001,
+    ).length,
+    parameters,
     aliases: material.aliases,
   };
 }

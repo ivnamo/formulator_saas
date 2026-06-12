@@ -30,6 +30,7 @@ import {
   Settings2,
   Trash2,
   Upload,
+  UserCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -156,6 +157,13 @@ type ParameterViewPresetKey =
   | "custom";
 
 type BuilderSectionKey = "basics" | "materials" | "formula" | "calculation";
+
+type CatalogParameterCondition = {
+  id: string;
+  code: string;
+  min: string;
+  max: string;
+};
 
 const PARAMETER_VIEW_PRESETS: Array<{
   key: ParameterViewPresetKey;
@@ -374,7 +382,12 @@ export default function Home() {
   const [catalogFamilyFilter, setCatalogFamilyFilter] = useState("all");
   const [catalogPriceFilter, setCatalogPriceFilter] =
     useState<"all" | "with_price" | "missing_price">("all");
-  const [catalogParameterFilter, setCatalogParameterFilter] = useState("");
+  const [catalogPriceMin, setCatalogPriceMin] = useState("");
+  const [catalogPriceMax, setCatalogPriceMax] = useState("");
+  const [catalogParameterToAdd, setCatalogParameterToAdd] = useState("");
+  const [catalogParameterConditions, setCatalogParameterConditions] = useState<
+    CatalogParameterCondition[]
+  >([]);
   const [materialResultLimit, setMaterialResultLimit] = useState(60);
   const [catalogMaterialIds, setCatalogMaterialIds] = useState<string[]>([]);
   const [catalogTotal, setCatalogTotal] = useState(0);
@@ -470,6 +483,13 @@ export default function Home() {
     }),
     [session?.access_token, workspace.tenant],
   );
+  const catalogParameterConditionKey = useMemo(
+    () =>
+      catalogParameterConditions
+        .map((condition) => `${condition.code}|${condition.min}|${condition.max}`)
+        .join("||"),
+    [catalogParameterConditions],
+  );
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -515,7 +535,9 @@ export default function Home() {
     setMaterialResultLimit(60);
   }, [
     catalogFamilyFilter,
-    catalogParameterFilter,
+    catalogParameterConditionKey,
+    catalogPriceMax,
+    catalogPriceMin,
     catalogPriceFilter,
     formulaMaterialQuery,
     parameterViewPreset,
@@ -538,15 +560,26 @@ export default function Home() {
       only_positive: String(showOnlyPositiveParameters),
     });
     const query = formulaMaterialQuery.trim();
-    const parameter = catalogParameterFilter.trim();
     if (query) {
       searchParams.set("q", query);
     }
     if (catalogFamilyFilter !== "all") {
       searchParams.set("family", catalogFamilyFilter);
     }
-    if (parameter) {
-      searchParams.set("parameter", parameter);
+    if (catalogPriceMin.trim()) {
+      searchParams.set("price_min", catalogPriceMin.trim());
+    }
+    if (catalogPriceMax.trim()) {
+      searchParams.set("price_max", catalogPriceMax.trim());
+    }
+    for (const condition of catalogParameterConditions) {
+      if (!condition.code) {
+        continue;
+      }
+      searchParams.append(
+        "parameter_range",
+        `${condition.code}|${condition.min.trim()}|${condition.max.trim()}`,
+      );
     }
 
     setCatalogLoading(true);
@@ -583,7 +616,10 @@ export default function Home() {
     };
   }, [
     catalogFamilyFilter,
-    catalogParameterFilter,
+    catalogParameterConditionKey,
+    catalogParameterConditions,
+    catalogPriceMax,
+    catalogPriceMin,
     catalogPriceFilter,
     catalogRefreshKey,
     formulaMaterialQuery,
@@ -602,15 +638,10 @@ export default function Home() {
     () =>
       workspace.formulaLines.map((line, index) => {
         const material = rawMaterialsById.get(line.rawMaterialId);
-        const partialCost =
-          material?.price === null || material?.price === undefined
-            ? null
-            : (material.price * line.percentage) / 100;
         return {
           ...line,
           index,
           material,
-          partialCost,
         };
       }),
     [rawMaterialsById, workspace.formulaLines],
@@ -885,6 +916,7 @@ export default function Home() {
     workspace.formulaLines.length > 0 &&
     !hasPendingDraftReview &&
     !isBusy;
+  const canSaveFormula = canCalculate && isFormulaBalanced;
   const canCompareSavedFormulas =
     Boolean(workspace.tenant) &&
     Boolean(formulaCompareSelection.baselineId) &&
@@ -945,6 +977,50 @@ export default function Home() {
     setParameterViewPreset("custom");
   }
 
+  function addCatalogParameterCondition(code = catalogParameterToAdd) {
+    const normalizedCode = code.trim();
+    if (!normalizedCode) {
+      return;
+    }
+    setCatalogParameterConditions((current) => {
+      if (current.some((condition) => condition.code === normalizedCode)) {
+        return current;
+      }
+      return [
+        ...current,
+        {
+          id: makeLocalId(),
+          code: normalizedCode,
+          min: "",
+          max: "",
+        },
+      ];
+    });
+    setCatalogParameterToAdd("");
+  }
+
+  function updateCatalogParameterCondition(
+    id: string,
+    patch: Partial<Omit<CatalogParameterCondition, "id">>,
+  ) {
+    setCatalogParameterConditions((current) =>
+      current.map((condition) =>
+        condition.id === id
+          ? {
+              ...condition,
+              ...patch,
+            }
+          : condition,
+      ),
+    );
+  }
+
+  function removeCatalogParameterCondition(id: string) {
+    setCatalogParameterConditions((current) =>
+      current.filter((condition) => condition.id !== id),
+    );
+  }
+
   function toggleBuilderSection(section: BuilderSectionKey) {
     setBuilderSections((current) => ({
       ...current,
@@ -971,7 +1047,7 @@ export default function Home() {
           ? (material.parameters.find((parameter) => parameter.code === workspace.parameter?.code)
               ?.value ?? null)
           : null,
-      });
+      }, workspace.parameters);
       setWorkspace((current) => ({
         ...current,
         rawMaterials: mergeRawMaterials(current.rawMaterials, [detailed]),
@@ -1249,31 +1325,34 @@ export default function Home() {
         );
       }
 
-      setWorkspace((current) => ({
-        ...current,
-        rawMaterials: mergeRawMaterials(current.rawMaterials, [
+      setWorkspace((current) => {
+        const fullMaterial = toWorkspaceRawMaterial(
+          material,
           {
-            ...toWorkspaceRawMaterial(material, {
-              price,
-              parameterValue: current.parameter ? parameterValue : null,
-            }),
-            parameters:
-              current.parameter && parameterValue !== null
-                ? {
-                    [current.parameter.code]: {
-                      parameterId: current.parameter.id,
-                      code: current.parameter.code,
-                      name: current.parameter.name,
-                      value: parameterValue,
-                      unit: current.parameter.unit,
-                      source: "manual",
-                      confidence: null,
-                    },
-                  }
-                : {},
+            price,
+            parameterValue: current.parameter ? parameterValue : null,
           },
-        ]),
-      }));
+          current.parameters,
+        );
+        if (current.parameter && parameterValue !== null) {
+          fullMaterial.parameters[current.parameter.code] = {
+            parameterId: current.parameter.id,
+            code: current.parameter.code,
+            name: current.parameter.name,
+            value: parameterValue,
+            unit: current.parameter.unit,
+            source: "manual",
+            confidence: null,
+          };
+          fullMaterial.positiveParameterCount = Object.values(fullMaterial.parameters).filter(
+            (parameter) => Math.abs(parameter.value) > 0.0001,
+          ).length;
+        }
+        return {
+          ...current,
+          rawMaterials: mergeRawMaterials(current.rawMaterials, [fullMaterial]),
+        };
+      });
       setDetailedMaterialIds((current) =>
         current.includes(material.id) ? current : [...current, material.id],
       );
@@ -1310,7 +1389,9 @@ export default function Home() {
       });
       setWorkspace((current) => ({
         ...current,
-        rawMaterials: mergeRawMaterials(current.rawMaterials, [toWorkspaceRawMaterial(material)]),
+        rawMaterials: mergeRawMaterials(current.rawMaterials, [
+          toWorkspaceRawMaterial(material, {}, current.parameters),
+        ]),
       }));
       setDetailedMaterialIds((current) =>
         current.includes(material.id) ? current : [...current, material.id],
@@ -2058,7 +2139,7 @@ export default function Home() {
     });
   }
 
-  async function calculateFormula() {
+  async function saveFormula() {
     if (!workspace.tenant) {
       setError("Create a workspace first");
       return;
@@ -2067,12 +2148,21 @@ export default function Home() {
       setError("Add at least one formula line");
       return;
     }
+    if (!isFormulaBalanced) {
+      setError("La formula debe sumar exactamente 100% para poder guardarse.");
+      setBuilderSections((current) => ({
+        ...current,
+        formula: true,
+        calculation: true,
+      }));
+      return;
+    }
     if (hasPendingDraftReview) {
       setError("Confirm draft review before saving");
       return;
     }
 
-    await runAction("Calculating formula", async () => {
+    await runAction("Saving formula", async () => {
       const items = workspace.formulaLines.map((line, index) => ({
         raw_material_id: line.rawMaterialId,
         percentage: line.percentage,
@@ -2118,7 +2208,7 @@ export default function Home() {
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
       await loadFormulaReviewRequests(formula.id);
-      setMessage("Calculation complete");
+      setMessage("Formula saved");
     });
   }
 
@@ -2697,21 +2787,41 @@ export default function Home() {
                 : VIEW_DESCRIPTIONS[activeView]}
             </p>
           </div>
-          <div className="actions">
-            <button className="secondaryButton" type="button" onClick={signOut} disabled={isBusy}>
-              <LogOut size={17} />
-              Salir
-            </button>
-            <button
-              className="primaryButton"
-              type="button"
-              onClick={calculateFormula}
-              disabled={!canCalculate}
-            >
-              {isBusy ? <Loader2 className="spin" size={17} /> : <Calculator size={17} />}
-              Save & calculate
-            </button>
-          </div>
+          <details className="accountMenu">
+            <summary>
+              <span className="accountAvatar">
+                <UserCircle size={20} />
+              </span>
+              <span className="accountIdentity">
+                <strong>{session?.user.email ?? "Sesion activa"}</strong>
+                <small>{workspace.tenant?.role ?? "sin rol"}</small>
+              </span>
+              <ChevronDown size={15} />
+            </summary>
+            <div className="accountMenuPanel">
+              <button
+                className="accountMenuItem"
+                type="button"
+                onClick={() => setActiveView("settings")}
+              >
+                <Settings2 size={16} />
+                Cuenta y workspace
+              </button>
+              <a className="accountMenuItem" href="/update-password">
+                <KeyRound size={16} />
+                Cambiar contrasena
+              </a>
+              <button
+                className="accountMenuItem danger"
+                type="button"
+                onClick={signOut}
+                disabled={isBusy}
+              >
+                <LogOut size={16} />
+                Cerrar sesion
+              </button>
+            </div>
+          </details>
         </header>
 
         <div className="statusLine" data-state={status}>
@@ -4384,7 +4494,10 @@ export default function Home() {
                   <details className="materialFilterPanel">
                     <summary>
                       <Filter size={16} />
-                      Filtros de catalogo
+                      Filtros avanzados
+                      {catalogParameterConditions.length ? (
+                        <code>{catalogParameterConditions.length}</code>
+                      ) : null}
                     </summary>
                     <div className="materialFilterGrid">
                       <label>
@@ -4417,13 +4530,143 @@ export default function Home() {
                         </select>
                       </label>
                       <label>
-                        <span>Contiene parametro</span>
+                        <span>Precio min</span>
                         <input
-                          value={catalogParameterFilter}
-                          onChange={(event) => setCatalogParameterFilter(event.target.value)}
-                          placeholder="B, Zn, Ntotal, amino..."
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={catalogPriceMin}
+                          onChange={(event) => setCatalogPriceMin(event.target.value)}
+                          placeholder="0.00"
                         />
                       </label>
+                      <label>
+                        <span>Precio max</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={catalogPriceMax}
+                          onChange={(event) => setCatalogPriceMax(event.target.value)}
+                          placeholder="Sin limite"
+                        />
+                      </label>
+                      <label className="parameterFilterAdd">
+                        <span>Parametro tecnico</span>
+                        <select
+                          value={catalogParameterToAdd}
+                          onChange={(event) => setCatalogParameterToAdd(event.target.value)}
+                        >
+                          <option value="">Selecciona parametro</option>
+                          {parameterCatalog.map((parameter) => (
+                            <option key={parameter.code} value={parameter.code}>
+                              {parameterDisplayCode(parameter.code)} - {parameter.family}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        className="secondaryButton compactButton"
+                        type="button"
+                        onClick={() => addCatalogParameterCondition()}
+                        disabled={!catalogParameterToAdd}
+                      >
+                        <Plus size={15} />
+                        Anadir filtro
+                      </button>
+                    </div>
+                    {catalogParameterConditions.length ? (
+                      <div className="parameterRangeFilters">
+                        {catalogParameterConditions.map((condition) => {
+                          const parameter = parameterCatalog.find(
+                            (candidate) => candidate.code === condition.code,
+                          );
+                          return (
+                            <div key={condition.id} className="parameterRangeFilter">
+                              <label>
+                                <span>Parametro</span>
+                                <select
+                                  value={condition.code}
+                                  onChange={(event) =>
+                                    updateCatalogParameterCondition(condition.id, {
+                                      code: event.target.value,
+                                    })
+                                  }
+                                >
+                                  {parameterCatalog.map((candidate) => (
+                                    <option key={candidate.code} value={candidate.code}>
+                                      {parameterDisplayCode(candidate.code)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label>
+                                <span>Min</span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={condition.min}
+                                  onChange={(event) =>
+                                    updateCatalogParameterCondition(condition.id, {
+                                      min: event.target.value,
+                                    })
+                                  }
+                                  placeholder="sin min"
+                                />
+                              </label>
+                              <label>
+                                <span>Max</span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={condition.max}
+                                  onChange={(event) =>
+                                    updateCatalogParameterCondition(condition.id, {
+                                      max: event.target.value,
+                                    })
+                                  }
+                                  placeholder="sin max"
+                                />
+                              </label>
+                              <span>
+                                {parameter?.unit ?? ""}
+                                <small>{parameter?.family ?? "Parametro"}</small>
+                              </span>
+                              <button
+                                className="iconButton danger"
+                                type="button"
+                                onClick={() => removeCatalogParameterCondition(condition.id)}
+                                title="Quitar filtro"
+                                aria-label={`Quitar filtro ${condition.code}`}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="filterHint">
+                        Ejemplo: B entre 4 y 10, y Sum AA libres con minimo 0.01.
+                      </p>
+                    )}
+                    <div className="quickFilterChips" aria-label="Parametros visibles para filtrar">
+                      {parameterCatalog
+                        .filter((parameter) => visibleParameterCodeSet.has(parameter.code))
+                        .slice(0, 12)
+                        .map((parameter) => (
+                          <button
+                            key={parameter.code}
+                            className="segmentedChip"
+                            type="button"
+                            data-selected={catalogParameterConditions.some(
+                              (condition) => condition.code === parameter.code,
+                            )}
+                            onClick={() => addCatalogParameterCondition(parameter.code)}
+                          >
+                            {parameterDisplayCode(parameter.code)}
+                          </button>
+                        ))}
                     </div>
                   </details>
                   <div className="catalogResultMeta">
@@ -4452,7 +4695,10 @@ export default function Home() {
                           setFormulaMaterialQuery("");
                           setCatalogFamilyFilter("all");
                           setCatalogPriceFilter("all");
-                          setCatalogParameterFilter("");
+                          setCatalogPriceMin("");
+                          setCatalogPriceMax("");
+                          setCatalogParameterToAdd("");
+                          setCatalogParameterConditions([]);
                         }}
                       >
                         Reset filtros
@@ -4973,8 +5219,6 @@ export default function Home() {
                 <span>Codigo</span>
                 <span>Materia prima</span>
                 <span>%</span>
-                <span>Precio</span>
-                <span>Coste</span>
                 <span>Parametros visibles</span>
                 <span>Estado</span>
                 <span>Acciones</span>
@@ -5049,8 +5293,6 @@ export default function Home() {
                         }
                         disabled={isBusy}
                       />
-                      <span>{formatFormulaNumber(material?.price ?? null, " EUR/kg")}</span>
-                      <span>{formatFormulaNumber(line.partialCost, " EUR")}</span>
                       <span className="lineParameterPreview">
                         {parameterPreview.length
                           ? parameterPreview.map((parameter) => (
@@ -5185,6 +5427,28 @@ export default function Home() {
                     ) : (
                       <div>No warnings</div>
                     )}
+                  </div>
+                  <div className="formulaSavePanel" data-balanced={isFormulaBalanced}>
+                    <div>
+                      <span>Guardar formula</span>
+                      <strong>
+                        {isFormulaBalanced
+                          ? "Lista para guardar"
+                          : `No se puede guardar: suma ${totalPercentage.toFixed(1)}%`}
+                      </strong>
+                      <small>
+                        El guardado queda bloqueado hasta que la formula sume 100.0%.
+                      </small>
+                    </div>
+                    <button
+                      className="primaryButton"
+                      type="button"
+                      onClick={saveFormula}
+                      disabled={!canSaveFormula}
+                    >
+                      {isBusy ? <Loader2 className="spin" size={17} /> : <Save size={17} />}
+                      Guardar formula
+                    </button>
                   </div>
                 </div>
               ) : null}
