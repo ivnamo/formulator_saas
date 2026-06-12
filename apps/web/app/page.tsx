@@ -108,17 +108,15 @@ import {
   isFormulaPercentageBalanced,
   selectVisibleParameterCodes,
 } from "./formula-builder-derived";
-import {
-  BuilderStep,
-  DraftReviewPanel,
-  FormulaCalculationPanel,
-  FormulaLineTable,
-  FormulaProgressSummary,
-  JiraReviewPanel,
-  MaterialCatalogControls,
-  MaterialCatalogWorkspace,
-  ParameterPresetPicker,
-} from "./formula-builder-components";
+import { BuilderStep } from "./formula-builder-ui/builder-step";
+import { DraftReviewPanel } from "./formula-builder-ui/draft-review-panel";
+import { FormulaCalculationPanel } from "./formula-builder-ui/formula-calculation-panel";
+import { FormulaLineTable } from "./formula-builder-ui/formula-line-table";
+import { FormulaProgressSummary } from "./formula-builder-ui/formula-progress-summary";
+import { JiraReviewPanel } from "./formula-builder-ui/jira-review-panel";
+import { MaterialCatalogControls } from "./formula-builder-ui/material-catalog-controls";
+import { MaterialCatalogWorkspace } from "./formula-builder-ui/material-catalog-workspace";
+import { ParameterPresetPicker } from "./formula-builder-ui/parameter-preset-picker";
 
 const JIRA_MAPPING_KEYS = [
   "formula_id",
