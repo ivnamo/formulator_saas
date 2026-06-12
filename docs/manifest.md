@@ -108,6 +108,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_095_jira_panel_sections.md`](00-meta/meta_095_jira_panel_sections.md)
 - [`00-meta/meta_096_material_catalog_panels.md`](00-meta/meta_096_material_catalog_panels.md)
 - [`00-meta/meta_097_formula_builder_preview_helpers.md`](00-meta/meta_097_formula_builder_preview_helpers.md)
+- [`00-meta/meta_098_comparison_constraint_helpers.md`](00-meta/meta_098_comparison_constraint_helpers.md)
 
 ## Producto
 
