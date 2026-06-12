@@ -23,16 +23,13 @@ import {
   emptyJiraConnectionForm,
   emptyWorkspace,
   formatDateTime,
-  makeLocalId,
   mergeRawMaterials,
   normalizeCode,
   parseOptionalNumber,
   type CalculationResult,
   type CompatibilityRuleRead,
   type AiRun,
-  type AgentFormulaCandidate,
   type AgentPlan,
-  type FormulaLine,
   type FormulaCalculationHistory,
   type FormulaReviewArtifact,
   type FormulaRead,
@@ -107,6 +104,7 @@ import { useCompatibilityActions } from "./compatibility-actions";
 import { useRawMaterialActions } from "./raw-material-actions";
 import { isTenantAdminRole } from "./tenant-roles";
 import { useWorkspaceSettingsActions } from "./workspace-settings-actions";
+import { useDraftReviewActions } from "./draft-review-actions";
 
 type WorkspaceView =
   | "formula"
@@ -663,6 +661,25 @@ export default function Home() {
     setMessage,
   });
   const {
+    markDraftReviewPending,
+    updateDraftReviewNotes,
+    confirmDraftReview,
+    applyOptimizerDraft,
+  } = useDraftReviewActions({
+    workspace,
+    draftReview,
+    agentPlan,
+    headers,
+    setWorkspace,
+    setCalculationHistory,
+    setResult,
+    setBuilderSections,
+    setDraftReview,
+    runAction,
+    setError,
+    setMessage,
+  });
+  const {
     addFormulaLine,
     removeFormulaLine,
     updateFormulaLine,
@@ -808,14 +825,6 @@ export default function Home() {
     setMessage,
   });
 
-  function markDraftReviewPending() {
-    setDraftReview((current) =>
-      current && current.status === "confirmed"
-        ? { ...current, reviewedResult: null, status: "pending" }
-        : current,
-    );
-  }
-
   function updateFormulaBasics(patch: Partial<FormulaBasicsValue>) {
     setWorkspace((current) => ({
       ...current,
@@ -834,167 +843,6 @@ export default function Home() {
 
   function clearComparisonMaterials() {
     setComparisonMaterialIds([]);
-  }
-
-  function updateDraftReviewNotes(notes: string) {
-    setDraftReview((current) =>
-      current
-        ? {
-            ...current,
-            notes,
-            reviewedResult: current.status === "confirmed" ? null : current.reviewedResult,
-            status: current.status === "confirmed" ? "pending" : current.status,
-          }
-        : current,
-    );
-  }
-
-  async function confirmDraftReview() {
-    if (!draftReview) {
-      return;
-    }
-    const notes = draftReview.notes.trim();
-    if (notes.length < 3) {
-      setError("Decision notes are required before saving a draft");
-      return;
-    }
-
-    await runAction("Confirming draft review", async () => {
-      const reviewedResult = await calculateAdHocFormula(
-        workspace.formulaLines,
-        draftReview.requiredParameterCodes,
-      );
-      setDraftReview((current) =>
-        current
-          ? {
-              ...current,
-              notes,
-              reviewedResult,
-              status: "confirmed",
-            }
-          : current,
-      );
-      setResult(reviewedResult);
-      setMessage("Draft review confirmed");
-    });
-  }
-
-  async function calculateAdHocFormula(
-    lines: FormulaLine[],
-    requiredParameterCodes: string[] = [],
-  ): Promise<CalculationResult> {
-    return request<CalculationResult>("/api/v1/formulas/calculate", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        items: lines.map((line, index) => ({
-          raw_material_id: line.rawMaterialId,
-          percentage: line.percentage,
-          order_index: index,
-        })),
-        required_parameter_codes: requiredParameterCodes,
-      }),
-    });
-  }
-
-  async function applyOptimizerDraft(candidate: AgentFormulaCandidate) {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    if (!candidate.items.length) {
-      setError("Draft candidate has no formula lines");
-      return;
-    }
-
-    const candidateMaterials = new Map(
-      agentPlan?.candidate_research?.candidates.map((material) => [
-        material.raw_material_id,
-        material,
-      ]) ?? [],
-    );
-    const formulaLines = candidate.items.map((item) => ({
-      localId: makeLocalId(),
-      rawMaterialId: item.raw_material_id,
-      percentage: item.percentage,
-    }));
-    const requiredParameterCodes = candidate.parameters.map((parameter) => parameter.code);
-
-    await runAction("Applying optimizer draft", async () => {
-      const calculation = await calculateAdHocFormula(formulaLines, requiredParameterCodes);
-      setWorkspace((current) => {
-        const existingMaterialIds = new Set(
-          current.rawMaterials.map((material) => material.id),
-        );
-        const addedMaterials = candidate.items
-          .filter((item) => !existingMaterialIds.has(item.raw_material_id))
-          .map((item) => {
-            const material = candidateMaterials.get(item.raw_material_id);
-            const activeParameter = current.parameter
-              ? material?.parameters[current.parameter.code]
-              : undefined;
-            const activeParameterMap =
-              current.parameter && activeParameter
-                ? {
-                    [current.parameter.code]: {
-                      parameterId: current.parameter.id,
-                      code: current.parameter.code,
-                      name: current.parameter.name,
-                      value: activeParameter.value,
-                      unit: activeParameter.unit,
-                      source: null,
-                      confidence: null,
-                    },
-                  }
-                : {};
-            return {
-              id: item.raw_material_id,
-              code: material?.code ?? null,
-              externalCode: null,
-              name: item.name,
-              family: null,
-              isActive: true,
-              isObsolete: false,
-              price: material?.price_eur_per_kg ?? null,
-              parameterValue: activeParameter?.value ?? null,
-              parameterCount: Object.keys(activeParameterMap).length,
-              positiveParameterCount: Object.values(activeParameterMap).filter(
-                (parameter) => Math.abs(parameter.value) > 0.0001,
-              ).length,
-              parameters: activeParameterMap,
-              aliases: [],
-            };
-          });
-        return {
-          ...current,
-          rawMaterials: [...current.rawMaterials, ...addedMaterials],
-          formulaId: null,
-          formulaName: `${candidate.name} Review Draft`,
-          formulaLines,
-        };
-      });
-      setCalculationHistory([]);
-      setResult(calculation);
-      setBuilderSections((current) => ({
-        ...current,
-        formula: true,
-        calculation: true,
-      }));
-      setDraftReview({
-        candidateName: candidate.name,
-        baselineLines: candidate.items.map((item) => ({
-          rawMaterialId: item.raw_material_id,
-          name: item.name,
-          percentage: item.percentage,
-        })),
-        baselineResult: calculation,
-        reviewedResult: null,
-        requiredParameterCodes,
-        status: "pending",
-        notes: "",
-      });
-      setMessage("Optimizer draft applied and recalculated");
-    });
   }
 
   if (!authChecked || !session) {
