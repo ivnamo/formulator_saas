@@ -65,7 +65,6 @@ import {
   buildConstraintEvaluations,
   buildConstraintComplianceSummary,
   buildDraftComparison,
-  buildSavedFormulaComparison,
   hasConstraintIssue,
   type DraftReviewState,
 } from "./workspace-comparison";
@@ -113,6 +112,7 @@ import {
 import { FormulaMaterialsStep } from "./formula-builder-ui/formula-materials-step";
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import { useSavedFormulaComparisonState } from "./saved-formula-comparison-state";
+import { useSavedFormulaActions } from "./saved-formula-actions";
 
 type WorkspaceView =
   | "formula"
@@ -608,6 +608,36 @@ export default function Home() {
     Boolean(activeJiraConnection) &&
     result !== null &&
     !isBusy;
+  const {
+    compareSavedFormulas,
+    saveFormula,
+    refreshFormulaLibrary,
+    openFormula,
+    loadCalculationHistory,
+    loadFormulaReviewRequests,
+  } = useSavedFormulaActions({
+    workspace,
+    formulas,
+    formulaCompareSelection,
+    rawMaterialsById,
+    headers,
+    isFormulaBalanced,
+    hasPendingDraftReview,
+    setWorkspace,
+    setFormulas,
+    setCalculationHistory,
+    setFormulaReviewRequests,
+    setFormulaReviewArtifacts,
+    setResult,
+    setDraftReview,
+    setSavedFormulaComparison,
+    setBuilderSections,
+    ensureRawMaterialDetail,
+    resetImportState,
+    runAction,
+    setError,
+    setMessage,
+  });
 
   async function ensureRawMaterialDetail(rawMaterialId: string): Promise<RawMaterial | null> {
     const existing = rawMaterialsById.get(rawMaterialId);
@@ -1488,57 +1518,6 @@ export default function Home() {
     });
   }
 
-  async function calculatePersistedFormula(formulaId: string): Promise<CalculationResult> {
-    return request<CalculationResult>(`/api/v1/formulas/${formulaId}/calculate`, {
-      method: "POST",
-      headers,
-    });
-  }
-
-  async function compareSavedFormulas() {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    if (
-      !formulaCompareSelection.baselineId ||
-      !formulaCompareSelection.candidateId ||
-      formulaCompareSelection.baselineId === formulaCompareSelection.candidateId
-    ) {
-      setError("Select two different saved formulas");
-      return;
-    }
-
-    const baseline = formulas.find(
-      (formula) => formula.id === formulaCompareSelection.baselineId,
-    );
-    const candidate = formulas.find(
-      (formula) => formula.id === formulaCompareSelection.candidateId,
-    );
-    if (!baseline || !candidate) {
-      setError("Refresh the formula library before comparing");
-      return;
-    }
-
-    await runAction("Comparing saved formulas", async () => {
-      const [baselineResult, candidateResult] = await Promise.all([
-        calculatePersistedFormula(baseline.id),
-        calculatePersistedFormula(candidate.id),
-      ]);
-      setSavedFormulaComparison(
-        buildSavedFormulaComparison(
-          baseline,
-          candidate,
-          baselineResult,
-          candidateResult,
-          rawMaterialsById,
-        ),
-      );
-      await refreshFormulaLibrary({ silent: true });
-      setMessage("Formula comparison ready");
-    });
-  }
-
   async function applyOptimizerDraft(candidate: AgentFormulaCandidate) {
     if (!workspace.tenant) {
       setError("Create a workspace first");
@@ -1637,165 +1616,6 @@ export default function Home() {
       });
       setMessage("Optimizer draft applied and recalculated");
     });
-  }
-
-  async function saveFormula() {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    if (!workspace.formulaLines.length) {
-      setError("Add at least one formula line");
-      return;
-    }
-    if (!isFormulaBalanced) {
-      setError("La formula debe sumar exactamente 100% para poder guardarse.");
-      setBuilderSections((current) => ({
-        ...current,
-        formula: true,
-        calculation: true,
-      }));
-      return;
-    }
-    if (hasPendingDraftReview) {
-      setError("Confirm draft review before saving");
-      return;
-    }
-
-    await runAction("Saving formula", async () => {
-      const items = workspace.formulaLines.map((line, index) => ({
-        raw_material_id: line.rawMaterialId,
-        percentage: line.percentage,
-        order_index: index,
-      }));
-      const payload = {
-        name: workspace.formulaName.trim() || "Manual Formula",
-        jira_project_id: workspace.formulaJiraProjectId.trim() || null,
-        jira_issue_type: workspace.formulaJiraIssueType,
-        jira_product_type: workspace.formulaJiraProductType,
-        items,
-      };
-      const formula = workspace.formulaId
-        ? await request<FormulaRead>(`/api/v1/formulas/${workspace.formulaId}`, {
-            method: "PATCH",
-            headers,
-            body: JSON.stringify(payload),
-          })
-        : await request<FormulaRead>("/api/v1/formulas", {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-          });
-      const calculation = await request<CalculationResult>(
-        `/api/v1/formulas/${formula.id}/calculate`,
-        { method: "POST", headers },
-      );
-      setWorkspace((current) => ({
-        ...current,
-        formulaId: formula.id,
-        formulaName: formula.name,
-        formulaJiraProjectId: formula.jira_project_id ?? "",
-        formulaJiraIssueType: textOrDefault(formula.jira_issue_type, "Calidad"),
-        formulaJiraProductType: textOrDefault(formula.jira_product_type, "Nuevo"),
-      }));
-      setResult(calculation);
-      setDraftReview(null);
-      setSavedFormulaComparison(null);
-      setBuilderSections((current) => ({
-        ...current,
-        calculation: true,
-      }));
-      await refreshFormulaLibrary({ silent: true });
-      await loadCalculationHistory(formula.id);
-      await loadFormulaReviewRequests(formula.id);
-      setMessage("Formula saved");
-    });
-  }
-
-  async function refreshFormulaLibrary(options: { silent?: boolean } = {}) {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    if (options.silent) {
-      const nextFormulas = await request<FormulaRead[]>("/api/v1/formulas", {
-        method: "GET",
-        headers,
-      });
-      setFormulas(nextFormulas);
-      return;
-    }
-    await runAction("Refreshing formula library", async () => {
-      const nextFormulas = await request<FormulaRead[]>("/api/v1/formulas", {
-        method: "GET",
-        headers,
-      });
-      setFormulas(nextFormulas);
-      setMessage("Formula library refreshed");
-    });
-  }
-
-  async function openFormula(formula: FormulaRead) {
-    await runAction("Opening formula", async () => {
-      setWorkspace((current) => ({
-        ...current,
-        formulaId: formula.id,
-        formulaName: formula.name,
-        formulaJiraProjectId: formula.jira_project_id ?? "",
-        formulaJiraIssueType: textOrDefault(formula.jira_issue_type, "Calidad"),
-        formulaJiraProductType: textOrDefault(formula.jira_product_type, "Nuevo"),
-        formulaLines: formula.items.map((item) => ({
-          localId: makeLocalId(),
-          rawMaterialId: item.raw_material_id,
-          percentage: item.percentage,
-        })),
-      }));
-      setResult(null);
-      setDraftReview(null);
-      setFormulaReviewArtifacts({});
-      setBuilderSections((current) => ({
-        ...current,
-        formula: true,
-        calculation: true,
-      }));
-      resetImportState();
-      await Promise.all(
-        formula.items.map((item) => ensureRawMaterialDetail(item.raw_material_id)),
-      );
-      await loadCalculationHistory(formula.id);
-      await loadFormulaReviewRequests(formula.id);
-      setMessage("Formula opened");
-    });
-  }
-
-  async function loadCalculationHistory(formulaId: string) {
-    const history = await request<FormulaCalculationHistory[]>(
-      `/api/v1/formulas/${formulaId}/calculations`,
-      { method: "GET", headers },
-    );
-    setCalculationHistory(history);
-  }
-
-  async function loadFormulaReviewRequests(formulaId: string) {
-    const reviews = await request<FormulaReviewRequest[]>(
-      `/api/v1/formulas/${formulaId}/reviews`,
-      { method: "GET", headers },
-    );
-    setFormulaReviewRequests(reviews);
-    await loadFormulaReviewArtifacts(reviews);
-  }
-
-  async function loadFormulaReviewArtifacts(reviews: FormulaReviewRequest[]) {
-    const entries = await Promise.all(
-      reviews.map(async (review) => {
-        const artifacts = await request<FormulaReviewArtifact[]>(
-          `/api/v1/formula-reviews/${review.id}/artifacts`,
-          { method: "GET", headers },
-        );
-        return [review.id, artifacts] as const;
-      }),
-    );
-    setFormulaReviewArtifacts(Object.fromEntries(entries));
   }
 
   async function parseRequirements() {
