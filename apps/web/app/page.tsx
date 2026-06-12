@@ -43,29 +43,10 @@ import {
 import {
   buildConstraintEvaluations,
   buildConstraintComplianceSummary,
-  buildDraftComparison,
   hasConstraintIssue,
   type DraftReviewState,
 } from "./workspace-comparison";
-import {
-  PARAMETER_VIEW_PRESETS,
-  formatFormulaNumber,
-} from "./formula-builder-model";
-import {
-  buildCalculationParameterRows,
-  buildComparisonMaterials,
-  buildFormulaLineDetails,
-  buildLocalFormulaPreview,
-  buildMaterialSearchResults,
-  buildParameterCatalog,
-  buildRawMaterialsById,
-  calculateFormulaTotalPercentage,
-  formatVisibleParameterSummary,
-  getSelectedMaterial,
-  getSelectedMaterialParameters,
-  isFormulaPercentageBalanced,
-  selectVisibleParameterCodes,
-} from "./formula-builder-derived";
+import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
 import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
@@ -83,10 +64,7 @@ import {
 } from "./formula-formatters";
 import { FormulaCalculationStep } from "./formula-builder-ui/formula-calculation-step";
 import { FormulaCompositionStep } from "./formula-builder-ui/formula-composition-step";
-import {
-  FormulaBasicsStep,
-  type FormulaBasicsValue,
-} from "./formula-builder-ui/formula-basics-step";
+import { FormulaBasicsStep } from "./formula-builder-ui/formula-basics-step";
 import { FormulaMaterialsStep } from "./formula-builder-ui/formula-materials-step";
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import { useSavedFormulaComparisonState } from "./saved-formula-comparison-state";
@@ -338,92 +316,40 @@ export default function Home() {
     loadAuthenticatedWorkspace,
   });
 
-  const rawMaterialsById = useMemo(
-    () => buildRawMaterialsById(workspace.rawMaterials),
-    [workspace.rawMaterials],
-  );
-  const formulaLineDetails = useMemo(
-    () => buildFormulaLineDetails(workspace.formulaLines, rawMaterialsById),
-    [rawMaterialsById, workspace.formulaLines],
-  );
-  const parameterCatalog = useMemo(
-    () => buildParameterCatalog(workspace.parameters, workspace.rawMaterials),
-    [workspace.parameters, workspace.rawMaterials],
-  );
-  const visibleParameterCodes = useMemo(
-    () =>
-      selectVisibleParameterCodes(
-        parameterCatalog,
-        parameterViewPreset,
-        customParameterCodes,
-      ),
-    [customParameterCodes, parameterCatalog, parameterViewPreset],
-  );
-  const visibleParameterCodeSet = useMemo(
-    () => new Set(visibleParameterCodes),
-    [visibleParameterCodes],
-  );
-  const selectedParameterPreset =
-    PARAMETER_VIEW_PRESETS.find((option) => option.key === parameterViewPreset) ??
-    PARAMETER_VIEW_PRESETS[0];
-  const formulaBasicsValue = useMemo<FormulaBasicsValue>(
-    () => ({
-      formulaName: workspace.formulaName,
-      formulaJiraProjectId: workspace.formulaJiraProjectId,
-      formulaJiraIssueType: workspace.formulaJiraIssueType,
-      formulaJiraProductType: workspace.formulaJiraProductType,
-    }),
-    [
-      workspace.formulaJiraIssueType,
-      workspace.formulaJiraProductType,
-      workspace.formulaJiraProjectId,
-      workspace.formulaName,
-    ],
-  );
-  const visibleParameterSummary = formatVisibleParameterSummary(visibleParameterCodes);
-  const localPreview = useMemo(
-    () => buildLocalFormulaPreview(formulaLineDetails, visibleParameterCodeSet),
-    [formulaLineDetails, visibleParameterCodeSet],
-  );
-  const materialSearchResults = useMemo(
-    () => buildMaterialSearchResults(catalogMaterialIds, rawMaterialsById, workspace.formulaLines),
-    [catalogMaterialIds, rawMaterialsById, workspace.formulaLines],
-  );
-  const selectedMaterial = useMemo(
-    () => getSelectedMaterial(selectedMaterialId, rawMaterialsById),
-    [rawMaterialsById, selectedMaterialId],
-  );
-  const selectedMaterialParameters = useMemo(
-    () =>
-      getSelectedMaterialParameters(
-        selectedMaterial,
-        visibleParameterCodes,
-        showOnlyPositiveParameters,
-      ),
-    [selectedMaterial, showOnlyPositiveParameters, visibleParameterCodes],
-  );
-  const comparisonMaterials = useMemo(
-    () => buildComparisonMaterials(comparisonMaterialIds, rawMaterialsById),
-    [comparisonMaterialIds, rawMaterialsById],
-  );
-  const parameterRows = useMemo(
-    () =>
-      buildCalculationParameterRows(
-        result,
-        localPreview,
-        visibleParameterCodeSet,
-        showOnlyPositiveParameters,
-      ),
-    [localPreview, result, showOnlyPositiveParameters, visibleParameterCodeSet],
-  );
-  const catalogMaterialFamilies = useMemo(
-    () => catalogFamilies,
-    [catalogFamilies],
-  );
-  const draftComparison = useMemo(
-    () => buildDraftComparison(draftReview, workspace.formulaLines, rawMaterialsById),
-    [draftReview, rawMaterialsById, workspace.formulaLines],
-  );
+  const {
+    rawMaterialsById,
+    formulaLineDetails,
+    parameterCatalog,
+    visibleParameterCodes,
+    visibleParameterCodeSet,
+    selectedParameterPreset,
+    formulaBasicsValue,
+    visibleParameterSummary,
+    localPreview,
+    materialSearchResults,
+    selectedMaterial,
+    selectedMaterialParameters,
+    comparisonMaterials,
+    parameterRows,
+    catalogMaterialFamilies,
+    draftComparison,
+    totalPercentage,
+    isFormulaBalanced,
+    formulaCompositionPrice,
+    formulaCompositionPriceSource,
+    visibleWarnings,
+  } = useFormulaBuilderDerivedState({
+    workspace,
+    catalogMaterialIds,
+    catalogFamilies,
+    parameterViewPreset,
+    customParameterCodes,
+    selectedMaterialId,
+    showOnlyPositiveParameters,
+    comparisonMaterialIds,
+    result,
+    draftReview,
+  });
   const comparisonMaterialOptions = useMemo(() => {
     const options = new Map<string, string>();
     workspace.rawMaterials.forEach((material) => options.set(material.id, material.name));
@@ -477,16 +403,6 @@ export default function Home() {
         : comparisonConstraintEvaluations,
     [comparisonConstraintEvaluations, showOnlyConstraintIssues],
   );
-  const totalPercentage = useMemo(
-    () => calculateFormulaTotalPercentage(workspace.formulaLines),
-    [workspace.formulaLines],
-  );
-  const isFormulaBalanced = isFormulaPercentageBalanced(totalPercentage);
-  const formulaCompositionPrice = result
-    ? formatResultPrice(result)
-    : formatFormulaNumber(localPreview.priceTotal, " EUR/kg");
-  const formulaCompositionPriceSource = result ? "Backend official" : "Local preview";
-  const visibleWarnings = result?.warnings ?? localPreview.warnings;
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
   const canManageTenantUsers = isTenantAdminRole(workspace.tenant?.role) && !isBusy;

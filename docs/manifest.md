@@ -80,6 +80,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_067_formula_builder_local_actions_hook.md`](00-meta/meta_067_formula_builder_local_actions_hook.md)
 - [`00-meta/meta_068_workspace_auth_session_hook.md`](00-meta/meta_068_workspace_auth_session_hook.md)
 - [`00-meta/meta_069_formula_catalog_state_hook.md`](00-meta/meta_069_formula_catalog_state_hook.md)
+- [`00-meta/meta_070_formula_builder_derived_hook.md`](00-meta/meta_070_formula_builder_derived_hook.md)
 
 ## Producto
 
