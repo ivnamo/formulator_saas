@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { request } from "./workspace-api";
 import { formatDateTime } from "./workspace-model";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
@@ -28,8 +27,7 @@ import {
   useWorkspaceAuthSession,
 } from "./workspace-auth-session";
 import { useWorkspaceCapabilities } from "./workspace-capabilities";
-import { AppShell, type WorkspaceView } from "./app-shell";
-import { useWorkspaceActionStatus } from "./workspace-action-status";
+import { AppShell } from "./app-shell";
 import { useWorkspaceCoreState } from "./workspace-core-state";
 import { useRawMaterialWorkspaceState } from "./raw-material-state";
 import { useFormulaWorkspaceState } from "./formula-workspace-state";
@@ -37,6 +35,7 @@ import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
 import { useJiraConnectionState } from "./jira-connection-state";
 import { WorkspaceAuthGate } from "./workspace-auth-gate";
+import { useWorkspaceShellState } from "./workspace-shell-state";
 
 export default function Home() {
   const {
@@ -164,9 +163,8 @@ export default function Home() {
     setSelectedImportSheet,
     resolveImportRow: resolveImportRowState,
   } = useExcelImportState();
-  const { status, message, setStatus, setMessage, setError, runAction } =
-    useWorkspaceActionStatus();
-  const [activeView, setActiveView] = useState<WorkspaceView>("formula");
+  const { activeView, setActiveView, status, message, setStatus, setMessage, setError, runAction } =
+    useWorkspaceShellState();
   const { session, authChecked, authHeaders, headers, uploadHeaders } =
     useWorkspaceAuthSession(workspace.tenant);
   const {
