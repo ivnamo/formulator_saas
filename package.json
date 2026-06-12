@@ -10,6 +10,7 @@
     "check": "npm run check --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:legacy": "python scripts/legacy_formula_parity.py --limit 20",
     "dev:web": "npm --workspace apps/web run dev -- -H 127.0.0.1 -p 3000",
     "build:web": "npm --workspace apps/web run build"
   },

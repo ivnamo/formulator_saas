@@ -96,6 +96,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_083_workspace_panels_component.md`](00-meta/meta_083_workspace_panels_component.md)
 - [`00-meta/meta_084_workspace_auth_gate_component.md`](00-meta/meta_084_workspace_auth_gate_component.md)
 - [`00-meta/meta_085_workspace_shell_state_hook.md`](00-meta/meta_085_workspace_shell_state_hook.md)
+- [`00-meta/meta_086_legacy_parity_script_alias.md`](00-meta/meta_086_legacy_parity_script_alias.md)
 
 ## Producto
 

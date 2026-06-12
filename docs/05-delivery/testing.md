@@ -10,6 +10,7 @@
 - Tests/checks verdes son obligatorios pero no suficientes para cerrar una rama.
 - Despues de tests/checks verdes debe hacerse un quality/refactor gate.
 - Si el gate produce cambios de codigo, se reejecutan los tests/checks afectados antes de push.
+- La paridad real contra `ivnamo/formulator` se ejecuta manualmente con `npm run check:legacy` cuando se toquen calculo, importacion legacy, precios o parametros tecnicos.
 
 ## Quality/refactor gate
 
@@ -58,6 +59,7 @@ Resultado esperado:
 - Parámetros ponderados correctos.
 - Fórmula incompleta genera warning.
 - Materia sin precio genera warning.
+- Paridad legacy: `npm run check:legacy` debe pasar con 20 formulas reales y 52 parametros cuando existan credenciales locales.
 
 ### Importación Excel
 
