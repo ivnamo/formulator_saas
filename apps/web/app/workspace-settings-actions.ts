@@ -28,17 +28,7 @@ import {
 } from "./workspace-model";
 import type { DraftReviewState } from "./workspace-comparison";
 import type { ComparisonConstraintField } from "./saved-formula-comparison-state";
-
-type InvitationForm = {
-  email: string;
-  role: string;
-};
-
-type ParameterForm = {
-  code: string;
-  name: string;
-  unit: string;
-};
+import type { InvitationForm, ParameterForm } from "./workspace-core-state";
 
 type WorkspaceSettingsActionsOptions = {
   workspace: WorkspaceState;

@@ -11,6 +11,7 @@ import type {
   TenantInvitationRead,
   WorkspaceState,
 } from "./workspace-model";
+import type { InvitationForm, ParameterForm } from "./workspace-core-state";
 
 const JIRA_MAPPING_KEYS = [
   "formula_id",
@@ -25,17 +26,6 @@ const JIRA_MAPPING_KEYS = [
   "estimated_cost",
   "notes",
 ] as const;
-
-type InvitationForm = {
-  email: string;
-  role: string;
-};
-
-type ParameterForm = {
-  code: string;
-  name: string;
-  unit: string;
-};
 
 type SettingsPanelProps = {
   active: boolean;

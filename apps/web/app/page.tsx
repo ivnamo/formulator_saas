@@ -5,7 +5,6 @@ import { useState } from "react";
 import { request } from "./workspace-api";
 import {
   emptyJiraConnectionForm,
-  emptyWorkspace,
   formatDateTime,
   type CalculationResult,
   type CompatibilityRuleRead,
@@ -20,8 +19,6 @@ import {
   type JiraMetadataState,
   type MaterialForm,
   type RequirementParse,
-  type TenantInvitationRead,
-  type WorkspaceState,
 } from "./workspace-model";
 import { type DraftReviewState } from "./workspace-comparison";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
@@ -66,15 +63,21 @@ import {
 import { useWorkspaceCapabilities } from "./workspace-capabilities";
 import { AppShell, type WorkspaceView } from "./app-shell";
 import { useWorkspaceActionStatus } from "./workspace-action-status";
+import { useWorkspaceCoreState } from "./workspace-core-state";
 
 export default function Home() {
-  const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
-  const [workspaceName, setWorkspaceName] = useState("Workspace Lab");
-  const [parameterForm, setParameterForm] = useState({
-    code: "active_content",
-    name: "Active content",
-    unit: "% p/p",
-  });
+  const {
+    workspace,
+    setWorkspace,
+    workspaceName,
+    setWorkspaceName,
+    parameterForm,
+    setParameterForm,
+    tenantInvitations,
+    setTenantInvitations,
+    invitationForm,
+    setInvitationForm,
+  } = useWorkspaceCoreState();
   const [materialForm, setMaterialForm] = useState<MaterialForm>({
     code: "",
     name: "",
@@ -171,11 +174,6 @@ export default function Home() {
   const { status, message, setStatus, setMessage, setError, runAction } =
     useWorkspaceActionStatus();
   const [activeView, setActiveView] = useState<WorkspaceView>("formula");
-  const [tenantInvitations, setTenantInvitations] = useState<TenantInvitationRead[]>([]);
-  const [invitationForm, setInvitationForm] = useState({
-    email: "",
-    role: "formulator",
-  });
   const { session, authChecked, authHeaders, headers, uploadHeaders } =
     useWorkspaceAuthSession(workspace.tenant);
   const {
