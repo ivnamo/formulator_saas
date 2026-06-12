@@ -10,7 +10,7 @@ export type FormulaBasicsValue = Pick<
   | "formulaJiraProductType"
 >;
 
-type FormulaBasicsStepProps = {
+export type FormulaBasicsStepProps = {
   isOpen: boolean;
   isBusy: boolean;
   hasActiveJiraConnection: boolean;

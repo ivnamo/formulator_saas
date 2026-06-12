@@ -16,7 +16,7 @@ type CatalogParameterConditionPatch = Partial<{
   max: string;
 }>;
 
-type FormulaMaterialsStepProps = {
+export type FormulaMaterialsStepProps = {
   isOpen: boolean;
   catalogLoading: boolean;
   catalogTotal: number;

@@ -7,7 +7,7 @@ import type { CalculationResult } from "../workspace-model";
 import { BuilderStep } from "./builder-step";
 import { FormulaCalculationPanel } from "./formula-calculation-panel";
 
-type FormulaCalculationStepProps = {
+export type FormulaCalculationStepProps = {
   isOpen: boolean;
   isBackendResult: boolean;
   parameterRows: CalculationParameterRow[];

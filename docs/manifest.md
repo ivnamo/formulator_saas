@@ -91,6 +91,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_078_compatibility_state_hook.md`](00-meta/meta_078_compatibility_state_hook.md)
 - [`00-meta/meta_079_ai_workflow_state_hook.md`](00-meta/meta_079_ai_workflow_state_hook.md)
 - [`00-meta/meta_080_jira_connection_state_hook.md`](00-meta/meta_080_jira_connection_state_hook.md)
+- [`00-meta/meta_081_formula_builder_workspace_component.md`](00-meta/meta_081_formula_builder_workspace_component.md)
 
 ## Producto
 

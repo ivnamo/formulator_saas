@@ -13,7 +13,7 @@ import { FormulaLineTable } from "./formula-line-table";
 import { FormulaProgressSummary } from "./formula-progress-summary";
 import { JiraReviewPanel } from "./jira-review-panel";
 
-type FormulaCompositionStepProps = {
+export type FormulaCompositionStepProps = {
   isOpen: boolean;
   lineCount: number;
   totalPercentage: number;

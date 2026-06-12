@@ -15,15 +15,7 @@ import { SettingsPanel } from "./settings-panel";
 import { RawMaterialsPanel } from "./raw-materials-panel";
 import { CompatibilityPanel } from "./compatibility-panel";
 import { CalculationResultsPanel } from "./calculation-results-panel";
-import {
-  formatResultPrice,
-  formatSignedDelta,
-  formatSignedInteger,
-} from "./formula-formatters";
-import { FormulaCalculationStep } from "./formula-builder-ui/formula-calculation-step";
-import { FormulaCompositionStep } from "./formula-builder-ui/formula-composition-step";
-import { FormulaBasicsStep } from "./formula-builder-ui/formula-basics-step";
-import { FormulaMaterialsStep } from "./formula-builder-ui/formula-materials-step";
+import { FormulaBuilderWorkspace } from "./formula-builder-workspace";
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import {
   useSavedFormulaComparisonDerivedState,
@@ -699,131 +691,123 @@ export default function Home() {
             onApplyOptimizerDraft={applyOptimizerDraft}
           />
 
-          <section
-            id="formula"
-            className="panel formulaPanel formulaBuilder"
-            hidden={activeView !== "formula"}
-          >
-            <div className="panelHeader">
-              <h2>Formula Builder</h2>
-              <span>{isFormulaBalanced ? "Balanced" : `${totalPercentage.toFixed(1)}%`}</span>
-            </div>
-            <FormulaBasicsStep
-              isOpen={builderSections.basics}
-              isBusy={isBusy}
-              hasActiveJiraConnection={Boolean(activeJiraConnection)}
-              values={formulaBasicsValue}
-              onToggle={toggleBuilderSection}
-              onChange={updateFormulaBasics}
-            />
-            <FormulaMaterialsStep
-              isOpen={builderSections.materials}
-              catalogLoading={catalogLoading}
-              catalogTotal={catalogTotal}
-              visibleParameterSummary={visibleParameterSummary}
-              selectedPresetHelper={selectedParameterPreset.helper}
-              showOnlyPositiveParameters={showOnlyPositiveParameters}
-              parameterViewPreset={parameterViewPreset}
-              parameterCatalog={parameterCatalog}
-              customParameterCodes={customParameterCodes}
-              formulaMaterialQuery={formulaMaterialQuery}
-              canSearch={canSearchCatalog}
-              catalogParameterConditions={catalogParameterConditions}
-              catalogFamilyFilter={catalogFamilyFilter}
-              catalogMaterialFamilies={catalogMaterialFamilies}
-              catalogPriceFilter={catalogPriceFilter}
-              catalogPriceMin={catalogPriceMin}
-              catalogPriceMax={catalogPriceMax}
-              catalogParameterToAdd={catalogParameterToAdd}
-              visibleParameterCodeSet={visibleParameterCodeSet}
-              materialResultLimit={materialResultLimit}
-              materialSearchResults={materialSearchResults}
-              workspaceMaterialCount={workspace.rawMaterials.length}
-              formulaLines={workspace.formulaLines}
-              selectedMaterialId={selectedMaterialId}
-              selectedMaterial={selectedMaterial}
-              selectedMaterialParameters={selectedMaterialParameters}
-              comparisonMaterials={comparisonMaterials}
-              detailedMaterialIds={detailedMaterialIds}
-              expandedMaterialIds={expandedMaterialIds}
-              comparisonMaterialIds={comparisonMaterialIds}
-              visibleParameterCodes={visibleParameterCodes}
-              isBusy={isBusy}
-              onToggle={toggleBuilderSection}
-              onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
-              onSelectParameterView={selectCurrentParameterView}
-              onToggleCustomParameterCode={toggleCustomParameterCode}
-              onQueryChange={setFormulaMaterialQuery}
-              onFamilyFilterChange={setCatalogFamilyFilter}
-              onPriceFilterChange={setCatalogPriceFilter}
-              onPriceMinChange={setCatalogPriceMin}
-              onPriceMaxChange={setCatalogPriceMax}
-              onParameterToAddChange={setCatalogParameterToAdd}
-              onAddCondition={addCatalogParameterCondition}
-              onUpdateCondition={updateCatalogParameterCondition}
-              onRemoveCondition={removeCatalogParameterCondition}
-              onLoadMoreMaterials={loadMoreCatalogMaterials}
-              onResetFilters={resetCatalogFilters}
-              onInspectMaterial={inspectMaterial}
-              onToggleCompareMaterial={toggleCompareMaterial}
-              onAddFormulaLine={addFormulaLine}
-              onToggleExpandedMaterial={toggleExpandedMaterial}
-              onClearComparison={clearComparisonMaterials}
-            />
-            <FormulaCompositionStep
-              isOpen={builderSections.formula}
-              lineCount={workspace.formulaLines.length}
-              totalPercentage={totalPercentage}
-              isFormulaBalanced={isFormulaBalanced}
-              price={formulaCompositionPrice}
-              priceSource={formulaCompositionPriceSource}
-              draftReview={draftReview}
-              draftComparison={draftComparison}
-              isBusy={isBusy}
-              canConfirmDraftReview={canConfirmDraftReview}
-              activeJiraConnection={activeJiraConnection}
-              formulaReviewRequests={formulaReviewRequests}
-              formulaReviewArtifacts={formulaReviewArtifacts}
-              canPrepareJiraReview={canPrepareJiraReview}
-              formulaLineDetails={formulaLineDetails}
-              visibleParameterCodes={visibleParameterCodes}
-              showOnlyPositiveParameters={showOnlyPositiveParameters}
-              formatResultPrice={formatResultPrice}
-              formatSignedDelta={formatSignedDelta}
-              formatSignedInteger={formatSignedInteger}
-              onToggle={toggleBuilderSection}
-              onNotesChange={updateDraftReviewNotes}
-              onConfirmDraftReview={confirmDraftReview}
-              onSendCurrentFormulaToJira={sendCurrentFormulaToJira}
-              onGenerateReviewExcel={generateJiraReviewExcel}
-              onDownloadArtifact={downloadJiraReviewArtifact}
-              onSendReviewToJira={sendJiraReviewToJira}
-              onSyncReviewStatus={syncJiraReviewStatus}
-              onRetryReviewAttachment={retryJiraReviewAttachment}
-              onMoveLine={moveFormulaLine}
-              onUpdateLine={updateFormulaLine}
-              onDuplicateLine={duplicateFormulaLine}
-              onRemoveLine={removeFormulaLine}
-            />
-            <FormulaCalculationStep
-              isOpen={builderSections.calculation}
-              isBackendResult={Boolean(result)}
-              parameterRows={parameterRows}
-              visibleWarnings={visibleWarnings}
-              selectedPresetLabel={selectedParameterPreset.label}
-              visibleParameterSummary={visibleParameterSummary}
-              showOnlyPositiveParameters={showOnlyPositiveParameters}
-              parameterViewPreset={parameterViewPreset}
-              isFormulaBalanced={isFormulaBalanced}
-              totalPercentage={totalPercentage}
-              isBusy={isBusy}
-              canSaveFormula={canSaveFormula}
-              onToggle={toggleBuilderSection}
-              onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
-              onSelectParameterView={selectCurrentParameterView}
-              onSaveFormula={saveFormula}
-            />
-          </section>
+          <FormulaBuilderWorkspace
+            active={activeView === "formula"}
+            totalPercentage={totalPercentage}
+            isFormulaBalanced={isFormulaBalanced}
+            basics={{
+              isOpen: builderSections.basics,
+              isBusy,
+              hasActiveJiraConnection: Boolean(activeJiraConnection),
+              values: formulaBasicsValue,
+              onToggle: toggleBuilderSection,
+              onChange: updateFormulaBasics,
+            }}
+            materials={{
+              isOpen: builderSections.materials,
+              catalogLoading,
+              catalogTotal,
+              visibleParameterSummary,
+              selectedPresetHelper: selectedParameterPreset.helper,
+              showOnlyPositiveParameters,
+              parameterViewPreset,
+              parameterCatalog,
+              customParameterCodes,
+              formulaMaterialQuery,
+              canSearch: canSearchCatalog,
+              catalogParameterConditions,
+              catalogFamilyFilter,
+              catalogMaterialFamilies,
+              catalogPriceFilter,
+              catalogPriceMin,
+              catalogPriceMax,
+              catalogParameterToAdd,
+              visibleParameterCodeSet,
+              materialResultLimit,
+              materialSearchResults,
+              workspaceMaterialCount: workspace.rawMaterials.length,
+              formulaLines: workspace.formulaLines,
+              selectedMaterialId,
+              selectedMaterial,
+              selectedMaterialParameters,
+              comparisonMaterials,
+              detailedMaterialIds,
+              expandedMaterialIds,
+              comparisonMaterialIds,
+              visibleParameterCodes,
+              isBusy,
+              onToggle: toggleBuilderSection,
+              onShowOnlyPositiveChange: setShowOnlyPositiveParameters,
+              onSelectParameterView: selectCurrentParameterView,
+              onToggleCustomParameterCode: toggleCustomParameterCode,
+              onQueryChange: setFormulaMaterialQuery,
+              onFamilyFilterChange: setCatalogFamilyFilter,
+              onPriceFilterChange: setCatalogPriceFilter,
+              onPriceMinChange: setCatalogPriceMin,
+              onPriceMaxChange: setCatalogPriceMax,
+              onParameterToAddChange: setCatalogParameterToAdd,
+              onAddCondition: addCatalogParameterCondition,
+              onUpdateCondition: updateCatalogParameterCondition,
+              onRemoveCondition: removeCatalogParameterCondition,
+              onLoadMoreMaterials: loadMoreCatalogMaterials,
+              onResetFilters: resetCatalogFilters,
+              onInspectMaterial: inspectMaterial,
+              onToggleCompareMaterial: toggleCompareMaterial,
+              onAddFormulaLine: addFormulaLine,
+              onToggleExpandedMaterial: toggleExpandedMaterial,
+              onClearComparison: clearComparisonMaterials,
+            }}
+            composition={{
+              isOpen: builderSections.formula,
+              lineCount: workspace.formulaLines.length,
+              totalPercentage,
+              isFormulaBalanced,
+              price: formulaCompositionPrice,
+              priceSource: formulaCompositionPriceSource,
+              draftReview,
+              draftComparison,
+              isBusy,
+              canConfirmDraftReview,
+              activeJiraConnection,
+              formulaReviewRequests,
+              formulaReviewArtifacts,
+              canPrepareJiraReview,
+              formulaLineDetails,
+              visibleParameterCodes,
+              showOnlyPositiveParameters,
+              onToggle: toggleBuilderSection,
+              onNotesChange: updateDraftReviewNotes,
+              onConfirmDraftReview: confirmDraftReview,
+              onSendCurrentFormulaToJira: sendCurrentFormulaToJira,
+              onGenerateReviewExcel: generateJiraReviewExcel,
+              onDownloadArtifact: downloadJiraReviewArtifact,
+              onSendReviewToJira: sendJiraReviewToJira,
+              onSyncReviewStatus: syncJiraReviewStatus,
+              onRetryReviewAttachment: retryJiraReviewAttachment,
+              onMoveLine: moveFormulaLine,
+              onUpdateLine: updateFormulaLine,
+              onDuplicateLine: duplicateFormulaLine,
+              onRemoveLine: removeFormulaLine,
+            }}
+            calculation={{
+              isOpen: builderSections.calculation,
+              isBackendResult: Boolean(result),
+              parameterRows,
+              visibleWarnings,
+              selectedPresetLabel: selectedParameterPreset.label,
+              visibleParameterSummary,
+              showOnlyPositiveParameters,
+              parameterViewPreset,
+              isFormulaBalanced,
+              totalPercentage,
+              isBusy,
+              canSaveFormula,
+              onToggle: toggleBuilderSection,
+              onShowOnlyPositiveChange: setShowOnlyPositiveParameters,
+              onSelectParameterView: selectCurrentParameterView,
+              onSaveFormula: saveFormula,
+            }}
+          />
 
           <CalculationResultsPanel active={activeView === "results"} result={result} />
       </div>
