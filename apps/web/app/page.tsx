@@ -86,12 +86,8 @@ import {
   type SavedFormulaComparison,
 } from "./workspace-comparison";
 import {
-  DEFAULT_BUILDER_SECTIONS,
   PARAMETER_VIEW_PRESETS,
   formatFormulaNumber,
-  type BuilderSectionKey,
-  type CatalogParameterCondition,
-  type ParameterViewPresetKey,
 } from "./formula-builder-model";
 import {
   buildCalculationParameterRows,
@@ -108,6 +104,7 @@ import {
   isFormulaPercentageBalanced,
   selectVisibleParameterCodes,
 } from "./formula-builder-derived";
+import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
 import { BuilderStep } from "./formula-builder-ui/builder-step";
 import { DraftReviewPanel } from "./formula-builder-ui/draft-review-panel";
 import { FormulaCalculationPanel } from "./formula-builder-ui/formula-calculation-panel";
@@ -193,32 +190,48 @@ export default function Home() {
     price: "",
     parameterValue: "",
   });
-  const [formulaMaterialQuery, setFormulaMaterialQuery] = useState("");
-  const [parameterViewPreset, setParameterViewPreset] =
-    useState<ParameterViewPresetKey>("core");
-  const [customParameterCodes, setCustomParameterCodes] = useState<string[]>([]);
-  const [showOnlyPositiveParameters, setShowOnlyPositiveParameters] = useState(true);
-  const [catalogFamilyFilter, setCatalogFamilyFilter] = useState("all");
-  const [catalogPriceFilter, setCatalogPriceFilter] =
-    useState<"all" | "with_price" | "missing_price">("all");
-  const [catalogPriceMin, setCatalogPriceMin] = useState("");
-  const [catalogPriceMax, setCatalogPriceMax] = useState("");
-  const [catalogParameterToAdd, setCatalogParameterToAdd] = useState("");
-  const [catalogParameterConditions, setCatalogParameterConditions] = useState<
-    CatalogParameterCondition[]
-  >([]);
-  const [materialResultLimit, setMaterialResultLimit] = useState(60);
+  const {
+    formulaMaterialQuery,
+    parameterViewPreset,
+    customParameterCodes,
+    showOnlyPositiveParameters,
+    catalogFamilyFilter,
+    catalogPriceFilter,
+    catalogPriceMin,
+    catalogPriceMax,
+    catalogParameterToAdd,
+    catalogParameterConditions,
+    materialResultLimit,
+    selectedMaterialId,
+    comparisonMaterialIds,
+    expandedMaterialIds,
+    builderSections,
+    setFormulaMaterialQuery,
+    setShowOnlyPositiveParameters,
+    setCatalogFamilyFilter,
+    setCatalogPriceFilter,
+    setCatalogPriceMin,
+    setCatalogPriceMax,
+    setCatalogParameterToAdd,
+    setMaterialResultLimit,
+    setSelectedMaterialId,
+    setComparisonMaterialIds,
+    setExpandedMaterialIds,
+    setBuilderSections,
+    selectParameterView,
+    toggleCustomParameterCode,
+    addCatalogParameterCondition,
+    updateCatalogParameterCondition,
+    removeCatalogParameterCondition,
+    resetCatalogFilters,
+    toggleBuilderSection,
+  } = useFormulaBuilderUiState();
   const [catalogMaterialIds, setCatalogMaterialIds] = useState<string[]>([]);
   const [catalogTotal, setCatalogTotal] = useState(0);
   const [catalogFamilies, setCatalogFamilies] = useState<string[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogRefreshKey, setCatalogRefreshKey] = useState(0);
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
-  const [comparisonMaterialIds, setComparisonMaterialIds] = useState<string[]>([]);
   const [detailedMaterialIds, setDetailedMaterialIds] = useState<string[]>([]);
-  const [expandedMaterialIds, setExpandedMaterialIds] = useState<string[]>([]);
-  const [builderSections, setBuilderSections] =
-    useState<Record<BuilderSectionKey, boolean>>(DEFAULT_BUILDER_SECTIONS);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
   const [formulas, setFormulas] = useState<FormulaRead[]>([]);
@@ -638,73 +651,6 @@ export default function Home() {
     Boolean(activeJiraConnection) &&
     result !== null &&
     !isBusy;
-
-  function selectParameterView(key: ParameterViewPresetKey) {
-    setParameterViewPreset(key);
-    if (key === "custom" && customParameterCodes.length === 0) {
-      setCustomParameterCodes(visibleParameterCodes.slice(0, 8));
-    }
-  }
-
-  function toggleCustomParameterCode(code: string) {
-    setCustomParameterCodes((current) =>
-      current.includes(code)
-        ? current.filter((candidate) => candidate !== code)
-        : [...current, code],
-    );
-    setParameterViewPreset("custom");
-  }
-
-  function addCatalogParameterCondition(code = catalogParameterToAdd) {
-    const normalizedCode = code.trim();
-    if (!normalizedCode) {
-      return;
-    }
-    setCatalogParameterConditions((current) => {
-      if (current.some((condition) => condition.code === normalizedCode)) {
-        return current;
-      }
-      return [
-        ...current,
-        {
-          id: makeLocalId(),
-          code: normalizedCode,
-          min: "",
-          max: "",
-        },
-      ];
-    });
-    setCatalogParameterToAdd("");
-  }
-
-  function updateCatalogParameterCondition(
-    id: string,
-    patch: Partial<Omit<CatalogParameterCondition, "id">>,
-  ) {
-    setCatalogParameterConditions((current) =>
-      current.map((condition) =>
-        condition.id === id
-          ? {
-              ...condition,
-              ...patch,
-            }
-          : condition,
-      ),
-    );
-  }
-
-  function removeCatalogParameterCondition(id: string) {
-    setCatalogParameterConditions((current) =>
-      current.filter((condition) => condition.id !== id),
-    );
-  }
-
-  function toggleBuilderSection(section: BuilderSectionKey) {
-    setBuilderSections((current) => ({
-      ...current,
-      [section]: !current[section],
-    }));
-  }
 
   async function ensureRawMaterialDetail(rawMaterialId: string): Promise<RawMaterial | null> {
     const existing = rawMaterialsById.get(rawMaterialId);
@@ -4112,7 +4058,7 @@ export default function Home() {
                     </div>
                     <ParameterPresetPicker
                       value={parameterViewPreset}
-                      onChange={selectParameterView}
+                      onChange={(key) => selectParameterView(key, visibleParameterCodes)}
                     />
                     {parameterViewPreset === "custom" ? (
                       <div className="parameterPicker">
@@ -4163,15 +4109,7 @@ export default function Home() {
                     onLoadMore={() =>
                       setMaterialResultLimit((current) => Math.min(current + 60, catalogTotal))
                     }
-                    onResetFilters={() => {
-                      setFormulaMaterialQuery("");
-                      setCatalogFamilyFilter("all");
-                      setCatalogPriceFilter("all");
-                      setCatalogPriceMin("");
-                      setCatalogPriceMax("");
-                      setCatalogParameterToAdd("");
-                      setCatalogParameterConditions([]);
-                    }}
+                    onResetFilters={resetCatalogFilters}
                   />
                   <MaterialCatalogWorkspace
                     catalogLoading={catalogLoading}
@@ -4273,7 +4211,7 @@ export default function Home() {
                     isBusy={isBusy}
                     canSaveFormula={canSaveFormula}
                     onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
-                    onSelectParameterView={selectParameterView}
+                    onSelectParameterView={(key) => selectParameterView(key, visibleParameterCodes)}
                     normalizeWarningSeverity={normalizeWarningSeverity}
                     onSaveFormula={saveFormula}
                   />
