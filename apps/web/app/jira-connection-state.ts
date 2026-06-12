@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   emptyJiraConnectionForm,
   type JiraConnection,
@@ -12,6 +12,12 @@ export function useJiraConnectionState() {
     useState<JiraConnectionForm>(emptyJiraConnectionForm);
   const [jiraMetadata, setJiraMetadata] = useState<JiraMetadataState | null>(null);
   const [jiraMappingKey, setJiraMappingKey] = useState("jira_project_id");
+  const resetJiraConnectionState = useCallback(() => {
+    setJiraConnections([]);
+    setJiraConnectionForm(emptyJiraConnectionForm);
+    setJiraMetadata(null);
+    setJiraMappingKey("jira_project_id");
+  }, []);
 
   return {
     jiraConnections,
@@ -22,5 +28,6 @@ export function useJiraConnectionState() {
     setJiraMetadata,
     jiraMappingKey,
     setJiraMappingKey,
+    resetJiraConnectionState,
   };
 }

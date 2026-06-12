@@ -59,6 +59,7 @@ type FormulaBuilderUiAction =
     }
   | { type: "removeCatalogParameterCondition"; id: string }
   | { type: "resetCatalogFilters" }
+  | { type: "resetFormulaBuilderSelection" }
   | { type: "toggleBuilderSection"; section: BuilderSectionKey };
 
 const initialFormulaBuilderUiState: FormulaBuilderUiState = {
@@ -111,6 +112,7 @@ export function useFormulaBuilderUiState() {
       removeCatalogParameterCondition: (id: string) =>
         dispatch({ type: "removeCatalogParameterCondition", id }),
       resetCatalogFilters: () => dispatch({ type: "resetCatalogFilters" }),
+      resetFormulaBuilderSelection: () => dispatch({ type: "resetFormulaBuilderSelection" }),
       toggleBuilderSection: (section: BuilderSectionKey) =>
         dispatch({ type: "toggleBuilderSection", section }),
     }),
@@ -241,6 +243,13 @@ function formulaBuilderUiReducer(
         catalogPriceMax: "",
         catalogParameterToAdd: "",
         catalogParameterConditions: [],
+      };
+    case "resetFormulaBuilderSelection":
+      return {
+        ...state,
+        selectedMaterialId: null,
+        comparisonMaterialIds: [],
+        expandedMaterialIds: [],
       };
     case "toggleBuilderSection":
       return {

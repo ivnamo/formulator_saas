@@ -1,32 +1,18 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { emptyCompatibilityRuleForm, type CompatibilityRuleForm } from "./compatibility-state";
 import { request } from "./workspace-api";
 import { getSupabaseBrowserClient } from "./supabase-client";
 import { isTenantAdminRole } from "./tenant-roles";
 import {
-  emptyJiraConnectionForm,
   emptyWorkspace,
   normalizeCode,
   slugify,
-  type AiRun,
-  type AgentPlan,
   type CalculationResult,
-  type CompatibilityRuleRead,
-  type FormulaCalculationHistory,
-  type FormulaReviewArtifact,
-  type FormulaRead,
-  type FormulaReviewRequest,
-  type JiraConnection,
-  type JiraConnectionForm,
-  type JiraMetadataState,
   type ParameterRead,
-  type RequirementParse,
   type Status,
   type TenantInvitationRead,
   type TenantRead,
   type WorkspaceState,
 } from "./workspace-model";
-import type { DraftReviewState } from "./workspace-comparison";
 import type { ComparisonConstraintField } from "./saved-formula-comparison-state";
 import type { InvitationForm, ParameterForm } from "./workspace-core-state";
 
@@ -39,26 +25,16 @@ type WorkspaceSettingsActionsOptions = {
   headers: HeadersInit;
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
   setWorkspaceName: Dispatch<SetStateAction<string>>;
-  setSelectedMaterialId: Dispatch<SetStateAction<string | null>>;
-  setComparisonMaterialIds: Dispatch<SetStateAction<string[]>>;
-  setDetailedMaterialIds: Dispatch<SetStateAction<string[]>>;
   setResult: Dispatch<SetStateAction<CalculationResult | null>>;
-  setFormulas: Dispatch<SetStateAction<FormulaRead[]>>;
-  setCalculationHistory: Dispatch<SetStateAction<FormulaCalculationHistory[]>>;
-  setFormulaReviewRequests: Dispatch<SetStateAction<FormulaReviewRequest[]>>;
-  setFormulaReviewArtifacts: Dispatch<SetStateAction<Record<string, FormulaReviewArtifact[]>>>;
-  setCompatibilityRules: Dispatch<SetStateAction<CompatibilityRuleRead[]>>;
-  setCompatibilityRuleForm: Dispatch<SetStateAction<CompatibilityRuleForm>>;
-  setJiraConnections: Dispatch<SetStateAction<JiraConnection[]>>;
   setTenantInvitations: Dispatch<SetStateAction<TenantInvitationRead[]>>;
-  setJiraConnectionForm: Dispatch<SetStateAction<JiraConnectionForm>>;
-  setJiraMetadata: Dispatch<SetStateAction<JiraMetadataState | null>>;
-  setRequirementParse: Dispatch<SetStateAction<RequirementParse | null>>;
-  setAgentPlan: Dispatch<SetStateAction<AgentPlan | null>>;
-  setDraftReview: Dispatch<SetStateAction<DraftReviewState | null>>;
-  setAiRuns: Dispatch<SetStateAction<AiRun[]>>;
   setStatus: Dispatch<SetStateAction<Status>>;
   setInvitationForm: Dispatch<SetStateAction<InvitationForm>>;
+  resetFormulaBuilderSelection: () => void;
+  resetRawMaterialWorkspaceState: () => void;
+  resetFormulaWorkspaceState: () => void;
+  resetCompatibilityState: () => void;
+  resetJiraConnectionState: () => void;
+  resetAiWorkflowState: () => void;
   resetSavedFormulaComparisonState: () => void;
   resetImportState: () => void;
   updateComparisonConstraint: (field: ComparisonConstraintField, value: string) => void;
@@ -88,26 +64,16 @@ export function useWorkspaceSettingsActions({
   headers,
   setWorkspace,
   setWorkspaceName,
-  setSelectedMaterialId,
-  setComparisonMaterialIds,
-  setDetailedMaterialIds,
   setResult,
-  setFormulas,
-  setCalculationHistory,
-  setFormulaReviewRequests,
-  setFormulaReviewArtifacts,
-  setCompatibilityRules,
-  setCompatibilityRuleForm,
-  setJiraConnections,
   setTenantInvitations,
-  setJiraConnectionForm,
-  setJiraMetadata,
-  setRequirementParse,
-  setAgentPlan,
-  setDraftReview,
-  setAiRuns,
   setStatus,
   setInvitationForm,
+  resetFormulaBuilderSelection,
+  resetRawMaterialWorkspaceState,
+  resetFormulaWorkspaceState,
+  resetCompatibilityState,
+  resetJiraConnectionState,
+  resetAiWorkflowState,
   resetSavedFormulaComparisonState,
   resetImportState,
   updateComparisonConstraint,
@@ -137,45 +103,29 @@ export function useWorkspaceSettingsActions({
         tenant,
         formulaName: `${name} Formula`,
       });
-      setResult(null);
-      setFormulas([]);
-      setCalculationHistory([]);
-      setFormulaReviewRequests([]);
-      setFormulaReviewArtifacts({});
-      setCompatibilityRules([]);
-      setCompatibilityRuleForm(emptyCompatibilityRuleForm);
-      setJiraConnections([]);
+      resetFormulaBuilderSelection();
+      resetRawMaterialWorkspaceState();
+      resetFormulaWorkspaceState();
+      resetCompatibilityState();
+      resetJiraConnectionState();
       setTenantInvitations([]);
-      setJiraConnectionForm(emptyJiraConnectionForm);
-      setJiraMetadata(null);
-      setRequirementParse(null);
-      setAgentPlan(null);
-      setDraftReview(null);
+      resetAiWorkflowState();
       resetSavedFormulaComparisonState();
-      setAiRuns([]);
       resetImportState();
       setMessage("Workspace ready");
     });
   }, [
     authHeaders,
+    resetAiWorkflowState,
+    resetCompatibilityState,
+    resetFormulaBuilderSelection,
+    resetFormulaWorkspaceState,
     resetImportState,
+    resetJiraConnectionState,
+    resetRawMaterialWorkspaceState,
     resetSavedFormulaComparisonState,
     runAction,
-    setAgentPlan,
-    setAiRuns,
-    setCalculationHistory,
-    setCompatibilityRuleForm,
-    setCompatibilityRules,
-    setDraftReview,
-    setFormulaReviewArtifacts,
-    setFormulaReviewRequests,
-    setFormulas,
-    setJiraConnectionForm,
-    setJiraConnections,
-    setJiraMetadata,
     setMessage,
-    setRequirementParse,
-    setResult,
     setTenantInvitations,
     setWorkspace,
     workspaceName,
@@ -224,23 +174,15 @@ export function useWorkspaceSettingsActions({
           rawMaterials: [],
           formulaName: `${tenant.name} Formula`,
         });
-        setSelectedMaterialId(null);
-        setComparisonMaterialIds([]);
-        setDetailedMaterialIds([]);
+        resetFormulaBuilderSelection();
+        resetRawMaterialWorkspaceState();
         setWorkspaceName(tenant.name);
-        setResult(null);
-        setFormulas([]);
-        setCalculationHistory([]);
-        setFormulaReviewRequests([]);
-        setFormulaReviewArtifacts({});
-        setCompatibilityRules([]);
-        setJiraConnections([]);
+        resetFormulaWorkspaceState();
+        resetCompatibilityState();
+        resetJiraConnectionState();
         setTenantInvitations(invitations);
-        setJiraMetadata(null);
-        setRequirementParse(null);
-        setAgentPlan(null);
-        setDraftReview(null);
-        setAiRuns([]);
+        resetAiWorkflowState();
+        resetSavedFormulaComparisonState();
         resetImportState();
         setStatus("idle");
         setMessage(`${tenant.name} loaded`);
@@ -249,24 +191,16 @@ export function useWorkspaceSettingsActions({
       }
     },
     [
+      resetAiWorkflowState,
+      resetCompatibilityState,
+      resetFormulaBuilderSelection,
+      resetFormulaWorkspaceState,
       resetImportState,
-      setAgentPlan,
-      setAiRuns,
-      setCalculationHistory,
-      setCompatibilityRules,
-      setComparisonMaterialIds,
-      setDetailedMaterialIds,
-      setDraftReview,
+      resetJiraConnectionState,
+      resetRawMaterialWorkspaceState,
+      resetSavedFormulaComparisonState,
       setError,
-      setFormulaReviewArtifacts,
-      setFormulaReviewRequests,
-      setFormulas,
-      setJiraConnections,
-      setJiraMetadata,
       setMessage,
-      setRequirementParse,
-      setResult,
-      setSelectedMaterialId,
       setStatus,
       setTenantInvitations,
       setWorkspace,

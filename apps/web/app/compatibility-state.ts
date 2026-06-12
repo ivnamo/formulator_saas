@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { CompatibilityRuleRead } from "./workspace-model";
 
 export type CompatibilityRuleForm = {
@@ -22,11 +22,16 @@ export function useCompatibilityState() {
   const [compatibilityRuleForm, setCompatibilityRuleForm] = useState<CompatibilityRuleForm>(
     emptyCompatibilityRuleForm,
   );
+  const resetCompatibilityState = useCallback(() => {
+    setCompatibilityRules([]);
+    setCompatibilityRuleForm(emptyCompatibilityRuleForm);
+  }, []);
 
   return {
     compatibilityRules,
     setCompatibilityRules,
     compatibilityRuleForm,
     setCompatibilityRuleForm,
+    resetCompatibilityState,
   };
 }

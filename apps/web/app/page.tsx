@@ -65,6 +65,7 @@ export default function Home() {
     setDetailedMaterialIds,
     aliasInputs,
     setAliasInputs,
+    resetRawMaterialWorkspaceState,
   } = useRawMaterialWorkspaceState();
   const {
     formulaMaterialQuery,
@@ -94,6 +95,7 @@ export default function Home() {
     setComparisonMaterialIds,
     setExpandedMaterialIds,
     setBuilderSections,
+    resetFormulaBuilderSelection,
     selectParameterView,
     toggleCustomParameterCode,
     addCatalogParameterCondition,
@@ -113,12 +115,14 @@ export default function Home() {
     setFormulaReviewRequests,
     formulaReviewArtifacts,
     setFormulaReviewArtifacts,
+    resetFormulaWorkspaceState,
   } = useFormulaWorkspaceState();
   const {
     compatibilityRules,
     setCompatibilityRules,
     compatibilityRuleForm,
     setCompatibilityRuleForm,
+    resetCompatibilityState,
   } = useCompatibilityState();
   const {
     jiraConnections,
@@ -129,6 +133,7 @@ export default function Home() {
     setJiraMetadata,
     jiraMappingKey,
     setJiraMappingKey,
+    resetJiraConnectionState,
   } = useJiraConnectionState();
   const {
     requirementText,
@@ -141,6 +146,7 @@ export default function Home() {
     setDraftReview,
     aiRuns,
     setAiRuns,
+    resetAiWorkflowState,
   } = useAiWorkflowState();
   const {
     formulaCompareSelection,
@@ -207,26 +213,16 @@ export default function Home() {
     headers,
     setWorkspace,
     setWorkspaceName,
-    setSelectedMaterialId,
-    setComparisonMaterialIds,
-    setDetailedMaterialIds,
     setResult,
-    setFormulas,
-    setCalculationHistory,
-    setFormulaReviewRequests,
-    setFormulaReviewArtifacts,
-    setCompatibilityRules,
-    setCompatibilityRuleForm,
-    setJiraConnections,
     setTenantInvitations,
-    setJiraConnectionForm,
-    setJiraMetadata,
-    setRequirementParse,
-    setAgentPlan,
-    setDraftReview,
-    setAiRuns,
     setStatus,
     setInvitationForm,
+    resetFormulaBuilderSelection,
+    resetRawMaterialWorkspaceState,
+    resetFormulaWorkspaceState,
+    resetCompatibilityState,
+    resetJiraConnectionState,
+    resetAiWorkflowState,
     resetSavedFormulaComparisonState,
     resetImportState,
     updateComparisonConstraint,

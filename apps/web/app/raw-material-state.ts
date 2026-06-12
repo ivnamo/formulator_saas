@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { type MaterialForm } from "./workspace-model";
 
 const emptyMaterialForm: MaterialForm = {
@@ -12,6 +12,11 @@ export function useRawMaterialWorkspaceState() {
   const [materialForm, setMaterialForm] = useState<MaterialForm>(emptyMaterialForm);
   const [detailedMaterialIds, setDetailedMaterialIds] = useState<string[]>([]);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
+  const resetRawMaterialWorkspaceState = useCallback(() => {
+    setMaterialForm(emptyMaterialForm);
+    setDetailedMaterialIds([]);
+    setAliasInputs({});
+  }, []);
 
   return {
     materialForm,
@@ -20,5 +25,6 @@ export function useRawMaterialWorkspaceState() {
     setDetailedMaterialIds,
     aliasInputs,
     setAliasInputs,
+    resetRawMaterialWorkspaceState,
   };
 }

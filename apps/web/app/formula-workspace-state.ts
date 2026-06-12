@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   type CalculationResult,
   type FormulaCalculationHistory,
@@ -15,6 +15,13 @@ export function useFormulaWorkspaceState() {
   const [formulaReviewArtifacts, setFormulaReviewArtifacts] = useState<
     Record<string, FormulaReviewArtifact[]>
   >({});
+  const resetFormulaWorkspaceState = useCallback(() => {
+    setResult(null);
+    setFormulas([]);
+    setCalculationHistory([]);
+    setFormulaReviewRequests([]);
+    setFormulaReviewArtifacts({});
+  }, []);
 
   return {
     result,
@@ -27,5 +34,6 @@ export function useFormulaWorkspaceState() {
     setFormulaReviewRequests,
     formulaReviewArtifacts,
     setFormulaReviewArtifacts,
+    resetFormulaWorkspaceState,
   };
 }

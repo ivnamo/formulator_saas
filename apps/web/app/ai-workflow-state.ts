@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { DraftReviewState } from "./workspace-comparison";
 import type { AiRun, AgentPlan, RequirementParse } from "./workspace-model";
 
@@ -11,6 +11,12 @@ export function useAiWorkflowState() {
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null);
   const [draftReview, setDraftReview] = useState<DraftReviewState | null>(null);
   const [aiRuns, setAiRuns] = useState<AiRun[]>([]);
+  const resetAiWorkflowState = useCallback(() => {
+    setRequirementParse(null);
+    setAgentPlan(null);
+    setDraftReview(null);
+    setAiRuns([]);
+  }, []);
 
   return {
     requirementText,
@@ -23,5 +29,6 @@ export function useAiWorkflowState() {
     setDraftReview,
     aiRuns,
     setAiRuns,
+    resetAiWorkflowState,
   };
 }
