@@ -2,8 +2,6 @@
 
 import {
   AlertTriangle,
-  ArrowDown,
-  ArrowUp,
   Beaker,
   BrainCircuit,
   Calculator,
@@ -92,6 +90,25 @@ import {
   type DraftReviewState,
   type SavedFormulaComparison,
 } from "./workspace-comparison";
+import {
+  DEFAULT_BUILDER_SECTIONS,
+  PARAMETER_VIEW_PRESETS,
+  formatFormulaNumber,
+  formatParameterValue,
+  materialParametersForView,
+  parameterDisplayCode,
+  parameterFamilyForCode,
+  parameterFamilyRank,
+  type BuilderSectionKey,
+  type CatalogParameterCondition,
+  type ParameterViewPresetKey,
+} from "./formula-builder-model";
+import {
+  BuilderStep,
+  FormulaLineTable,
+  FormulaProgressSummary,
+  ParameterPresetPicker,
+} from "./formula-builder-components";
 
 const JIRA_MAPPING_KEYS = [
   "formula_id",
@@ -106,133 +123,6 @@ const JIRA_MAPPING_KEYS = [
   "estimated_cost",
   "notes",
 ] as const;
-
-const PARAMETER_FAMILIES: Record<string, string[]> = {
-  Macronutriente: ["Ntotal", "Norg", "Nnitr", "Nure", "Namo", "K2O", "P2O5"],
-  Secundario: ["CaO", "MgO", "SO3"],
-  Micronutriente: ["Zn", "Mn", "Fe", "Cu", "B", "Mo", "Co", "SiO2"],
-  "Fraccion Organica": [
-    "Mseca",
-    "Morg",
-    "Corg",
-    "Extracto Humico total",
-    "Acidos fulvicos",
-    "Acidos humicos",
-    "Extracto de Algas",
-    "Polisacaridos",
-  ],
-  Aminoacidos: ["Sum AA totales", "Sum AA libres"],
-  Aminograma: [
-    "Ac aspartico",
-    "Ac glutamico",
-    "Alanina",
-    "Glicina",
-    "Histidina",
-    "Isoleucina",
-    "Leucina",
-    "Lisina",
-    "Serina",
-    "Tirosina",
-    "Treonina",
-    "Valina",
-    "Arginina",
-    "Fenilalanina",
-    "Metionina",
-    "Prolina",
-    "Hidroxiprolina",
-    "Triptofano",
-  ],
-  "Metales pesados": ["As", "Hg", "Pb", "Cd", "Cr", "Ni"],
-};
-
-type ParameterViewPresetKey =
-  | "core"
-  | "macros"
-  | "micros"
-  | "secondary"
-  | "organic"
-  | "amino"
-  | "metals"
-  | "all"
-  | "custom";
-
-type BuilderSectionKey = "basics" | "materials" | "formula" | "calculation";
-
-type CatalogParameterCondition = {
-  id: string;
-  code: string;
-  min: string;
-  max: string;
-};
-
-const PARAMETER_VIEW_PRESETS: Array<{
-  key: ParameterViewPresetKey;
-  label: string;
-  families: string[];
-  helper: string;
-}> = [
-  {
-    key: "core",
-    label: "Esenciales",
-    families: ["Macronutriente", "Micronutriente"],
-    helper: "Macros y micros para decidir rapido.",
-  },
-  {
-    key: "macros",
-    label: "Macros",
-    families: ["Macronutriente"],
-    helper: "N, P, K y formas de nitrogeno.",
-  },
-  {
-    key: "secondary",
-    label: "Secundarios",
-    families: ["Secundario"],
-    helper: "Ca, Mg y azufre.",
-  },
-  {
-    key: "micros",
-    label: "Micros",
-    families: ["Micronutriente"],
-    helper: "Zn, Mn, Fe, Cu, B, Mo...",
-  },
-  {
-    key: "organic",
-    label: "Organica",
-    families: ["Fraccion Organica"],
-    helper: "Materia seca, carbono y extractos.",
-  },
-  {
-    key: "amino",
-    label: "Amino",
-    families: ["Aminoacidos", "Aminograma"],
-    helper: "Aminoacidos totales, libres y aminograma.",
-  },
-  {
-    key: "metals",
-    label: "Metales",
-    families: ["Metales pesados"],
-    helper: "As, Hg, Pb, Cd, Cr y Ni.",
-  },
-  {
-    key: "all",
-    label: "Todo",
-    families: [],
-    helper: "Todos los parametros disponibles.",
-  },
-  {
-    key: "custom",
-    label: "Personal",
-    families: [],
-    helper: "Elige parametro a parametro.",
-  },
-];
-
-const DEFAULT_BUILDER_SECTIONS: Record<BuilderSectionKey, boolean> = {
-  basics: true,
-  materials: true,
-  formula: false,
-  calculation: false,
-};
 
 type WorkspaceView =
   | "formula"
@@ -268,85 +158,6 @@ const VIEW_DESCRIPTIONS: Record<WorkspaceView, string> = {
 
 function isTenantAdminRole(role?: string | null) {
   return role === "owner" || role === "admin";
-}
-
-function normalizeLookup(value: string | null | undefined) {
-  return (value ?? "").trim().toLowerCase();
-}
-
-function normalizeParameterLookup(value: string | null | undefined) {
-  return normalizeLookup(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
-}
-
-function parameterFamilyForCode(code: string) {
-  const normalizedCode = normalizeParameterLookup(code);
-  for (const [family, codes] of Object.entries(PARAMETER_FAMILIES)) {
-    if (codes.some((candidate) => normalizeParameterLookup(candidate) === normalizedCode)) {
-      return family;
-    }
-  }
-  return "Otros";
-}
-
-function parameterDisplayCode(code: string) {
-  const normalizedCode = normalizeParameterLookup(code);
-  for (const codes of Object.values(PARAMETER_FAMILIES)) {
-    const canonical = codes.find(
-      (candidate) => normalizeParameterLookup(candidate) === normalizedCode,
-    );
-    if (canonical) {
-      return canonical;
-    }
-  }
-  return code;
-}
-
-function formatFormulaNumber(value: number | null, suffix = "") {
-  return value === null ? "-" : `${value.toFixed(2)}${suffix}`;
-}
-
-function parameterFamilyRank(family: string) {
-  const familyOrder = Object.keys(PARAMETER_FAMILIES);
-  const index = familyOrder.indexOf(family);
-  return index === -1 ? familyOrder.length : index;
-}
-
-function formatParameterValue(
-  parameter: { code: string; value: number; unit: string | null },
-) {
-  const unit = parameter.unit ? ` ${parameter.unit}` : "";
-  return `${parameterDisplayCode(parameter.code)}: ${parameter.value.toFixed(2)}${unit}`;
-}
-
-function parameterMatchesPositiveFilter(value: number, showOnlyPositive: boolean) {
-  return !showOnlyPositive || Math.abs(value) > 0.0001;
-}
-
-function materialParametersForView(
-  material: RawMaterial,
-  visibleParameterCodes: string[],
-  showOnlyPositive: boolean,
-  limit = 5,
-) {
-  const requestedCodes =
-    visibleParameterCodes.length > 0 ? visibleParameterCodes : Object.keys(material.parameters);
-  return requestedCodes
-    .map((code) => material.parameters[code])
-    .filter((parameter): parameter is NonNullable<typeof parameter> => Boolean(parameter))
-    .filter((parameter) => parameterMatchesPositiveFilter(parameter.value, showOnlyPositive))
-    .sort((left, right) => {
-      const familyDelta =
-        parameterFamilyRank(parameterFamilyForCode(left.code)) -
-        parameterFamilyRank(parameterFamilyForCode(right.code));
-      if (familyDelta !== 0) {
-        return familyDelta;
-      }
-      return left.code.localeCompare(right.code);
-    })
-    .slice(0, limit);
 }
 
 function mergeParameters(
@@ -4322,20 +4133,13 @@ export default function Home() {
               <h2>Formula Builder</h2>
               <span>{isFormulaBalanced ? "Balanced" : `${totalPercentage.toFixed(1)}%`}</span>
             </div>
-            <section className="builderStep" data-open={builderSections.basics}>
-              <button
-                className="builderStepHeader"
-                type="button"
-                onClick={() => toggleBuilderSection("basics")}
-              >
-                <span>
-                  <strong>1. Datos basicos</strong>
-                  <small>Nombre de formula y, solo si procede, datos de revision.</small>
-                </span>
-                <ChevronDown size={18} />
-              </button>
-              {builderSections.basics ? (
-                <div className="builderStepBody">
+            <BuilderStep
+              section="basics"
+              title="1. Datos basicos"
+              summary="Nombre de formula y, solo si procede, datos de revision."
+              isOpen={builderSections.basics}
+              onToggle={toggleBuilderSection}
+            >
                   <label className="fullWidthLabel">
                     <span>Name</span>
                     <input
@@ -4410,26 +4214,20 @@ export default function Home() {
                       </datalist>
                     </div>
                   ) : null}
-                </div>
-              ) : null}
-            </section>
-            <section className="builderStep" data-open={builderSections.materials}>
-              <button
-                className="builderStepHeader"
-                type="button"
-                onClick={() => toggleBuilderSection("materials")}
-              >
-                <span>
-                  <strong>2. Materias primas</strong>
-                  <small>
-                    {catalogLoading ? "Cargando catalogo" : `${catalogTotal} disponibles`} -{" "}
-                    {visibleParameterSummary}
-                  </small>
-                </span>
-                <ChevronDown size={18} />
-              </button>
-              {builderSections.materials ? (
-                <div className="builderStepBody builderSearch">
+            </BuilderStep>
+            <BuilderStep
+              section="materials"
+              title="2. Materias primas"
+              summary={
+                <>
+                  {catalogLoading ? "Cargando catalogo" : `${catalogTotal} disponibles`} -{" "}
+                  {visibleParameterSummary}
+                </>
+              }
+              isOpen={builderSections.materials}
+              bodyClassName="builderSearch"
+              onToggle={toggleBuilderSection}
+            >
                   <div className="parameterViewPanel">
                     <div className="parameterViewHeader">
                       <span>
@@ -4445,19 +4243,10 @@ export default function Home() {
                         <span>Solo &gt; 0</span>
                       </label>
                     </div>
-                    <div className="parameterPresetList" role="list" aria-label="Vistas de parametros">
-                      {PARAMETER_VIEW_PRESETS.map((preset) => (
-                        <button
-                          key={preset.key}
-                          className="segmentedChip"
-                          data-selected={parameterViewPreset === preset.key}
-                          type="button"
-                          onClick={() => selectParameterView(preset.key)}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </div>
+                    <ParameterPresetPicker
+                      value={parameterViewPreset}
+                      onChange={selectParameterView}
+                    />
                     {parameterViewPreset === "custom" ? (
                       <div className="parameterPicker">
                         {parameterCatalog.map((parameter) => (
@@ -4954,50 +4743,24 @@ export default function Home() {
                       </aside>
                     ) : null}
                   </div>
-                </div>
-              ) : null}
-            </section>
-            <section className="builderStep" data-open={builderSections.formula}>
-              <button
-                className="builderStepHeader"
-                type="button"
-                onClick={() => toggleBuilderSection("formula")}
-              >
-                <span>
-                  <strong>3. Formula editable</strong>
-                  <small>
-                    {workspace.formulaLines.length} lineas - {totalPercentage.toFixed(1)}%
-                  </small>
-                </span>
-                <ChevronDown size={18} />
-              </button>
-              {builderSections.formula ? (
-                <div className="builderStepBody">
-                  <div className="formulaMeter" aria-label="Formula percentage total">
-                    <div style={{ width: `${Math.min(Math.max(totalPercentage, 0), 100)}%` }} />
-                  </div>
-                  <div className="formulaSummary">
-              <div>
-                <span>Total percentage</span>
-                <strong>{totalPercentage.toFixed(1)}%</strong>
-              </div>
-              <div>
-                <span>Status</span>
-                <strong>{isFormulaBalanced ? "Balanced" : "Draft"}</strong>
-              </div>
-              <div>
-                <span>Price</span>
-                <strong>
-                  {result
-                    ? formatResultPrice(result)
-                    : formatFormulaNumber(localPreview.priceTotal, " EUR/kg")}
-                </strong>
-              </div>
-              <div>
-                <span>Calculation source</span>
-                <strong>{result ? "Backend official" : "Local preview"}</strong>
-              </div>
-                  </div>
+            </BuilderStep>
+            <BuilderStep
+              section="formula"
+              title="3. Formula editable"
+              summary={`${workspace.formulaLines.length} lineas - ${totalPercentage.toFixed(1)}%`}
+              isOpen={builderSections.formula}
+              onToggle={toggleBuilderSection}
+            >
+                  <FormulaProgressSummary
+                    totalPercentage={totalPercentage}
+                    isBalanced={isFormulaBalanced}
+                    price={
+                      result
+                        ? formatResultPrice(result)
+                        : formatFormulaNumber(localPreview.priceTotal, " EUR/kg")
+                    }
+                    source={result ? "Backend official" : "Local preview"}
+                  />
             {draftReview ? (
               <div className="draftReview" data-state={draftReview.status}>
                 <div className="draftReviewHeader">
@@ -5213,142 +4976,29 @@ export default function Home() {
               )}
             </div>
             ) : null}
-            <div className="formulaLineTable">
-              <div className="formulaLineHead">
-                <span>Orden</span>
-                <span>Codigo</span>
-                <span>Materia prima</span>
-                <span>%</span>
-                <span>Parametros visibles</span>
-                <span>Estado</span>
-                <span>Acciones</span>
-              </div>
-              {formulaLineDetails.length === 0 ? (
-                <div className="empty">Busca y anade materias primas para empezar.</div>
-              ) : (
-                formulaLineDetails.map((line) => {
-                  const material = line.material;
-                  const parameterPreview = material
-                    ? materialParametersForView(
-                        material,
-                        visibleParameterCodes,
-                        showOnlyPositiveParameters,
-                        4,
-                      )
-                    : [];
-                  const lineWarnings = [
-                    material?.price === null ? "sin precio" : null,
-                    material?.isObsolete ? "obsoleta" : null,
-                    material && !material.isActive ? "inactiva" : null,
-                  ].filter(Boolean);
-                  return (
-                    <div className="formulaLineRow" key={line.localId}>
-                      <div className="orderControls">
-                        <strong>{line.index + 1}</strong>
-                        <button
-                          className="iconButton"
-                          type="button"
-                          onClick={() => moveFormulaLine(line.localId, -1)}
-                          disabled={isBusy || line.index === 0}
-                          title="Subir linea"
-                          aria-label={`Subir ${material?.name ?? "linea"}`}
-                        >
-                          <ArrowUp size={15} />
-                        </button>
-                        <button
-                          className="iconButton"
-                          type="button"
-                          onClick={() => moveFormulaLine(line.localId, 1)}
-                          disabled={isBusy || line.index === formulaLineDetails.length - 1}
-                          title="Bajar linea"
-                          aria-label={`Bajar ${material?.name ?? "linea"}`}
-                        >
-                          <ArrowDown size={15} />
-                        </button>
-                      </div>
-                      <code>{material?.code ?? "-"}</code>
-                      <span className="formulaMaterialName">
-                        <strong>{material?.name ?? "Unknown material"}</strong>
-                        <small>
-                          {material?.externalCode ? `ERP ${material.externalCode}` : "Sin ERP"}
-                          {material?.family ? ` - ${material.family}` : ""}
-                        </small>
-                        {parameterPreview.length ? (
-                          <span className="parameterBadgeList">
-                            {parameterPreview.map((parameter) => (
-                              <em key={parameter.code}>{formatParameterValue(parameter)}</em>
-                            ))}
-                          </span>
-                        ) : null}
-                      </span>
-                      <input
-                        aria-label={`${material?.name ?? "Material"} percentage`}
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={0.1}
-                        value={line.percentage}
-                        onChange={(event) =>
-                          updateFormulaLine(line.localId, Number(event.target.value))
-                        }
-                        disabled={isBusy}
-                      />
-                      <span className="lineParameterPreview">
-                        {parameterPreview.length
-                          ? parameterPreview.map((parameter) => (
-                              <em key={parameter.code}>{formatParameterValue(parameter)}</em>
-                            ))
-                          : "-"}
-                      </span>
-                      <span className="lineWarnings">
-                        {lineWarnings.length ? lineWarnings.join(", ") : "OK"}
-                      </span>
-                      <div className="lineActions">
-                        <button
-                          className="iconButton"
-                          type="button"
-                          onClick={() => duplicateFormulaLine(line.localId)}
-                          disabled={isBusy}
-                          title="Duplicar linea"
-                          aria-label={`Duplicar ${material?.name ?? "linea"}`}
-                        >
-                          <Copy size={15} />
-                        </button>
-                        <button
-                          className="iconButton danger"
-                          type="button"
-                          onClick={() => removeFormulaLine(line.localId)}
-                          disabled={isBusy}
-                          title="Eliminar linea"
-                          aria-label={`Eliminar ${material?.name ?? "linea"}`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-                </div>
-              ) : null}
-            </section>
-            <section className="builderStep" data-open={builderSections.calculation}>
-              <button
-                className="builderStepHeader"
-                type="button"
-                onClick={() => toggleBuilderSection("calculation")}
-              >
-                <span>
-                  <strong>4. Calculo vivo</strong>
-                  <small>
-                    {result ? "Backend oficial" : "Preview local"} - {parameterRows.length} parametros
-                  </small>
-                </span>
-                <ChevronDown size={18} />
-              </button>
-              {builderSections.calculation ? (
-                <div className="builderStepBody builderCalculationPanel">
+            <FormulaLineTable
+              lines={formulaLineDetails}
+              visibleParameterCodes={visibleParameterCodes}
+              showOnlyPositiveParameters={showOnlyPositiveParameters}
+              isBusy={isBusy}
+              onMoveLine={moveFormulaLine}
+              onUpdateLine={updateFormulaLine}
+              onDuplicateLine={duplicateFormulaLine}
+              onRemoveLine={removeFormulaLine}
+            />
+            </BuilderStep>
+            <BuilderStep
+              section="calculation"
+              title="4. Calculo vivo"
+              summary={
+                <>
+                  {result ? "Backend oficial" : "Preview local"} - {parameterRows.length} parametros
+                </>
+              }
+              isOpen={builderSections.calculation}
+              bodyClassName="builderCalculationPanel"
+              onToggle={toggleBuilderSection}
+            >
                   <div className="panelHeader">
                     <h2>Calculo vivo</h2>
                     <span>{result ? "Backend" : "Preview"}</span>
@@ -5366,19 +5016,11 @@ export default function Home() {
                       />
                       <span>Solo parametros &gt; 0</span>
                     </label>
-                    <div className="parameterPresetList compactPresetList">
-                      {PARAMETER_VIEW_PRESETS.map((preset) => (
-                        <button
-                          key={preset.key}
-                          className="segmentedChip"
-                          data-selected={parameterViewPreset === preset.key}
-                          type="button"
-                          onClick={() => selectParameterView(preset.key)}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </div>
+                    <ParameterPresetPicker
+                      value={parameterViewPreset}
+                      onChange={selectParameterView}
+                      compact
+                    />
                   </div>
                   <div className="parameterList">
                     {parameterRows.length ? (
@@ -5452,9 +5094,7 @@ export default function Home() {
                       Guardar formula
                     </button>
                   </div>
-                </div>
-              ) : null}
-            </section>
+            </BuilderStep>
           </section>
 
           <section id="results" className="panel resultPanel" hidden={activeView !== "results"}>

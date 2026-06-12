@@ -98,3 +98,19 @@ Consecuencias:
 - Los refactors detectados dentro del alcance de la rama deben hacerse en commits atomicos.
 - Si el refactor toca codigo, se reejecutan los tests/checks afectados.
 - Si la deuda detectada excede el alcance de la rama, se registra como backlog o nueva rama en vez de mezclarla.
+
+## ADR-013: Disciplina solodev
+
+Decision: el repositorio se trabaja como producto de un solodev con `main` siempre recuperable, ramas cortas, commits atomicos, secretos fuera de git y cierre explicito de verificaciones.
+
+Motivo: FormulIA avanza rapido con asistencia IA, pero no debe depender de memoria de chat ni de cambios grandes imposibles de revisar. Un solodev necesita poder volver a un estado sano, entender cada commit y publicar o revertir con poca friccion.
+
+Consecuencias:
+
+- Crear una rama `codex/`, `feature/`, `fix/`, `docs/` o similar para cualquier cambio no trivial.
+- Mantener commits pequenos, con un unico motivo por commit.
+- No mezclar refactors amplios con cambios funcionales salvo que el refactor sea necesario para la feature.
+- Ejecutar checks proporcionales antes de commit y repetirlos si se toca codigo tras el primer verde.
+- No commitear `.env*`, tokens, exports sensibles ni credenciales de conectores.
+- Dejar `git status -sb` limpio antes de handoff, merge o cierre de sesion.
+- Si se hace merge a `main`, debe ser despues de una rama verificada y preferiblemente fast-forward.

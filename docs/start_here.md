@@ -68,6 +68,8 @@ Tampoco añadas módulos de usuario final, landing comercial o rediseños visual
 5. Si el gate produce cambios, reejecutar los tests/checks afectados.
 6. Cerrar con worktree limpio y push.
 
+Regla solodev permanente: `main` debe quedar siempre recuperable; no commitear secretos, no mezclar cambios grandes sin necesidad y preferir ramas cortas con commits pequenos verificables.
+
 ## Stack recomendado
 
 ```text

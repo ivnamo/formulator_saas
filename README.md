@@ -30,6 +30,8 @@ docs/       product, architecture, and delivery documentation
 - Add proportional tests for code changes.
 - After tests/checks pass, run a quality/refactor gate before closing a branch.
 - Keep tenant isolation and deterministic calculation ahead of AI features.
+- Solo-dev rule: keep `main` recoverable at all times. Prefer short branches, scoped commits,
+  explicit verification notes, ignored local secrets, and a clean worktree before handoff or merge.
 
 ## Local Development
 
