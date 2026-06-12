@@ -59,6 +59,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_046_saved_formula_comparison_refactor.md`](00-meta/meta_046_saved_formula_comparison_refactor.md)
 - [`00-meta/meta_047_ai_assistant_panel_refactor.md`](00-meta/meta_047_ai_assistant_panel_refactor.md)
 - [`00-meta/meta_048_settings_jira_panel_refactor.md`](00-meta/meta_048_settings_jira_panel_refactor.md)
+- [`00-meta/meta_049_raw_materials_panel_refactor.md`](00-meta/meta_049_raw_materials_panel_refactor.md)
 
 ## Producto
 

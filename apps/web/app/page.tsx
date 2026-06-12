@@ -11,7 +11,6 @@ import {
   KeyRound,
   Loader2,
   LogOut,
-  Plus,
   RefreshCw,
   Save,
   Settings2,
@@ -97,6 +96,7 @@ import { ExcelImportPanel } from "./excel-import-panel";
 import { useExcelImportState } from "./excel-import-state";
 import { AiAssistantPanel } from "./ai-assistant-panel";
 import { SettingsPanel } from "./settings-panel";
+import { RawMaterialsPanel } from "./raw-materials-panel";
 import {
   formatResultPrice,
   formatSignedDelta,
@@ -2286,127 +2286,20 @@ export default function Home() {
             onMapJiraField={mapJiraField}
           />
 
-          <section id="materials" className="panel materialPanel" hidden={activeView !== "materials"}>
-            <div className="panelHeader">
-              <h2>Raw materials</h2>
-              <span>{workspace.rawMaterials.length} rows</span>
-            </div>
-            <div className="materialForm">
-              <label>
-                <span>Code</span>
-                <input
-                  value={materialForm.code}
-                  onChange={(event) =>
-                    setMaterialForm((current) => ({ ...current, code: event.target.value }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>Name</span>
-                <input
-                  value={materialForm.name}
-                  onChange={(event) =>
-                    setMaterialForm((current) => ({ ...current, name: event.target.value }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>Price EUR/kg</span>
-                <input
-                  inputMode="decimal"
-                  value={materialForm.price}
-                  onChange={(event) =>
-                    setMaterialForm((current) => ({ ...current, price: event.target.value }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>{workspace.parameter ? workspace.parameter.name : "Value"}</span>
-                <input
-                  inputMode="decimal"
-                  value={materialForm.parameterValue}
-                  onChange={(event) =>
-                    setMaterialForm((current) => ({
-                      ...current,
-                      parameterValue: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData || !workspace.parameter}
-                />
-              </label>
-              <button className="secondaryButton" type="button" onClick={createMaterial} disabled={!canEditTenantData}>
-                <Plus size={17} />
-                Add material
-              </button>
-            </div>
-            <div className="materialTable">
-              <div className="materialHead">
-                <span>Code</span>
-                <span>Name</span>
-                <span>Price</span>
-                <span>{workspace.parameter?.code ?? "Parameter"}</span>
-                <span>Formula</span>
-              </div>
-              {workspace.rawMaterials.length === 0 ? (
-                <div className="empty">No raw materials yet.</div>
-              ) : (
-                workspace.rawMaterials.map((material) => (
-                  <div className="materialRowWrap" key={material.id}>
-                    <div className="materialRow">
-                      <code>{material.code || "-"}</code>
-                      <span>{material.name}</span>
-                      <span>{material.price === null ? "-" : material.price.toFixed(2)}</span>
-                      <span>{material.parameterValue === null ? "-" : material.parameterValue.toFixed(2)}</span>
-                      <button
-                        className="iconButton"
-                        type="button"
-                        onClick={() => void addFormulaLine(material.id)}
-                        disabled={isBusy}
-                        title="Add to formula"
-                        aria-label={`Add ${material.name} to formula`}
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                    <div className="aliasEditor">
-                      <span>Aliases</span>
-                      <div className="aliasTags">
-                        {material.aliases.length ? (
-                          material.aliases.map((alias) => <code key={alias}>{alias}</code>)
-                        ) : (
-                          <em>None</em>
-                        )}
-                      </div>
-                      <input
-                        aria-label={`${material.name} alias`}
-                        value={aliasInputs[material.id] ?? ""}
-                        onChange={(event) =>
-                          setAliasInputs((current) => ({
-                            ...current,
-                            [material.id]: event.target.value,
-                          }))
-                        }
-                        disabled={isBusy}
-                      />
-                      <button
-                        className="iconButton"
-                        type="button"
-                        onClick={() => createAlias(material.id)}
-                        disabled={isBusy}
-                        title="Add alias"
-                        aria-label={`Add alias for ${material.name}`}
-                      >
-                        <Save size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
+          <RawMaterialsPanel
+            active={activeView === "materials"}
+            rawMaterials={workspace.rawMaterials}
+            parameter={workspace.parameter}
+            materialForm={materialForm}
+            aliasInputs={aliasInputs}
+            canEditTenantData={canEditTenantData}
+            isBusy={isBusy}
+            onMaterialFormChange={setMaterialForm}
+            onAliasInputsChange={setAliasInputs}
+            onCreateMaterial={createMaterial}
+            onAddFormulaLine={addFormulaLine}
+            onCreateAlias={createAlias}
+          />
 
           <section
             id="compatibility"
