@@ -3,6 +3,8 @@ import type { WorkspacePanelsProps } from "./workspace-panels";
 import { WorkspacePanels } from "./workspace-panels";
 import type { Status, WorkspaceState } from "./workspace-model";
 
+export type WorkspaceHomePanels = Omit<WorkspacePanelsProps, "activeView">;
+
 type WorkspaceHomeViewProps = {
   activeView: WorkspaceView;
   workspace: WorkspaceState;
@@ -12,7 +14,7 @@ type WorkspaceHomeViewProps = {
   isBusy: boolean;
   onViewChange: (view: WorkspaceView) => void;
   onSignOut: () => void | Promise<void>;
-  panels: Omit<WorkspacePanelsProps, "activeView">;
+  panels: WorkspaceHomePanels;
 };
 
 export function WorkspaceHomeView({
