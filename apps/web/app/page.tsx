@@ -89,13 +89,25 @@ import {
   DEFAULT_BUILDER_SECTIONS,
   PARAMETER_VIEW_PRESETS,
   formatFormulaNumber,
-  materialParametersForView,
-  parameterFamilyForCode,
-  parameterFamilyRank,
   type BuilderSectionKey,
   type CatalogParameterCondition,
   type ParameterViewPresetKey,
 } from "./formula-builder-model";
+import {
+  buildCalculationParameterRows,
+  buildComparisonMaterials,
+  buildFormulaLineDetails,
+  buildLocalFormulaPreview,
+  buildMaterialSearchResults,
+  buildParameterCatalog,
+  buildRawMaterialsById,
+  calculateFormulaTotalPercentage,
+  formatVisibleParameterSummary,
+  getSelectedMaterial,
+  getSelectedMaterialParameters,
+  isFormulaPercentageBalanced,
+  selectVisibleParameterCodes,
+} from "./formula-builder-derived";
 import {
   BuilderStep,
   DraftReviewPanel,
@@ -440,85 +452,26 @@ export default function Home() {
   ]);
 
   const rawMaterialsById = useMemo(
-    () => new Map(workspace.rawMaterials.map((material) => [material.id, material])),
+    () => buildRawMaterialsById(workspace.rawMaterials),
     [workspace.rawMaterials],
   );
   const formulaLineDetails = useMemo(
-    () =>
-      workspace.formulaLines.map((line, index) => {
-        const material = rawMaterialsById.get(line.rawMaterialId);
-        return {
-          ...line,
-          index,
-          material,
-        };
-      }),
+    () => buildFormulaLineDetails(workspace.formulaLines, rawMaterialsById),
     [rawMaterialsById, workspace.formulaLines],
   );
-  const parameterCatalog = useMemo(() => {
-    const catalog = new Map<
-      string,
-      {
-        code: string;
-        name: string;
-        unit: string | null;
-        family: string;
-        materialCount: number;
-        positiveMaterialCount: number;
-      }
-    >();
-    for (const parameter of workspace.parameters) {
-      catalog.set(parameter.code, {
-        code: parameter.code,
-        name: parameter.name,
-        unit: parameter.unit,
-        family: parameterFamilyForCode(parameter.code),
-        materialCount: 0,
-        positiveMaterialCount: 0,
-      });
-    }
-    for (const material of workspace.rawMaterials) {
-      for (const parameter of Object.values(material.parameters)) {
-        const existing = catalog.get(parameter.code);
-        if (existing) {
-          existing.materialCount += 1;
-          if (Math.abs(parameter.value) > 0.0001) {
-            existing.positiveMaterialCount += 1;
-          }
-          continue;
-        }
-        catalog.set(parameter.code, {
-          code: parameter.code,
-          name: parameter.name,
-          unit: parameter.unit,
-          family: parameterFamilyForCode(parameter.code),
-          materialCount: 1,
-          positiveMaterialCount: Math.abs(parameter.value) > 0.0001 ? 1 : 0,
-        });
-      }
-    }
-    return Array.from(catalog.values()).sort((left, right) => {
-      const familyDelta = parameterFamilyRank(left.family) - parameterFamilyRank(right.family);
-      if (familyDelta !== 0) {
-        return familyDelta;
-      }
-      return left.code.localeCompare(right.code);
-    });
-  }, [workspace.parameters, workspace.rawMaterials]);
-  const visibleParameterCodes = useMemo(() => {
-    const preset = PARAMETER_VIEW_PRESETS.find((option) => option.key === parameterViewPreset);
-    if (!preset || preset.key === "all") {
-      return parameterCatalog.map((parameter) => parameter.code);
-    }
-    if (preset.key === "custom") {
-      return customParameterCodes.filter((code) =>
-        parameterCatalog.some((parameter) => parameter.code === code),
-      );
-    }
-    return parameterCatalog
-      .filter((parameter) => preset.families.includes(parameter.family))
-      .map((parameter) => parameter.code);
-  }, [customParameterCodes, parameterCatalog, parameterViewPreset]);
+  const parameterCatalog = useMemo(
+    () => buildParameterCatalog(workspace.parameters, workspace.rawMaterials),
+    [workspace.parameters, workspace.rawMaterials],
+  );
+  const visibleParameterCodes = useMemo(
+    () =>
+      selectVisibleParameterCodes(
+        parameterCatalog,
+        parameterViewPreset,
+        customParameterCodes,
+      ),
+    [customParameterCodes, parameterCatalog, parameterViewPreset],
+  );
   const visibleParameterCodeSet = useMemo(
     () => new Set(visibleParameterCodes),
     [visibleParameterCodes],
@@ -526,124 +479,42 @@ export default function Home() {
   const selectedParameterPreset =
     PARAMETER_VIEW_PRESETS.find((option) => option.key === parameterViewPreset) ??
     PARAMETER_VIEW_PRESETS[0];
-  const visibleParameterSummary =
-    visibleParameterCodes.length === 0
-      ? "Sin parametros seleccionados"
-      : `${visibleParameterCodes.length} parametros visibles`;
-  const localPreview = useMemo(() => {
-    let priceTotal = 0;
-    let hasMissingPrice = false;
-    const parameterTotals = new Map<
-      string,
-      { code: string; value: number; unit: string | null; family: string; source: string }
-    >();
-    const previewWarnings: CalculationResult["warnings"] = [];
-    const previewTotal = formulaLineDetails.reduce((sum, line) => sum + line.percentage, 0);
-
-    if (formulaLineDetails.length > 0 && Math.abs(previewTotal - 100) > 0.01) {
-      previewWarnings.push({
-        code: "total_percentage_not_100",
-        message: `Formula percentage total is ${previewTotal.toFixed(2)}, expected 100.`,
-        severity: "warning",
-      });
-    }
-
-    for (const line of formulaLineDetails) {
-      if (line.percentage <= 0) {
-        continue;
-      }
-      if (!line.material) {
-        previewWarnings.push({
-          code: "missing_raw_material",
-          message: `Formula line ${line.index + 1} has no raw material.`,
-          severity: "warning",
-        });
-        continue;
-      }
-      if (line.material.price === null) {
-        hasMissingPrice = true;
-        previewWarnings.push({
-          code: "missing_price",
-          message: `${line.material.name} has no current price.`,
-          severity: "warning",
-        });
-      } else {
-        priceTotal += (line.material.price * line.percentage) / 100;
-      }
-      if (!line.material.isActive || line.material.isObsolete) {
-        previewWarnings.push({
-          code: "material_status",
-          message: `${line.material.name} is ${line.material.isObsolete ? "obsolete" : "inactive"}.`,
-          severity: line.material.isObsolete ? "blocker" : "warning",
-        });
-      }
-      for (const parameter of Object.values(line.material.parameters)) {
-        if (!visibleParameterCodeSet.has(parameter.code)) {
-          continue;
-        }
-        const contribution = (parameter.value * line.percentage) / 100;
-        const existing = parameterTotals.get(parameter.code);
-        if (existing) {
-          existing.value += contribution;
-          continue;
-        }
-        parameterTotals.set(parameter.code, {
-          code: parameter.code,
-          value: contribution,
-          unit: parameter.unit,
-          family: parameterFamilyForCode(parameter.code),
-          source: "Preview",
-        });
-      }
-    }
-
-    return {
-      priceTotal: hasMissingPrice ? null : priceTotal,
-      parameters: Array.from(parameterTotals.values()).sort((left, right) => {
-        const familyDelta = parameterFamilyRank(left.family) - parameterFamilyRank(right.family);
-        if (familyDelta !== 0) {
-          return familyDelta;
-        }
-        return left.code.localeCompare(right.code);
-      }),
-      warnings: previewWarnings,
-    };
-  }, [formulaLineDetails, visibleParameterCodeSet]);
-  const materialSearchResults = useMemo(() => {
-    const selectedIds = new Set(workspace.formulaLines.map((line) => line.rawMaterialId));
-    return catalogMaterialIds
-      .map((id) => rawMaterialsById.get(id))
-      .filter((material): material is RawMaterial => Boolean(material))
-      .filter((material) => !selectedIds.has(material.id));
-  }, [catalogMaterialIds, rawMaterialsById, workspace.formulaLines]);
-  const selectedMaterial = selectedMaterialId
-    ? (rawMaterialsById.get(selectedMaterialId) ?? null)
-    : null;
-  const selectedMaterialParameters = selectedMaterial
-    ? materialParametersForView(
+  const visibleParameterSummary = formatVisibleParameterSummary(visibleParameterCodes);
+  const localPreview = useMemo(
+    () => buildLocalFormulaPreview(formulaLineDetails, visibleParameterCodeSet),
+    [formulaLineDetails, visibleParameterCodeSet],
+  );
+  const materialSearchResults = useMemo(
+    () => buildMaterialSearchResults(catalogMaterialIds, rawMaterialsById, workspace.formulaLines),
+    [catalogMaterialIds, rawMaterialsById, workspace.formulaLines],
+  );
+  const selectedMaterial = useMemo(
+    () => getSelectedMaterial(selectedMaterialId, rawMaterialsById),
+    [rawMaterialsById, selectedMaterialId],
+  );
+  const selectedMaterialParameters = useMemo(
+    () =>
+      getSelectedMaterialParameters(
         selectedMaterial,
         visibleParameterCodes,
         showOnlyPositiveParameters,
-        200,
-      )
-    : [];
-  const comparisonMaterials = comparisonMaterialIds
-    .map((id) => rawMaterialsById.get(id))
-    .filter((material): material is RawMaterial => Boolean(material));
-  const parameterRows = useMemo(() => {
-    const rows = result
-      ? result.parameters.map((parameter) => ({
-          ...parameter,
-          family: parameterFamilyForCode(parameter.code),
-          source: "Backend",
-        }))
-      : localPreview.parameters;
-    return rows.filter((parameter) => {
-      const visibleSelected = visibleParameterCodeSet.has(parameter.code);
-      const positiveSelected = !showOnlyPositiveParameters || Math.abs(parameter.value) > 0.0001;
-      return visibleSelected && positiveSelected;
-    });
-  }, [localPreview.parameters, result, showOnlyPositiveParameters, visibleParameterCodeSet]);
+      ),
+    [selectedMaterial, showOnlyPositiveParameters, visibleParameterCodes],
+  );
+  const comparisonMaterials = useMemo(
+    () => buildComparisonMaterials(comparisonMaterialIds, rawMaterialsById),
+    [comparisonMaterialIds, rawMaterialsById],
+  );
+  const parameterRows = useMemo(
+    () =>
+      buildCalculationParameterRows(
+        result,
+        localPreview,
+        visibleParameterCodeSet,
+        showOnlyPositiveParameters,
+      ),
+    [localPreview, result, showOnlyPositiveParameters, visibleParameterCodeSet],
+  );
   const catalogMaterialFamilies = useMemo(
     () => catalogFamilies,
     [catalogFamilies],
@@ -705,11 +576,11 @@ export default function Home() {
         : comparisonConstraintEvaluations,
     [comparisonConstraintEvaluations, showOnlyConstraintIssues],
   );
-  const totalPercentage = workspace.formulaLines.reduce(
-    (sum, line) => sum + line.percentage,
-    0,
+  const totalPercentage = useMemo(
+    () => calculateFormulaTotalPercentage(workspace.formulaLines),
+    [workspace.formulaLines],
   );
-  const isFormulaBalanced = Math.abs(totalPercentage - 100) <= 0.01;
+  const isFormulaBalanced = isFormulaPercentageBalanced(totalPercentage);
   const visibleWarnings = result?.warnings ?? localPreview.warnings;
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;

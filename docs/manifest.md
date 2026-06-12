@@ -51,6 +51,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_038_formula_builder_unified_workflow.md`](00-meta/meta_038_formula_builder_unified_workflow.md)
 - [`00-meta/meta_039_legacy_formula_parity_and_zero_backfill.md`](00-meta/meta_039_legacy_formula_parity_and_zero_backfill.md)
 - [`00-meta/meta_040_formula_builder_component_refactor.md`](00-meta/meta_040_formula_builder_component_refactor.md)
+- [`00-meta/meta_041_formula_builder_derived_helpers.md`](00-meta/meta_041_formula_builder_derived_helpers.md)
 
 ## Producto
 

@@ -20,6 +20,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import type { CalculationParameterRow, FormulaLineDetail } from "./formula-builder-derived";
 import {
   PARAMETER_VIEW_PRESETS,
   formatFormulaNumber,
@@ -145,14 +146,6 @@ export function FormulaProgressSummary({
     </>
   );
 }
-
-type FormulaLineDetail = {
-  localId: string;
-  rawMaterialId: string;
-  percentage: number;
-  index: number;
-  material?: RawMaterial;
-};
 
 type FormulaLineTableProps = {
   lines: FormulaLineDetail[];
@@ -851,14 +844,6 @@ export function MaterialCatalogControls({
     </>
   );
 }
-
-type CalculationParameterRow = {
-  code: string;
-  value: number;
-  unit: string | null;
-  family: string;
-  source: string;
-};
 
 type FormulaCalculationPanelProps = {
   isBackendResult: boolean;
