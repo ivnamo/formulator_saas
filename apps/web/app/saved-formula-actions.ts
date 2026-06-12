@@ -1,6 +1,10 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { request } from "./workspace-api";
 import type { BuilderSectionKey } from "./formula-builder-model";
+import {
+  toEditableFormulaMetadata,
+  toEditableFormulaState,
+} from "./formula-read-model";
 import type { FormulaCompareSelection } from "./saved-formula-comparison-state";
 import {
   buildSavedFormulaComparison,
@@ -8,7 +12,6 @@ import {
   type SavedFormulaComparison,
 } from "./workspace-comparison";
 import {
-  makeLocalId,
   type CalculationResult,
   type FormulaCalculationHistory,
   type FormulaRead,
@@ -43,10 +46,6 @@ type SavedFormulaActionsOptions = {
   setError: (message: string) => void;
   setMessage: (message: string) => void;
 };
-
-function textOrDefault(value: string | null | undefined, fallback: string): string {
-  return value && value.trim().length ? value : fallback;
-}
 
 export function useSavedFormulaActions({
   workspace,
@@ -251,11 +250,7 @@ export function useSavedFormulaActions({
       const calculation = await calculatePersistedFormula(formula.id);
       setWorkspace((current) => ({
         ...current,
-        formulaId: formula.id,
-        formulaName: formula.name,
-        formulaJiraProjectId: formula.jira_project_id ?? "",
-        formulaJiraIssueType: textOrDefault(formula.jira_issue_type, "Calidad"),
-        formulaJiraProductType: textOrDefault(formula.jira_product_type, "Nuevo"),
+        ...toEditableFormulaMetadata(formula),
       }));
       setResult(calculation);
       setDraftReview(null);
@@ -299,16 +294,7 @@ export function useSavedFormulaActions({
       await runAction("Opening formula", async () => {
         setWorkspace((current) => ({
           ...current,
-          formulaId: formula.id,
-          formulaName: formula.name,
-          formulaJiraProjectId: formula.jira_project_id ?? "",
-          formulaJiraIssueType: textOrDefault(formula.jira_issue_type, "Calidad"),
-          formulaJiraProductType: textOrDefault(formula.jira_product_type, "Nuevo"),
-          formulaLines: formula.items.map((item) => ({
-            localId: makeLocalId(),
-            rawMaterialId: item.raw_material_id,
-            percentage: item.percentage,
-          })),
+          ...toEditableFormulaState(formula),
         }));
         setResult(null);
         setDraftReview(null);

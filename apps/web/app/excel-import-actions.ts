@@ -1,9 +1,9 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { request } from "./workspace-api";
+import { toEditableFormulaState } from "./formula-read-model";
 import type { SavedFormulaComparison } from "./workspace-comparison";
 import {
   aliasFromImportRow,
-  makeLocalId,
   mergeRawMaterials,
   toWorkspaceRawMaterial,
   withRawMaterialAlias,
@@ -40,10 +40,6 @@ type ExcelImportActionsOptions = {
   setError: (message: string) => void;
   setMessage: (message: string) => void;
 };
-
-function textOrDefault(value: string | null | undefined, fallback: string): string {
-  return value && value.trim().length ? value : fallback;
-}
 
 export function useExcelImportActions({
   workspace,
@@ -181,16 +177,7 @@ export function useExcelImportActions({
       });
       setWorkspace((current) => ({
         ...current,
-        formulaId: formula.id,
-        formulaName: formula.name,
-        formulaJiraProjectId: formula.jira_project_id ?? "",
-        formulaJiraIssueType: textOrDefault(formula.jira_issue_type, "Calidad"),
-        formulaJiraProductType: textOrDefault(formula.jira_product_type, "Nuevo"),
-        formulaLines: formula.items.map((item) => ({
-          localId: makeLocalId(),
-          rawMaterialId: item.raw_material_id,
-          percentage: item.percentage,
-        })),
+        ...toEditableFormulaState(formula),
       }));
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
