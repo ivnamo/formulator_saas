@@ -16,9 +16,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { request } from "./workspace-api";
-import { getSupabaseBrowserClient } from "./supabase-client";
 import {
   emptyJiraConnectionForm,
   emptyWorkspace,
@@ -105,6 +103,10 @@ import { isTenantAdminRole } from "./tenant-roles";
 import { useWorkspaceSettingsActions } from "./workspace-settings-actions";
 import { useDraftReviewActions } from "./draft-review-actions";
 import { useFormulaBuilderLocalActions } from "./formula-builder-local-actions";
+import {
+  useAuthenticatedWorkspaceLoad,
+  useWorkspaceAuthSession,
+} from "./workspace-auth-session";
 
 type WorkspaceView =
   | "formula"
@@ -259,39 +261,13 @@ export default function Home() {
     [setError],
   );
   const [activeView, setActiveView] = useState<WorkspaceView>("formula");
-  const [session, setSession] = useState<Session | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
   const [tenantInvitations, setTenantInvitations] = useState<TenantInvitationRead[]>([]);
   const [invitationForm, setInvitationForm] = useState({
     email: "",
     role: "formulator",
   });
-
-  const authHeaders = useMemo(
-    () => ({
-      "Content-Type": "application/json",
-      ...(session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {}),
-    }),
-    [session?.access_token],
-  );
-  const headers = useMemo(
-    () => ({
-      ...authHeaders,
-      ...(workspace.tenant ? { "X-Tenant-Id": workspace.tenant.id } : {}),
-    }),
-    [authHeaders, workspace.tenant],
-  );
-  const uploadHeaders = useMemo(
-    () => ({
-      ...(session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {}),
-      ...(workspace.tenant ? { "X-Tenant-Id": workspace.tenant.id } : {}),
-    }),
-    [session?.access_token, workspace.tenant],
-  );
+  const { session, authChecked, authHeaders, headers, uploadHeaders } =
+    useWorkspaceAuthSession(workspace.tenant);
   const catalogParameterConditionKey = useMemo(
     () =>
       catalogParameterConditions
@@ -372,45 +348,11 @@ export default function Home() {
     setMessage,
   });
 
-  useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
-    let mounted = true;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) {
-        return;
-      }
-      if (!data.session) {
-        window.location.href = "/login";
-        return;
-      }
-      setSession(data.session);
-      setAuthChecked(true);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!nextSession) {
-        window.location.href = "/login";
-        return;
-      }
-      setSession(nextSession);
-      setAuthChecked(true);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!session?.access_token || workspace.tenant) {
-      return;
-    }
-    void loadAuthenticatedWorkspace(session.access_token);
-  }, [loadAuthenticatedWorkspace, session?.access_token, workspace.tenant]);
+  useAuthenticatedWorkspaceLoad({
+    session,
+    tenant: workspace.tenant,
+    loadAuthenticatedWorkspace,
+  });
 
   useEffect(() => {
     setMaterialResultLimit(60);
