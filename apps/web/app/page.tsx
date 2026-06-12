@@ -21,8 +21,6 @@ import {
   emptyJiraConnectionForm,
   emptyWorkspace,
   formatDateTime,
-  normalizeCode,
-  parseOptionalNumber,
   type CalculationResult,
   type CompatibilityRuleRead,
   type AiRun,
@@ -40,12 +38,7 @@ import {
   type TenantInvitationRead,
   type WorkspaceState,
 } from "./workspace-model";
-import {
-  buildConstraintEvaluations,
-  buildConstraintComplianceSummary,
-  hasConstraintIssue,
-  type DraftReviewState,
-} from "./workspace-comparison";
+import { type DraftReviewState } from "./workspace-comparison";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
@@ -67,7 +60,10 @@ import { FormulaCompositionStep } from "./formula-builder-ui/formula-composition
 import { FormulaBasicsStep } from "./formula-builder-ui/formula-basics-step";
 import { FormulaMaterialsStep } from "./formula-builder-ui/formula-materials-step";
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
-import { useSavedFormulaComparisonState } from "./saved-formula-comparison-state";
+import {
+  useSavedFormulaComparisonDerivedState,
+  useSavedFormulaComparisonState,
+} from "./saved-formula-comparison-state";
 import { useSavedFormulaActions } from "./saved-formula-actions";
 import { useJiraReviewActions } from "./jira-review-actions";
 import { useExcelImportActions } from "./excel-import-actions";
@@ -350,59 +346,21 @@ export default function Home() {
     result,
     draftReview,
   });
-  const comparisonMaterialOptions = useMemo(() => {
-    const options = new Map<string, string>();
-    workspace.rawMaterials.forEach((material) => options.set(material.id, material.name));
-    const selectedFormulaIds = new Set([
-      formulaCompareSelection.baselineId,
-      formulaCompareSelection.candidateId,
-    ]);
-    formulas
-      .filter((formula) => selectedFormulaIds.has(formula.id))
-      .flatMap((formula) => formula.items)
-      .forEach((item) => {
-        if (!options.has(item.raw_material_id)) {
-          options.set(item.raw_material_id, `Material ${item.raw_material_id.slice(0, 8)}`);
-        }
-      });
-    return Array.from(options, ([id, name]) => ({ id, name })).sort((left, right) =>
-      left.name.localeCompare(right.name),
-    );
-  }, [formulaCompareSelection, formulas, workspace.rawMaterials]);
-  const comparisonConstraints = useMemo(
-    () => ({
-      maxPrice: parseOptionalNumber(comparisonConstraintForm.maxPrice),
-      parameterCode: normalizeCode(comparisonConstraintForm.parameterCode),
-      minParameterValue: parseOptionalNumber(comparisonConstraintForm.minParameterValue),
-      materialId: comparisonConstraintForm.materialId,
-      materialName:
-        comparisonMaterialOptions.find(
-          (material) => material.id === comparisonConstraintForm.materialId,
-        )?.name ?? "Selected material",
-      minMaterialPercentage: parseOptionalNumber(comparisonConstraintForm.minMaterialPercentage),
-      maxMaterialPercentage: parseOptionalNumber(comparisonConstraintForm.maxMaterialPercentage),
-    }),
-    [comparisonConstraintForm, comparisonMaterialOptions],
-  );
-  const comparisonConstraintEvaluations = useMemo(
-    () => buildConstraintEvaluations(savedFormulaComparison, comparisonConstraints),
-    [comparisonConstraints, savedFormulaComparison],
-  );
-  const comparisonComplianceSummary = useMemo(
-    () => buildConstraintComplianceSummary(comparisonConstraintEvaluations),
-    [comparisonConstraintEvaluations],
-  );
-  const comparisonConstraintIssueCount = useMemo(
-    () => comparisonConstraintEvaluations.filter(hasConstraintIssue).length,
-    [comparisonConstraintEvaluations],
-  );
-  const visibleComparisonConstraintEvaluations = useMemo(
-    () =>
-      showOnlyConstraintIssues
-        ? comparisonConstraintEvaluations.filter(hasConstraintIssue)
-        : comparisonConstraintEvaluations,
-    [comparisonConstraintEvaluations, showOnlyConstraintIssues],
-  );
+  const {
+    comparisonMaterialOptions,
+    comparisonConstraints,
+    comparisonConstraintEvaluations,
+    comparisonComplianceSummary,
+    comparisonConstraintIssueCount,
+    visibleComparisonConstraintEvaluations,
+  } = useSavedFormulaComparisonDerivedState({
+    formulas,
+    rawMaterials: workspace.rawMaterials,
+    formulaCompareSelection,
+    comparisonConstraintForm,
+    savedFormulaComparison,
+    showOnlyConstraintIssues,
+  });
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
   const canManageTenantUsers = isTenantAdminRole(workspace.tenant?.role) && !isBusy;

@@ -1,5 +1,16 @@
-import { useState } from "react";
-import type { SavedFormulaComparison } from "./workspace-comparison";
+import { useMemo, useState } from "react";
+import {
+  buildConstraintComplianceSummary,
+  buildConstraintEvaluations,
+  hasConstraintIssue,
+  type SavedFormulaComparison,
+} from "./workspace-comparison";
+import {
+  normalizeCode,
+  parseOptionalNumber,
+  type FormulaRead,
+  type RawMaterial,
+} from "./workspace-model";
 
 export type FormulaCompareSelection = {
   baselineId: string;
@@ -18,6 +29,20 @@ export type ComparisonConstraintForm = {
 };
 
 export type ComparisonConstraintField = keyof ComparisonConstraintForm;
+
+type ComparisonMaterialOption = {
+  id: string;
+  name: string;
+};
+
+type SavedFormulaComparisonDerivedStateOptions = {
+  formulas: FormulaRead[];
+  rawMaterials: RawMaterial[];
+  formulaCompareSelection: FormulaCompareSelection;
+  comparisonConstraintForm: ComparisonConstraintForm;
+  savedFormulaComparison: SavedFormulaComparison | null;
+  showOnlyConstraintIssues: boolean;
+};
 
 const defaultFormulaCompareSelection: FormulaCompareSelection = {
   baselineId: "",
@@ -77,5 +102,79 @@ export function useSavedFormulaComparisonState() {
     resetSavedFormulaComparisonState,
     setShowOnlyConstraintIssues,
     setSavedFormulaComparison,
+  };
+}
+
+export function useSavedFormulaComparisonDerivedState({
+  formulas,
+  rawMaterials,
+  formulaCompareSelection,
+  comparisonConstraintForm,
+  savedFormulaComparison,
+  showOnlyConstraintIssues,
+}: SavedFormulaComparisonDerivedStateOptions) {
+  const comparisonMaterialOptions = useMemo<ComparisonMaterialOption[]>(() => {
+    const options = new Map<string, string>();
+    rawMaterials.forEach((material) => options.set(material.id, material.name));
+    const selectedFormulaIds = new Set([
+      formulaCompareSelection.baselineId,
+      formulaCompareSelection.candidateId,
+    ]);
+    formulas
+      .filter((formula) => selectedFormulaIds.has(formula.id))
+      .flatMap((formula) => formula.items)
+      .forEach((item) => {
+        if (!options.has(item.raw_material_id)) {
+          options.set(item.raw_material_id, `Material ${item.raw_material_id.slice(0, 8)}`);
+        }
+      });
+    return Array.from(options, ([id, name]) => ({ id, name })).sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+  }, [formulaCompareSelection, formulas, rawMaterials]);
+
+  const comparisonConstraints = useMemo(
+    () => ({
+      maxPrice: parseOptionalNumber(comparisonConstraintForm.maxPrice),
+      parameterCode: normalizeCode(comparisonConstraintForm.parameterCode),
+      minParameterValue: parseOptionalNumber(comparisonConstraintForm.minParameterValue),
+      materialId: comparisonConstraintForm.materialId,
+      materialName:
+        comparisonMaterialOptions.find(
+          (material) => material.id === comparisonConstraintForm.materialId,
+        )?.name ?? "Selected material",
+      minMaterialPercentage: parseOptionalNumber(comparisonConstraintForm.minMaterialPercentage),
+      maxMaterialPercentage: parseOptionalNumber(comparisonConstraintForm.maxMaterialPercentage),
+    }),
+    [comparisonConstraintForm, comparisonMaterialOptions],
+  );
+
+  const comparisonConstraintEvaluations = useMemo(
+    () => buildConstraintEvaluations(savedFormulaComparison, comparisonConstraints),
+    [comparisonConstraints, savedFormulaComparison],
+  );
+  const comparisonComplianceSummary = useMemo(
+    () => buildConstraintComplianceSummary(comparisonConstraintEvaluations),
+    [comparisonConstraintEvaluations],
+  );
+  const comparisonConstraintIssueCount = useMemo(
+    () => comparisonConstraintEvaluations.filter(hasConstraintIssue).length,
+    [comparisonConstraintEvaluations],
+  );
+  const visibleComparisonConstraintEvaluations = useMemo(
+    () =>
+      showOnlyConstraintIssues
+        ? comparisonConstraintEvaluations.filter(hasConstraintIssue)
+        : comparisonConstraintEvaluations,
+    [comparisonConstraintEvaluations, showOnlyConstraintIssues],
+  );
+
+  return {
+    comparisonMaterialOptions,
+    comparisonConstraints,
+    comparisonConstraintEvaluations,
+    comparisonComplianceSummary,
+    comparisonConstraintIssueCount,
+    visibleComparisonConstraintEvaluations,
   };
 }
