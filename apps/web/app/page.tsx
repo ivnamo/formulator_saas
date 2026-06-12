@@ -4,22 +4,16 @@ import {
   AlertTriangle,
   Beaker,
   BrainCircuit,
-  Calculator,
   ChevronDown,
-  Check,
-  Copy,
   Database,
-  ExternalLink,
   FlaskConical,
   FolderOpen,
   KeyRound,
-  ListChecks,
   Loader2,
   LogOut,
   Plus,
   RefreshCw,
   Save,
-  Send,
   Settings2,
   Upload,
   UserCircle,
@@ -102,6 +96,7 @@ import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
 import { ExcelImportPanel } from "./excel-import-panel";
 import { useExcelImportState } from "./excel-import-state";
 import { AiAssistantPanel } from "./ai-assistant-panel";
+import { SettingsPanel } from "./settings-panel";
 import {
   formatResultPrice,
   formatSignedDelta,
@@ -118,20 +113,6 @@ import { MaterialCatalogWorkspace } from "./formula-builder-ui/material-catalog-
 import { ParameterPresetPicker } from "./formula-builder-ui/parameter-preset-picker";
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import { useSavedFormulaComparisonState } from "./saved-formula-comparison-state";
-
-const JIRA_MAPPING_KEYS = [
-  "formula_id",
-  "formula_short_id",
-  "formula_name",
-  "formula_version",
-  "formula_status",
-  "jira_project_id",
-  "jira_issue_type",
-  "jira_product_type",
-  "jira_product_type_option",
-  "estimated_cost",
-  "notes",
-] as const;
 
 type WorkspaceView =
   | "formula"
@@ -2269,423 +2250,41 @@ export default function Home() {
         </div>
 
         <div className="grid">
-          <section className="panel setupPanel" hidden={activeView !== "settings"}>
-            <div className="panelHeader">
-              <h2>Workspace</h2>
-              <span>{workspace.tenant ? "Active" : "New"}</span>
-            </div>
-            <div className="formGrid">
-              <label>
-                <span>Name</span>
-                <input
-                  value={workspaceName}
-                  onChange={(event) => setWorkspaceName(event.target.value)}
-                  disabled={isBusy}
-                />
-              </label>
-              <button className="secondaryButton" type="button" onClick={createWorkspace} disabled={isBusy}>
-                <Plus size={17} />
-                Create workspace
-              </button>
-            </div>
-          </section>
-
-          <section className="panel setupPanel" hidden={activeView !== "settings"}>
-            <div className="panelHeader">
-              <h2>Mi cuenta</h2>
-              <span>{session.user.email ?? "Sesion activa"}</span>
-            </div>
-            <div className="accountActions">
-              <a className="secondaryButton" href="/update-password">
-                <KeyRound size={17} />
-                Cambiar contrasena
-              </a>
-            </div>
-          </section>
-
-          {isTenantAdminRole(workspace.tenant?.role) ? (
-            <section className="panel setupPanel" hidden={activeView !== "settings"}>
-              <div className="panelHeader">
-                <h2>Invitaciones</h2>
-                <span>Admin only</span>
-              </div>
-              <div className="formGrid inviteFormGrid">
-                <label>
-                  <span>Email</span>
-                  <input
-                    autoComplete="email"
-                    inputMode="email"
-                    value={invitationForm.email}
-                    onChange={(event) =>
-                      setInvitationForm((current) => ({
-                        ...current,
-                        email: event.target.value,
-                      }))
-                    }
-                    disabled={!canManageTenantUsers}
-                  />
-                </label>
-                <label>
-                  <span>Rol</span>
-                  <select
-                    value={invitationForm.role}
-                    onChange={(event) =>
-                      setInvitationForm((current) => ({
-                        ...current,
-                        role: event.target.value,
-                      }))
-                    }
-                    disabled={!canManageTenantUsers}
-                  >
-                    <option value="formulator">Formulator</option>
-                    <option value="viewer">Viewer</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </label>
-                <button
-                  className="secondaryButton"
-                  type="button"
-                  onClick={createTenantInvitation}
-                  disabled={!canManageTenantUsers || !invitationForm.email.trim()}
-                >
-                  <Send size={17} />
-                  Enviar enlace
-                </button>
-              </div>
-              <div className="invitationList">
-                {tenantInvitations.length === 0 ? (
-                  <div className="empty">No tenant invitations yet.</div>
-                ) : (
-                  tenantInvitations.map((invitation) => (
-                    <div className="invitationRow" key={invitation.id}>
-                      <span>
-                        <strong>{invitation.email}</strong>
-                        {invitation.role}
-                      </span>
-                      <code>{invitation.status}</code>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-          ) : null}
-
-          <section id="parameters" className="panel setupPanel" hidden={activeView !== "settings"}>
-            <div className="panelHeader">
-              <h2>Parameter</h2>
-              <span>{workspace.parameter ? workspace.parameter.code : "None"}</span>
-            </div>
-            <div className="formGrid threeColumns">
-              <label>
-                <span>Code</span>
-                <input
-                  value={parameterForm.code}
-                  onChange={(event) =>
-                    setParameterForm((current) => ({ ...current, code: event.target.value }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>Name</span>
-                <input
-                  value={parameterForm.name}
-                  onChange={(event) =>
-                    setParameterForm((current) => ({ ...current, name: event.target.value }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>Unit</span>
-                <input
-                  value={parameterForm.unit}
-                  onChange={(event) =>
-                    setParameterForm((current) => ({ ...current, unit: event.target.value }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <button className="secondaryButton" type="button" onClick={createParameter} disabled={!canEditTenantData}>
-                <Save size={17} />
-                Save parameter
-              </button>
-            </div>
-          </section>
-
-          <section id="integrations" className="panel integrationPanel" hidden={activeView !== "settings"}>
-            <div className="panelHeader">
-              <h2>Integrations</h2>
-              <span>
-                {activeJiraConnection ? activeJiraConnection.credential_status : "Jira pending"}
-              </span>
-            </div>
-            <div className="jiraForm">
-              <label>
-                <span>Auth</span>
-                <select
-                  value={jiraConnectionForm.authType}
-                  onChange={(event) =>
-                    setJiraConnectionForm((current) => ({
-                      ...current,
-                      authType: event.target.value === "api_token" ? "api_token" : "oauth",
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                >
-                  <option value="oauth">OAuth 3LO</option>
-                  <option value="api_token">API token</option>
-                </select>
-              </label>
-              <label>
-                <span>Jira URL</span>
-                <input
-                  value={jiraConnectionForm.baseUrl}
-                  onChange={(event) =>
-                    setJiraConnectionForm((current) => ({
-                      ...current,
-                      baseUrl: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>Project key</span>
-                <input
-                  value={jiraConnectionForm.defaultProjectKey}
-                  onChange={(event) =>
-                    setJiraConnectionForm((current) => ({
-                      ...current,
-                      defaultProjectKey: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>Issue type</span>
-                <input
-                  value={jiraConnectionForm.defaultIssueType}
-                  onChange={(event) =>
-                    setJiraConnectionForm((current) => ({
-                      ...current,
-                      defaultIssueType: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>Auth email</span>
-                <input
-                  value={jiraConnectionForm.authEmail}
-                  onChange={(event) =>
-                    setJiraConnectionForm((current) => ({
-                      ...current,
-                      authEmail: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>API token</span>
-                <input
-                  type="password"
-                  value={jiraConnectionForm.apiToken}
-                  onChange={(event) =>
-                    setJiraConnectionForm((current) => ({
-                      ...current,
-                      apiToken: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData || jiraConnectionForm.authType === "oauth"}
-                />
-              </label>
-              <label>
-                <span>Assignee</span>
-                <input
-                  value={jiraConnectionForm.defaultAssignee}
-                  onChange={(event) =>
-                    setJiraConnectionForm((current) => ({
-                      ...current,
-                      defaultAssignee: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label className="jiraFieldMappingLabel">
-                <span>Field mapping JSON</span>
-                <textarea
-                  value={jiraConnectionForm.fieldMappingJson}
-                  onChange={(event) =>
-                    setJiraConnectionForm((current) => ({
-                      ...current,
-                      fieldMappingJson: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                  rows={5}
-                />
-              </label>
-              <div className="integrationActions">
-                <button
-                  className="secondaryButton"
-                  type="button"
-                  onClick={saveJiraConnection}
-                  disabled={!canSaveJiraConnection}
-                >
-                  <Save size={17} />
-                  Save Jira
-                </button>
-                <button
-                  className="secondaryButton"
-                  type="button"
-                  onClick={() => refreshJiraConnections()}
-                  disabled={!canEditTenantData}
-                >
-                  <RefreshCw size={17} />
-                  Refresh
-                </button>
-                <button
-                  className="secondaryButton"
-                  type="button"
-                  onClick={testJiraConnection}
-                  disabled={!canTestJiraConnection}
-                >
-                  <Check size={17} />
-                  Test
-                </button>
-                <button
-                  className="secondaryButton"
-                  type="button"
-                  onClick={loadJiraMetadata}
-                  disabled={!canLoadJiraMetadata}
-                >
-                  <ListChecks size={17} />
-                  Metadata
-                </button>
-                <button
-                  className="secondaryButton"
-                  type="button"
-                  onClick={authorizeJiraOAuth}
-                  disabled={!canAuthorizeJiraOAuth}
-                >
-                  <ExternalLink size={17} />
-                  Authorize OAuth
-                </button>
-              </div>
-            </div>
-            {activeJiraConnection ? (
-              <div className="jiraConnectionSummary">
-                <div>
-                  <span>Base URL</span>
-                  <strong>{activeJiraConnection.base_url}</strong>
-                </div>
-                <div>
-                  <span>Project</span>
-                  <strong>{activeJiraConnection.default_project_key}</strong>
-                </div>
-                <div>
-                  <span>Issue</span>
-                  <strong>{activeJiraConnection.default_issue_type}</strong>
-                </div>
-                <div>
-                  <span>Last test</span>
-                  <strong>{activeJiraConnection.last_test_status ?? "Pending"}</strong>
-                </div>
-                <div className="wide">
-                  <span>Message</span>
-                  <strong>{activeJiraConnection.last_test_message ?? "-"}</strong>
-                </div>
-              </div>
-            ) : (
-              <div className="empty">No Jira connection saved.</div>
-            )}
-            {jiraMetadata ? (
-              <div className="jiraMetadataPanel">
-                <div className="jiraMetadataHeader">
-                  <div>
-                    <span>Metadata</span>
-                    <strong>
-                      {jiraMetadata.projectKey} / {jiraMetadata.issueType}
-                    </strong>
-                  </div>
-                  <label>
-                    <span>FormulIA field</span>
-                    <select
-                      value={jiraMappingKey}
-                      onChange={(event) => setJiraMappingKey(event.target.value)}
-                      disabled={!canEditTenantData}
-                    >
-                      {JIRA_MAPPING_KEYS.map((key) => (
-                        <option key={key} value={key}>
-                          {key}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div className="jiraMetadataColumns">
-                  <div>
-                    <span>Projects</span>
-                    <div className="jiraMetadataList">
-                      {jiraMetadata.projects.map((project) => (
-                        <div className="jiraMetadataRow" key={project.key}>
-                          <code>{project.key}</code>
-                          <strong>{project.name}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <span>Issue types</span>
-                    <div className="jiraMetadataList">
-                      {jiraMetadata.issueTypes.map((issueType) => (
-                        <div className="jiraMetadataRow" key={issueType.id}>
-                          <code>{issueType.id}</code>
-                          <strong>{issueType.name}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="jiraMetadataFields">
-                    <span>Fields</span>
-                    <div className="jiraMetadataList">
-                      {jiraMetadata.fields.map((field) => (
-                        <div className="jiraMetadataRow" key={field.field_id}>
-                          <code>{field.field_id}</code>
-                          <strong>{field.name}</strong>
-                          <small>
-                            {field.required ? "Required" : "Optional"}
-                            {field.schema_type ? ` · ${field.schema_type}` : ""}
-                            {field.allowed_values.length > 0
-                              ? ` · ${field.allowed_values
-                                  .map((value) => value.value ?? value.name ?? value.key ?? value.id)
-                                  .filter(Boolean)
-                                  .slice(0, 4)
-                                  .join(", ")}`
-                              : ""}
-                          </small>
-                          <button
-                            className="iconButton"
-                            type="button"
-                            onClick={() => mapJiraField(field)}
-                            disabled={!canEditTenantData}
-                            title={`Map ${jiraMappingKey}`}
-                          >
-                            <Plus size={15} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </section>
+          <SettingsPanel
+            active={activeView === "settings"}
+            workspace={workspace}
+            workspaceName={workspaceName}
+            sessionEmail={session.user.email}
+            invitationForm={invitationForm}
+            tenantInvitations={tenantInvitations}
+            parameterForm={parameterForm}
+            activeJiraConnection={activeJiraConnection}
+            jiraConnectionForm={jiraConnectionForm}
+            jiraMetadata={jiraMetadata}
+            jiraMappingKey={jiraMappingKey}
+            isBusy={isBusy}
+            canEditTenantData={canEditTenantData}
+            canManageTenantUsers={canManageTenantUsers}
+            canSaveJiraConnection={canSaveJiraConnection}
+            canTestJiraConnection={canTestJiraConnection}
+            canLoadJiraMetadata={canLoadJiraMetadata}
+            canAuthorizeJiraOAuth={canAuthorizeJiraOAuth}
+            showInvitationAdminPanel={isTenantAdminRole(workspace.tenant?.role)}
+            onWorkspaceNameChange={setWorkspaceName}
+            onCreateWorkspace={createWorkspace}
+            onInvitationFormChange={setInvitationForm}
+            onCreateTenantInvitation={createTenantInvitation}
+            onParameterFormChange={setParameterForm}
+            onCreateParameter={createParameter}
+            onJiraConnectionFormChange={setJiraConnectionForm}
+            onSaveJiraConnection={saveJiraConnection}
+            onRefreshJiraConnections={refreshJiraConnections}
+            onTestJiraConnection={testJiraConnection}
+            onLoadJiraMetadata={loadJiraMetadata}
+            onAuthorizeJiraOAuth={authorizeJiraOAuth}
+            onJiraMappingKeyChange={setJiraMappingKey}
+            onMapJiraField={mapJiraField}
+          />
 
           <section id="materials" className="panel materialPanel" hidden={activeView !== "materials"}>
             <div className="panelHeader">
