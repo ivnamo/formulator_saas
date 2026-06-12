@@ -1,0 +1,137 @@
+import type { FormulaLineDetail } from "../formula-builder-derived";
+import type { BuilderSectionKey } from "../formula-builder-model";
+import type { DraftComparison, DraftReviewState } from "../workspace-comparison";
+import type {
+  CalculationResult,
+  FormulaReviewArtifact,
+  FormulaReviewRequest,
+  JiraConnection,
+} from "../workspace-model";
+import { BuilderStep } from "./builder-step";
+import { DraftReviewPanel } from "./draft-review-panel";
+import { FormulaLineTable } from "./formula-line-table";
+import { FormulaProgressSummary } from "./formula-progress-summary";
+import { JiraReviewPanel } from "./jira-review-panel";
+
+type FormulaCompositionStepProps = {
+  isOpen: boolean;
+  lineCount: number;
+  totalPercentage: number;
+  isFormulaBalanced: boolean;
+  price: string;
+  priceSource: string;
+  draftReview: DraftReviewState | null;
+  draftComparison: DraftComparison | null;
+  isBusy: boolean;
+  canConfirmDraftReview: boolean;
+  activeJiraConnection: JiraConnection | null;
+  formulaReviewRequests: FormulaReviewRequest[];
+  formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
+  canPrepareJiraReview: boolean;
+  formulaLineDetails: FormulaLineDetail[];
+  visibleParameterCodes: string[];
+  showOnlyPositiveParameters: boolean;
+  formatResultPrice: (result: CalculationResult | null) => string;
+  formatSignedDelta: (value: number | null, suffix?: string) => string;
+  formatSignedInteger: (value: number) => string;
+  onToggle: (section: BuilderSectionKey) => void;
+  onNotesChange: (notes: string) => void;
+  onConfirmDraftReview: () => void | Promise<void>;
+  onSendCurrentFormulaToJira: () => void | Promise<void>;
+  onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
+  onDownloadArtifact: (artifact: FormulaReviewArtifact) => void | Promise<void>;
+  onSendReviewToJira: (reviewId: string) => void | Promise<void>;
+  onSyncReviewStatus: (reviewId: string) => void | Promise<void>;
+  onRetryReviewAttachment: (reviewId: string) => void | Promise<void>;
+  onMoveLine: (localId: string, direction: -1 | 1) => void;
+  onUpdateLine: (localId: string, percentage: number) => void;
+  onDuplicateLine: (localId: string) => void;
+  onRemoveLine: (localId: string) => void;
+};
+
+export function FormulaCompositionStep({
+  isOpen,
+  lineCount,
+  totalPercentage,
+  isFormulaBalanced,
+  price,
+  priceSource,
+  draftReview,
+  draftComparison,
+  isBusy,
+  canConfirmDraftReview,
+  activeJiraConnection,
+  formulaReviewRequests,
+  formulaReviewArtifacts,
+  canPrepareJiraReview,
+  formulaLineDetails,
+  visibleParameterCodes,
+  showOnlyPositiveParameters,
+  formatResultPrice,
+  formatSignedDelta,
+  formatSignedInteger,
+  onToggle,
+  onNotesChange,
+  onConfirmDraftReview,
+  onSendCurrentFormulaToJira,
+  onGenerateReviewExcel,
+  onDownloadArtifact,
+  onSendReviewToJira,
+  onSyncReviewStatus,
+  onRetryReviewAttachment,
+  onMoveLine,
+  onUpdateLine,
+  onDuplicateLine,
+  onRemoveLine,
+}: FormulaCompositionStepProps) {
+  return (
+    <BuilderStep
+      section="formula"
+      title="3. Formula editable"
+      summary={`${lineCount} lineas - ${totalPercentage.toFixed(1)}%`}
+      isOpen={isOpen}
+      onToggle={onToggle}
+    >
+      <FormulaProgressSummary
+        totalPercentage={totalPercentage}
+        isBalanced={isFormulaBalanced}
+        price={price}
+        source={priceSource}
+      />
+      <DraftReviewPanel
+        draftReview={draftReview}
+        draftComparison={draftComparison}
+        isBusy={isBusy}
+        canConfirmDraftReview={canConfirmDraftReview}
+        formatResultPrice={formatResultPrice}
+        formatSignedDelta={formatSignedDelta}
+        formatSignedInteger={formatSignedInteger}
+        onNotesChange={onNotesChange}
+        onConfirmDraftReview={onConfirmDraftReview}
+      />
+      <JiraReviewPanel
+        activeJiraConnection={activeJiraConnection}
+        formulaReviewRequests={formulaReviewRequests}
+        formulaReviewArtifacts={formulaReviewArtifacts}
+        canPrepareJiraReview={canPrepareJiraReview}
+        isBusy={isBusy}
+        onSendCurrentFormulaToJira={onSendCurrentFormulaToJira}
+        onGenerateReviewExcel={onGenerateReviewExcel}
+        onDownloadArtifact={onDownloadArtifact}
+        onSendReviewToJira={onSendReviewToJira}
+        onSyncReviewStatus={onSyncReviewStatus}
+        onRetryReviewAttachment={onRetryReviewAttachment}
+      />
+      <FormulaLineTable
+        lines={formulaLineDetails}
+        visibleParameterCodes={visibleParameterCodes}
+        showOnlyPositiveParameters={showOnlyPositiveParameters}
+        isBusy={isBusy}
+        onMoveLine={onMoveLine}
+        onUpdateLine={onUpdateLine}
+        onDuplicateLine={onDuplicateLine}
+        onRemoveLine={onRemoveLine}
+      />
+    </BuilderStep>
+  );
+}

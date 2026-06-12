@@ -104,16 +104,13 @@ import {
   formatSignedInteger,
 } from "./formula-formatters";
 import { BuilderStep } from "./formula-builder-ui/builder-step";
-import { DraftReviewPanel } from "./formula-builder-ui/draft-review-panel";
 import { FormulaCalculationPanel } from "./formula-builder-ui/formula-calculation-panel";
-import { FormulaLineTable } from "./formula-builder-ui/formula-line-table";
-import { FormulaProgressSummary } from "./formula-builder-ui/formula-progress-summary";
+import { FormulaCompositionStep } from "./formula-builder-ui/formula-composition-step";
 import {
   FormulaBasicsStep,
   type FormulaBasicsValue,
 } from "./formula-builder-ui/formula-basics-step";
 import { FormulaMaterialsStep } from "./formula-builder-ui/formula-materials-step";
-import { JiraReviewPanel } from "./formula-builder-ui/jira-review-panel";
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import { useSavedFormulaComparisonState } from "./saved-formula-comparison-state";
 
@@ -535,6 +532,10 @@ export default function Home() {
     [workspace.formulaLines],
   );
   const isFormulaBalanced = isFormulaPercentageBalanced(totalPercentage);
+  const formulaCompositionPrice = result
+    ? formatResultPrice(result)
+    : formatFormulaNumber(localPreview.priceTotal, " EUR/kg");
+  const formulaCompositionPriceSource = result ? "Backend official" : "Local preview";
   const visibleWarnings = result?.warnings ?? localPreview.warnings;
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
@@ -2464,58 +2465,41 @@ export default function Home() {
               onToggleExpandedMaterial={toggleExpandedMaterial}
               onClearComparison={clearComparisonMaterials}
             />
-            <BuilderStep
-              section="formula"
-              title="3. Formula editable"
-              summary={`${workspace.formulaLines.length} lineas - ${totalPercentage.toFixed(1)}%`}
+            <FormulaCompositionStep
               isOpen={builderSections.formula}
-              onToggle={toggleBuilderSection}
-            >
-                  <FormulaProgressSummary
-                    totalPercentage={totalPercentage}
-                    isBalanced={isFormulaBalanced}
-                    price={
-                      result
-                        ? formatResultPrice(result)
-                        : formatFormulaNumber(localPreview.priceTotal, " EUR/kg")
-                    }
-                    source={result ? "Backend official" : "Local preview"}
-                  />
-            <DraftReviewPanel
+              lineCount={workspace.formulaLines.length}
+              totalPercentage={totalPercentage}
+              isFormulaBalanced={isFormulaBalanced}
+              price={formulaCompositionPrice}
+              priceSource={formulaCompositionPriceSource}
               draftReview={draftReview}
               draftComparison={draftComparison}
               isBusy={isBusy}
               canConfirmDraftReview={canConfirmDraftReview}
-              formatResultPrice={formatResultPrice}
-              formatSignedDelta={formatSignedDelta}
-              formatSignedInteger={formatSignedInteger}
-              onNotesChange={updateDraftReviewNotes}
-              onConfirmDraftReview={confirmDraftReview}
-            />
-            <JiraReviewPanel
               activeJiraConnection={activeJiraConnection}
               formulaReviewRequests={formulaReviewRequests}
               formulaReviewArtifacts={formulaReviewArtifacts}
               canPrepareJiraReview={canPrepareJiraReview}
-              isBusy={isBusy}
+              formulaLineDetails={formulaLineDetails}
+              visibleParameterCodes={visibleParameterCodes}
+              showOnlyPositiveParameters={showOnlyPositiveParameters}
+              formatResultPrice={formatResultPrice}
+              formatSignedDelta={formatSignedDelta}
+              formatSignedInteger={formatSignedInteger}
+              onToggle={toggleBuilderSection}
+              onNotesChange={updateDraftReviewNotes}
+              onConfirmDraftReview={confirmDraftReview}
               onSendCurrentFormulaToJira={sendCurrentFormulaToJira}
               onGenerateReviewExcel={generateJiraReviewExcel}
               onDownloadArtifact={downloadJiraReviewArtifact}
               onSendReviewToJira={sendJiraReviewToJira}
               onSyncReviewStatus={syncJiraReviewStatus}
               onRetryReviewAttachment={retryJiraReviewAttachment}
-            />
-            <FormulaLineTable
-              lines={formulaLineDetails}
-              visibleParameterCodes={visibleParameterCodes}
-              showOnlyPositiveParameters={showOnlyPositiveParameters}
-              isBusy={isBusy}
               onMoveLine={moveFormulaLine}
               onUpdateLine={updateFormulaLine}
               onDuplicateLine={duplicateFormulaLine}
               onRemoveLine={removeFormulaLine}
             />
-            </BuilderStep>
             <BuilderStep
               section="calculation"
               title="4. Calculo vivo"
