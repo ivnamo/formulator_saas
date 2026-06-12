@@ -1,6 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { request } from "./workspace-api";
 import { formatDateTime } from "./workspace-model";
@@ -37,6 +36,7 @@ import { useFormulaWorkspaceState } from "./formula-workspace-state";
 import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
 import { useJiraConnectionState } from "./jira-connection-state";
+import { WorkspaceAuthGate } from "./workspace-auth-gate";
 
 export default function Home() {
   const {
@@ -524,23 +524,7 @@ export default function Home() {
   });
 
   if (!authChecked || !session) {
-    return (
-      <main className="loginShell">
-        <section className="loginPanel">
-          <div className="brand">
-            <div className="brandMark">F</div>
-            <div>
-              <strong>FormulIA Cloud</strong>
-              <span>Acceso seguro</span>
-            </div>
-          </div>
-          <div className="statusLine">
-            <Loader2 className="spin" size={16} />
-            <span>Validando sesion</span>
-          </div>
-        </section>
-      </main>
-    );
+    return <WorkspaceAuthGate />;
   }
 
   return (
