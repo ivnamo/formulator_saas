@@ -263,6 +263,7 @@ def register_routes(app: FastAPI) -> None:
         session.add(parameter)
         session.commit()
         session.refresh(parameter)
+        _ensure_zero_values_for_parameter(session, tenant.tenant_id, parameter)
         return parameter
 
     @app.get("/api/v1/raw-materials", response_model=list[RawMaterialRead])
@@ -327,6 +328,7 @@ def register_routes(app: FastAPI) -> None:
         session.add(raw_material)
         session.commit()
         session.refresh(raw_material)
+        _ensure_zero_values_for_raw_material(session, tenant.tenant_id, raw_material)
         return _raw_material_read(session, tenant.tenant_id, raw_material)
 
     @app.get("/api/v1/raw-materials/{raw_material_id}", response_model=RawMaterialRead)
@@ -908,6 +910,11 @@ def _raw_material_read(
         )
         .order_by(Parameter.code)
     ).all()
+    active_parameters = session.exec(
+        select(Parameter)
+        .where(Parameter.tenant_id == tenant_id, Parameter.is_active.is_(True))
+        .order_by(Parameter.code)
+    ).all()
     aliases = session.exec(
         select(RawMaterialAlias)
         .where(
@@ -916,7 +923,7 @@ def _raw_material_read(
         )
         .order_by(RawMaterialAlias.alias)
     ).all()
-    return _raw_material_read_from_parts(material, price, values, aliases)
+    return _raw_material_read_from_parts(material, price, values, aliases, active_parameters)
 
 
 def _raw_materials_read(
@@ -960,6 +967,12 @@ def _raw_materials_read(
     for value, parameter in values:
         values_by_material[value.raw_material_id].append((value, parameter))
 
+    active_parameters = session.exec(
+        select(Parameter)
+        .where(Parameter.tenant_id == tenant_id, Parameter.is_active.is_(True))
+        .order_by(Parameter.code)
+    ).all()
+
     aliases_by_material: dict[uuid.UUID, list[RawMaterialAlias]] = defaultdict(list)
     aliases = session.exec(
         select(RawMaterialAlias)
@@ -978,6 +991,7 @@ def _raw_materials_read(
             prices_by_material.get(material.id),
             values_by_material[material.id],
             aliases_by_material[material.id],
+            active_parameters,
         )
         for material in materials
     ]
@@ -988,24 +1002,122 @@ def _raw_material_read_from_parts(
     price: RawMaterialPrice | None,
     values: list[tuple[RawMaterialParameterValue, Parameter]],
     aliases: list[RawMaterialAlias],
+    active_parameters: list[Parameter],
 ) -> dict[str, Any]:
     return {
         **_model_dict(material),
         "current_price": _model_dict(price) if price else None,
-        "parameters": [
-            {
-                "parameter_id": value.parameter_id,
-                "code": parameter.code,
-                "name": parameter.name,
-                "value": value.value,
-                "unit": parameter.unit,
-                "source": value.source,
-                "confidence": value.confidence,
-            }
-            for value, parameter in values
-        ],
+        "parameters": _raw_material_parameter_values_read(values, active_parameters),
         "aliases": [alias.alias for alias in aliases],
     }
+
+
+def _raw_material_parameter_values_read(
+    values: list[tuple[RawMaterialParameterValue, Parameter]],
+    active_parameters: list[Parameter],
+) -> list[dict[str, Any]]:
+    rows_by_parameter_id = {
+        value.parameter_id: {
+            "parameter_id": value.parameter_id,
+            "code": parameter.code,
+            "name": parameter.name,
+            "value": value.value,
+            "unit": parameter.unit,
+            "source": value.source,
+            "confidence": value.confidence,
+        }
+        for value, parameter in values
+    }
+    for parameter in active_parameters:
+        rows_by_parameter_id.setdefault(
+            parameter.id,
+            {
+                "parameter_id": parameter.id,
+                "code": parameter.code,
+                "name": parameter.name,
+                "value": 0,
+                "unit": parameter.unit,
+                "source": "default_zero",
+                "confidence": None,
+            },
+        )
+    return sorted(
+        rows_by_parameter_id.values(),
+        key=lambda row: str(row["code"]).casefold(),
+    )
+
+
+def _ensure_zero_values_for_raw_material(
+    session: Session,
+    tenant_id: uuid.UUID,
+    material: RawMaterial,
+) -> None:
+    parameters = session.exec(
+        select(Parameter).where(
+            Parameter.tenant_id == tenant_id,
+            Parameter.is_active.is_(True),
+        )
+    ).all()
+    if not parameters:
+        return
+
+    existing_parameter_ids = {
+        value.parameter_id
+        for value in session.exec(
+            select(RawMaterialParameterValue).where(
+                RawMaterialParameterValue.tenant_id == tenant_id,
+                RawMaterialParameterValue.raw_material_id == material.id,
+            )
+        ).all()
+    }
+    for parameter in parameters:
+        if parameter.id in existing_parameter_ids:
+            continue
+        session.add(
+            RawMaterialParameterValue(
+                tenant_id=tenant_id,
+                raw_material_id=material.id,
+                parameter_id=parameter.id,
+                value=0,
+                source="default_zero",
+            )
+        )
+    session.commit()
+
+
+def _ensure_zero_values_for_parameter(
+    session: Session,
+    tenant_id: uuid.UUID,
+    parameter: Parameter,
+) -> None:
+    materials = session.exec(
+        select(RawMaterial).where(RawMaterial.tenant_id == tenant_id)
+    ).all()
+    if not materials:
+        return
+
+    existing_material_ids = {
+        value.raw_material_id
+        for value in session.exec(
+            select(RawMaterialParameterValue).where(
+                RawMaterialParameterValue.tenant_id == tenant_id,
+                RawMaterialParameterValue.parameter_id == parameter.id,
+            )
+        ).all()
+    }
+    for material in materials:
+        if material.id in existing_material_ids:
+            continue
+        session.add(
+            RawMaterialParameterValue(
+                tenant_id=tenant_id,
+                raw_material_id=material.id,
+                parameter_id=parameter.id,
+                value=0,
+                source="default_zero",
+            )
+        )
+    session.commit()
 
 
 def _raw_material_catalog_read(
@@ -1512,6 +1624,12 @@ def _core_raw_material(
         )
         .order_by(RawMaterialPrice.valid_from.desc(), RawMaterialPrice.created_at.desc())
     ).first()
+    active_parameters = session.exec(
+        select(Parameter).where(
+            Parameter.tenant_id == tenant_id,
+            Parameter.is_active.is_(True),
+        )
+    ).all()
     values = session.exec(
         select(RawMaterialParameterValue, Parameter)
         .join(Parameter, RawMaterialParameterValue.parameter_id == Parameter.id)
@@ -1529,6 +1647,11 @@ def _core_raw_material(
         )
         for value, parameter in values
     }
+    for parameter in active_parameters:
+        parameters.setdefault(
+            parameter.code,
+            CoreParameterValue(code=parameter.code, value=0, unit=parameter.unit),
+        )
     return CoreRawMaterial(
         id=str(material.id),
         name=material.name,

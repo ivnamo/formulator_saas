@@ -449,7 +449,7 @@ def test_persisted_formula_calculation_uses_backend_core() -> None:
     assert result["warnings"] == []
 
 
-def test_persisted_formula_requires_active_tenant_parameters() -> None:
+def test_persisted_formula_treats_missing_active_parameters_as_zero() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
     headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
@@ -465,6 +465,22 @@ def test_persisted_formula_requires_active_tenant_parameters() -> None:
         headers=headers,
         json={"name": "Base A", "code": "BASE-A"},
     ).json()
+    material_detail = client.get(
+        f"/api/v1/raw-materials/{raw_material['id']}",
+        headers=headers,
+    )
+    assert material_detail.status_code == 200
+    assert material_detail.json()["parameters"] == [
+        {
+            "parameter_id": parameter.json()["id"],
+            "code": "viscosity",
+            "name": "Viscosity",
+            "value": 0.0,
+            "unit": "cP",
+            "source": "default_zero",
+            "confidence": None,
+        }
+    ]
     price_response = client.post(
         f"/api/v1/raw-materials/{raw_material['id']}/prices",
         headers=headers,
@@ -486,9 +502,43 @@ def test_persisted_formula_requires_active_tenant_parameters() -> None:
     )
 
     assert response.status_code == 200
-    warnings = response.json()["warnings"]
-    assert warnings[0]["code"] == "missing_parameter"
-    assert warnings[0]["parameter_code"] == "viscosity"
+    payload = response.json()
+    assert payload["warnings"] == []
+    assert payload["parameters"] == [
+        {"code": "viscosity", "value": 0.0, "unit": "cP"}
+    ]
+
+
+def test_new_parameter_backfills_existing_raw_materials_with_zero() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Carrier", "code": "CAR"},
+    ).json()
+
+    parameter = client.post(
+        "/api/v1/parameters",
+        headers=headers,
+        json={"code": "B", "name": "Boron", "unit": "%"},
+    )
+
+    assert parameter.status_code == 201
+    detail = client.get(f"/api/v1/raw-materials/{raw_material['id']}", headers=headers)
+    assert detail.status_code == 200
+    assert detail.json()["parameters"] == [
+        {
+            "parameter_id": parameter.json()["id"],
+            "code": "B",
+            "name": "Boron",
+            "value": 0.0,
+            "unit": "%",
+            "source": "default_zero",
+            "confidence": None,
+        }
+    ]
 
 
 def test_formula_calculation_history_is_tenant_scoped() -> None:

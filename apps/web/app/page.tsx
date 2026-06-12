@@ -5437,7 +5437,9 @@ export default function Home() {
                           : `No se puede guardar: suma ${totalPercentage.toFixed(1)}%`}
                       </strong>
                       <small>
-                        El guardado queda bloqueado hasta que la formula sume 100.0%.
+                        {isFormulaBalanced
+                          ? "Se guardara la formula y se recalculara el precio final oficial."
+                          : "El guardado queda bloqueado hasta que la formula sume 100.0%."}
                       </small>
                     </div>
                     <button
