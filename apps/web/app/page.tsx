@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { request } from "./workspace-api";
 import {
   emptyJiraConnectionForm,
@@ -20,7 +20,6 @@ import {
   type JiraMetadataState,
   type MaterialForm,
   type RequirementParse,
-  type Status,
   type TenantInvitationRead,
   type WorkspaceState,
 } from "./workspace-model";
@@ -66,6 +65,7 @@ import {
 } from "./workspace-auth-session";
 import { useWorkspaceCapabilities } from "./workspace-capabilities";
 import { AppShell, type WorkspaceView } from "./app-shell";
+import { useWorkspaceActionStatus } from "./workspace-action-status";
 
 export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
@@ -168,25 +168,8 @@ export default function Home() {
     setSelectedImportSheet,
     resolveImportRow: resolveImportRowState,
   } = useExcelImportState();
-  const [status, setStatus] = useState<Status>("idle");
-  const [message, setMessage] = useState("Ready");
-  const setError = useCallback((nextMessage: string) => {
-    setStatus("error");
-    setMessage(nextMessage);
-  }, []);
-  const runAction = useCallback(
-    async (label: string, action: () => Promise<void>) => {
-      setStatus("working");
-      setMessage(label);
-      try {
-        await action();
-        setStatus("idle");
-      } catch (error) {
-        setError(error instanceof Error ? error.message : "Action failed");
-      }
-    },
-    [setError],
-  );
+  const { status, message, setStatus, setMessage, setError, runAction } =
+    useWorkspaceActionStatus();
   const [activeView, setActiveView] = useState<WorkspaceView>("formula");
   const [tenantInvitations, setTenantInvitations] = useState<TenantInvitationRead[]>([]);
   const [invitationForm, setInvitationForm] = useState({

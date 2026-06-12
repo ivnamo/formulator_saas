@@ -84,6 +84,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_071_saved_formula_comparison_derived_hook.md`](00-meta/meta_071_saved_formula_comparison_derived_hook.md)
 - [`00-meta/meta_072_workspace_capabilities_hook.md`](00-meta/meta_072_workspace_capabilities_hook.md)
 - [`00-meta/meta_073_app_shell_component.md`](00-meta/meta_073_app_shell_component.md)
+- [`00-meta/meta_074_workspace_action_status_hook.md`](00-meta/meta_074_workspace_action_status_hook.md)
 
 ## Producto
 
