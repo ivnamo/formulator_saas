@@ -96,3 +96,56 @@ export const emptyJiraConnectionForm: JiraConnectionForm = {
   defaultAssignee: "",
   fieldMappingJson: "{}",
 };
+
+export function parseJiraJsonObject(
+  value: string,
+  label: string,
+): Record<string, string> {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return {};
+  }
+  const parsed = JSON.parse(trimmed) as unknown;
+  if (
+    parsed === null ||
+    Array.isArray(parsed) ||
+    typeof parsed !== "object" ||
+    Object.values(parsed).some((item) => typeof item !== "string")
+  ) {
+    throw new Error(`${label} must be a JSON object with string values`);
+  }
+  return parsed as Record<string, string>;
+}
+
+export function jiraConnectionFormFromRead(
+  connection: JiraConnection,
+): JiraConnectionForm {
+  return {
+    authType: connection.auth_type === "oauth" ? "oauth" : "api_token",
+    baseUrl: connection.base_url,
+    authEmail: connection.auth_email ?? "",
+    apiToken: "",
+    defaultProjectKey: connection.default_project_key,
+    defaultIssueType: connection.default_issue_type,
+    defaultAssignee: connection.default_assignee ?? "",
+    fieldMappingJson: JSON.stringify(connection.field_mapping, null, 2),
+  };
+}
+
+export function buildJiraConnectionPayload(form: JiraConnectionForm) {
+  const fieldMapping = parseJiraJsonObject(form.fieldMappingJson, "Jira field mapping");
+  const payload: Record<string, unknown> = {
+    base_url: form.baseUrl.trim(),
+    auth_type: form.authType,
+    auth_email: form.authEmail.trim() || null,
+    default_project_key: form.defaultProjectKey.trim(),
+    default_issue_type: form.defaultIssueType.trim(),
+    default_assignee: form.defaultAssignee.trim() || null,
+    field_mapping: fieldMapping,
+    is_active: true,
+  };
+  if (form.authType === "api_token" && form.apiToken.trim()) {
+    payload.api_token = form.apiToken.trim();
+  }
+  return payload;
+}
