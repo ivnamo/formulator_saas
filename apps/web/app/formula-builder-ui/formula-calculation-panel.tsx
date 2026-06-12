@@ -4,6 +4,7 @@ import {
   parameterDisplayCode,
   type ParameterViewPresetKey,
 } from "../formula-builder-model";
+import { normalizeWarningSeverity } from "../formula-formatters";
 import type { CalculationResult } from "../workspace-model";
 import { ParameterPresetPicker } from "./parameter-preset-picker";
 
@@ -21,7 +22,6 @@ type FormulaCalculationPanelProps = {
   canSaveFormula: boolean;
   onShowOnlyPositiveChange: (value: boolean) => void;
   onSelectParameterView: (value: ParameterViewPresetKey) => void;
-  normalizeWarningSeverity: (warning: CalculationResult["warnings"][number]) => string;
   onSaveFormula: () => void | Promise<void>;
 };
 
@@ -39,7 +39,6 @@ export function FormulaCalculationPanel({
   canSaveFormula,
   onShowOnlyPositiveChange,
   onSelectParameterView,
-  normalizeWarningSeverity,
   onSaveFormula,
 }: FormulaCalculationPanelProps) {
   return (

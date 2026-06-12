@@ -6,6 +6,25 @@ export function formatResultPrice(resultValue: CalculationResult | null): string
     : `${resultValue.price_total.toFixed(2)} ${resultValue.currency}/kg`;
 }
 
+export function normalizeWarningSeverity(
+  warning: CalculationResult["warnings"][number],
+): "blocker" | "warning" | "info" {
+  if (
+    warning.severity === "blocker" ||
+    warning.severity === "warning" ||
+    warning.severity === "info"
+  ) {
+    return warning.severity;
+  }
+  if (warning.code.endsWith("_blocker")) {
+    return "blocker";
+  }
+  if (warning.code.endsWith("_info")) {
+    return "info";
+  }
+  return "warning";
+}
+
 export function formatOptionalValue(value: number | null, unit: string | null = null): string {
   if (value === null) {
     return "-";

@@ -2,7 +2,6 @@
 
 import {
   AlertTriangle,
-  Beaker,
   BrainCircuit,
   ChevronDown,
   Database,
@@ -97,6 +96,7 @@ import { AiAssistantPanel } from "./ai-assistant-panel";
 import { SettingsPanel } from "./settings-panel";
 import { RawMaterialsPanel } from "./raw-materials-panel";
 import { CompatibilityPanel } from "./compatibility-panel";
+import { CalculationResultsPanel } from "./calculation-results-panel";
 import {
   formatResultPrice,
   formatSignedDelta,
@@ -2024,25 +2024,6 @@ export default function Home() {
     resolveImportRow(row.row_number, row.suggested_raw_material_id);
   }
 
-  function normalizeWarningSeverity(
-    warning: CalculationResult["warnings"][number],
-  ): "blocker" | "warning" | "info" {
-    if (
-      warning.severity === "blocker" ||
-      warning.severity === "warning" ||
-      warning.severity === "info"
-    ) {
-      return warning.severity;
-    }
-    if (warning.code.endsWith("_blocker")) {
-      return "blocker";
-    }
-    if (warning.code.endsWith("_info")) {
-      return "info";
-    }
-    return "warning";
-  }
-
   function jiraConnectionFormFromRead(connection: JiraConnection): JiraConnectionForm {
     return {
       authType: connection.auth_type === "oauth" ? "oauth" : "api_token",
@@ -2650,79 +2631,12 @@ export default function Home() {
                     canSaveFormula={canSaveFormula}
                     onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
                     onSelectParameterView={(key) => selectParameterView(key, visibleParameterCodes)}
-                    normalizeWarningSeverity={normalizeWarningSeverity}
                     onSaveFormula={saveFormula}
                   />
             </BuilderStep>
           </section>
 
-          <section id="results" className="panel resultPanel" hidden={activeView !== "results"}>
-            <div className="panelHeader">
-              <h2>Calculation results</h2>
-              <span>{result ? result.currency : "Pending"}</span>
-            </div>
-            <div className="resultStats">
-              <div>
-                <span>Total price</span>
-                <strong>
-                  {result?.price_total == null
-                    ? "-"
-                    : `${result.price_total.toFixed(2)} ${result.currency}/kg`}
-                </strong>
-              </div>
-              <div>
-                <span>Total percentage</span>
-                <strong>{result ? `${result.total_percentage.toFixed(1)}%` : "-"}</strong>
-              </div>
-              <div>
-                <span>Warnings</span>
-                <strong>{result?.warnings.length ?? 0}</strong>
-              </div>
-            </div>
-            <div className="parameterList">
-              {result?.parameters.length ? (
-                result.parameters.map((parameter) => (
-                  <div key={parameter.code}>
-                    <Beaker size={18} />
-                    <span>{parameter.code}</span>
-                    <code>
-                      {parameter.value.toFixed(2)} {parameter.unit ?? ""}
-                    </code>
-                  </div>
-                ))
-              ) : (
-                <div>
-                  <Beaker size={18} />
-                  <span>No calculated parameters</span>
-                  <code>-</code>
-                </div>
-              )}
-            </div>
-            <div className="warningList">
-              {result?.warnings.length ? (
-                result.warnings.map((warning, index) => {
-                  const severity = normalizeWarningSeverity(warning);
-                  return (
-                    <div
-                      data-severity={severity}
-                      key={`${warning.code}-${warning.rule_id ?? ""}-${warning.raw_material_id ?? ""}-${warning.parameter_code ?? ""}-${index}`}
-                    >
-                      <AlertTriangle size={16} />
-                      <span>
-                        <strong>{severity}</strong>
-                        {warning.message}
-                        {warning.recommended_action ? (
-                          <small>{warning.recommended_action}</small>
-                        ) : null}
-                      </span>
-                    </div>
-                  );
-                })
-              ) : (
-                <div>No warnings</div>
-              )}
-            </div>
-          </section>
+          <CalculationResultsPanel active={activeView === "results"} result={result} />
         </div>
       </section>
     </main>

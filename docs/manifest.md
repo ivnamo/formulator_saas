@@ -62,6 +62,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_049_raw_materials_panel_refactor.md`](00-meta/meta_049_raw_materials_panel_refactor.md)
 - [`00-meta/meta_050_solo_dev_git_practices.md`](00-meta/meta_050_solo_dev_git_practices.md)
 - [`00-meta/meta_051_compatibility_panel_refactor.md`](00-meta/meta_051_compatibility_panel_refactor.md)
+- [`00-meta/meta_052_calculation_results_panel_refactor.md`](00-meta/meta_052_calculation_results_panel_refactor.md)
 
 ## Producto
 
