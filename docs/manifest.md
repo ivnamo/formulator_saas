@@ -119,6 +119,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_106_formula_domain_model.md`](00-meta/meta_106_formula_domain_model.md)
 - [`00-meta/meta_107_compatibility_domain_model.md`](00-meta/meta_107_compatibility_domain_model.md)
 - [`00-meta/meta_108_raw_material_domain_model.md`](00-meta/meta_108_raw_material_domain_model.md)
+- [`00-meta/meta_109_formula_save_payloads.md`](00-meta/meta_109_formula_save_payloads.md)
 
 ## Producto
 

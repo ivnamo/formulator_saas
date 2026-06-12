@@ -1,6 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { request } from "./workspace-api";
 import { toEditableFormulaState } from "./formula-read-model";
+import { buildImportedFormulaSavePayload } from "./formula-save-model";
 import type { SavedFormulaComparison } from "./workspace-comparison";
 import {
   aliasFromImportRow,
@@ -164,16 +165,9 @@ export function useExcelImportActions({
       const formula = await request<FormulaRead>("/api/v1/imports/formulas/excel/save", {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          name: `${workspace.tenant?.name ?? "Imported"} Excel Formula`,
-          jira_project_id: workspace.formulaJiraProjectId.trim() || null,
-          jira_issue_type: workspace.formulaJiraIssueType,
-          jira_product_type: workspace.formulaJiraProductType,
-          rows: importPreview.rows.map((row) => ({
-            raw_material_id: row.raw_material_id,
-            percentage: row.percentage,
-          })),
-        }),
+        body: JSON.stringify(
+          buildImportedFormulaSavePayload(workspace.tenant?.name, workspace, importPreview.rows),
+        ),
       });
       setWorkspace((current) => ({
         ...current,

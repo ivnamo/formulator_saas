@@ -5,6 +5,7 @@ import {
   toEditableFormulaMetadata,
   toEditableFormulaState,
 } from "./formula-read-model";
+import { buildManualFormulaSavePayload } from "./formula-save-model";
 import type { FormulaCompareSelection } from "./saved-formula-comparison-state";
 import {
   buildSavedFormulaComparison,
@@ -224,18 +225,7 @@ export function useSavedFormulaActions({
     }
 
     await runAction("Saving formula", async () => {
-      const items = workspace.formulaLines.map((line, index) => ({
-        raw_material_id: line.rawMaterialId,
-        percentage: line.percentage,
-        order_index: index,
-      }));
-      const payload = {
-        name: workspace.formulaName.trim() || "Manual Formula",
-        jira_project_id: workspace.formulaJiraProjectId.trim() || null,
-        jira_issue_type: workspace.formulaJiraIssueType,
-        jira_product_type: workspace.formulaJiraProductType,
-        items,
-      };
+      const payload = buildManualFormulaSavePayload(workspace, workspace.formulaLines);
       const formula = workspace.formulaId
         ? await request<FormulaRead>(`/api/v1/formulas/${workspace.formulaId}`, {
             method: "PATCH",
