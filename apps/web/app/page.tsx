@@ -41,7 +41,6 @@ import {
   slugify,
   toWorkspaceRawMaterial,
   withRawMaterialAlias,
-  withResolvedImportRow,
   type CalculationResult,
   type CompatibilityRuleRead,
   type AiRun,
@@ -104,6 +103,8 @@ import {
 } from "./formula-builder-derived";
 import { useRawMaterialCatalog } from "./formula-builder-catalog";
 import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
+import { ExcelImportPanel } from "./excel-import-panel";
+import { useExcelImportState } from "./excel-import-state";
 import { BuilderStep } from "./formula-builder-ui/builder-step";
 import { DraftReviewPanel } from "./formula-builder-ui/draft-review-panel";
 import { FormulaCalculationPanel } from "./formula-builder-ui/formula-calculation-panel";
@@ -268,11 +269,18 @@ export default function Home() {
   const [showOnlyConstraintIssues, setShowOnlyConstraintIssues] = useState(false);
   const [savedFormulaComparison, setSavedFormulaComparison] =
     useState<SavedFormulaComparison | null>(null);
-  const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importFileName, setImportFileName] = useState("");
-  const [availableImportSheets, setAvailableImportSheets] = useState<string[]>([]);
-  const [selectedImportSheet, setSelectedImportSheet] = useState("");
+  const {
+    importPreview,
+    importFile,
+    importFileName,
+    availableImportSheets,
+    selectedImportSheet,
+    resetImportState,
+    setPendingFile,
+    setPreview: setImportPreview,
+    setSelectedImportSheet,
+    resolveImportRow: resolveImportRowState,
+  } = useExcelImportState();
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("Ready");
   const [activeView, setActiveView] = useState<WorkspaceView>("formula");
@@ -955,9 +963,7 @@ export default function Home() {
         current.includes(material.id) ? current : [...current, material.id],
       );
       refreshCatalog();
-      setImportPreview((current) =>
-        current ? withResolvedImportRow(current, row.row_number, material.id) : current,
-      );
+      resolveImportRowState(row.row_number, material.id);
       setResult(null);
       setMessage("Import material created");
     });
@@ -1947,19 +1953,13 @@ export default function Home() {
     await runAction("Reading Excel file", async () => {
       const sheets = await listExcelImportSheets(file);
       const selectedSheet = sheets.sheets.length === 1 ? sheets.default_sheet : "";
-      setImportFile(file);
-      setImportFileName(file.name);
-      setAvailableImportSheets(sheets.sheets);
-      setSelectedImportSheet(selectedSheet);
-      setImportPreview(null);
+      setPendingFile(file, sheets, selectedSheet);
       if (!selectedSheet) {
         setMessage("Select Excel sheet");
         return;
       }
       const preview = await requestExcelImportPreview(file, selectedSheet);
       setImportPreview(preview);
-      setAvailableImportSheets(preview.available_sheets);
-      setSelectedImportSheet(preview.sheet_name);
       setMessage("Import preview ready");
     });
   }
@@ -1973,8 +1973,6 @@ export default function Home() {
     await runAction("Reading Excel sheet", async () => {
       const preview = await requestExcelImportPreview(importFile, sheetName);
       setImportPreview(preview);
-      setAvailableImportSheets(preview.available_sheets);
-      setSelectedImportSheet(preview.sheet_name);
       setMessage("Import preview ready");
     });
   }
@@ -2053,13 +2051,9 @@ export default function Home() {
   }
 
   function resolveImportRow(rowNumber: number, rawMaterialId: string) {
-    if (!rawMaterialId) {
-      return;
+    if (resolveImportRowState(rowNumber, rawMaterialId)) {
+      setMessage("Import row resolved");
     }
-    setImportPreview((current) =>
-      current ? withResolvedImportRow(current, rowNumber, rawMaterialId) : current,
-    );
-    setMessage("Import row resolved");
   }
 
   function acceptImportSuggestion(row: ExcelImportPreviewRow) {
@@ -2171,14 +2165,6 @@ export default function Home() {
     leader: "baseline" | "candidate" | "tie",
   ): string {
     return leader === "baseline" ? "base" : leader;
-  }
-
-  function resetImportState() {
-    setImportPreview(null);
-    setImportFile(null);
-    setImportFileName("");
-    setAvailableImportSheets([]);
-    setSelectedImportSheet("");
   }
 
   function jiraConnectionFormFromRead(connection: JiraConnection): JiraConnectionForm {
@@ -3451,155 +3437,25 @@ export default function Home() {
             ) : null}
           </section>
 
-          <section id="import" className="panel importPanel" hidden={activeView !== "import"}>
-            <div className="panelHeader">
-              <h2>Excel import</h2>
-              <span>{importPreview ? importPreview.sheet_name : "No file"}</span>
-            </div>
-            <div className="importActions">
-              <label>
-                <span>Upload .xlsx</span>
-                <input
-                  type="file"
-                  accept=".xlsx"
-                  onChange={(event) => selectExcelImportFile(event.target.files?.[0] ?? null)}
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label className="sheetSelector">
-                <span>Sheet</span>
-                <select
-                  aria-label="Excel sheet"
-                  value={selectedImportSheet}
-                  onChange={(event) => previewSelectedImportSheet(event.target.value)}
-                  disabled={!canSelectImportSheet}
-                >
-                  {availableImportSheets.length === 0 ? (
-                    <option value="">No sheets</option>
-                  ) : (
-                    <>
-                      {availableImportSheets.length > 1 ? (
-                        <option value="" disabled>
-                          Select sheet
-                        </option>
-                      ) : null}
-                      {availableImportSheets.map((sheet) => (
-                        <option key={sheet} value={sheet}>
-                          {sheet}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
-              </label>
-              <button className="secondaryButton" type="button" onClick={saveExcelImport} disabled={!canSaveImport}>
-                <Save size={17} />
-                Save formula
-              </button>
-            </div>
-            <div className="importSummary">
-              <div>
-                <span>File</span>
-                <strong>{importFileName || "-"}</strong>
-              </div>
-              <div>
-                <span>Total</span>
-                <strong>{importPreview ? `${importPreview.total_percentage.toFixed(1)}%` : "-"}</strong>
-              </div>
-              <div>
-                <span>Resolved</span>
-                <strong>{importPreview ? importPreview.resolved_rows : "-"}</strong>
-              </div>
-              <div>
-                <span>Pending</span>
-                <strong>{importPreview ? importPreview.pending_rows : "-"}</strong>
-              </div>
-            </div>
-            <div className="importTable">
-              <div className="importHead">
-                <span>Row</span>
-                <span>Material</span>
-                <span>Share</span>
-                <span>Status</span>
-                <span>Resolve</span>
-              </div>
-              {importPreview ? (
-                importPreview.rows.map((row) => (
-                  <div className="importRow" key={row.row_number}>
-                    <code>{row.row_number}</code>
-                    <span>{row.material_code || row.material_name || "-"}</span>
-                    <span>{row.percentage === null ? "-" : `${row.percentage.toFixed(2)}%`}</span>
-                    <span data-state={row.status}>{row.status}</span>
-                    {row.status === "needs_review" ? (
-                      <div className="resolveControls">
-                        <select
-                          aria-label={`Resolve row ${row.row_number}`}
-                          defaultValue=""
-                          onChange={(event) => resolveImportRow(row.row_number, event.target.value)}
-                          disabled={isBusy}
-                        >
-                          <option value="" disabled>
-                            Select material
-                          </option>
-                          {workspace.rawMaterials.map((material) => (
-                            <option key={material.id} value={material.id}>
-                              {material.code ? `${material.code} - ${material.name}` : material.name}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          aria-label={`Create material for row ${row.row_number}`}
-                          className="iconButton"
-                          disabled={isBusy}
-                          onClick={() => createMaterialFromImportRow(row)}
-                          title="Create material"
-                          type="button"
-                        >
-                          <Plus size={16} />
-                        </button>
-                        {row.suggested_raw_material_id ? (
-                          <button
-                            aria-label={`Use suggestion for row ${row.row_number}`}
-                            className="suggestionButton"
-                            disabled={isBusy}
-                            onClick={() => acceptImportSuggestion(row)}
-                            title="Use suggestion"
-                            type="button"
-                          >
-                            <Check size={15} />
-                            <span>
-                              {row.suggested_material_name}
-                              {row.suggested_match_score === null
-                                ? ""
-                                : ` (${Math.round(row.suggested_match_score * 100)}%)`}
-                            </span>
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : row.matched_by === "manual" && row.raw_material_id ? (
-                      <div className="aliasResolveControls">
-                        <span>manual</span>
-                        <button
-                          aria-label={`Save alias for row ${row.row_number}`}
-                          className="iconButton"
-                          disabled={isBusy || !aliasFromImportRow(row)}
-                          onClick={() => createAliasFromImportRow(row)}
-                          title="Save alias"
-                          type="button"
-                        >
-                          <Save size={16} />
-                        </button>
-                      </div>
-                    ) : (
-                      <span>{row.matched_by ?? "-"}</span>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="empty">No import preview.</div>
-              )}
-            </div>
-          </section>
+          <ExcelImportPanel
+            active={activeView === "import"}
+            importPreview={importPreview}
+            importFileName={importFileName}
+            availableImportSheets={availableImportSheets}
+            selectedImportSheet={selectedImportSheet}
+            rawMaterials={workspace.rawMaterials}
+            canEditTenantData={canEditTenantData}
+            canSelectImportSheet={canSelectImportSheet}
+            canSaveImport={canSaveImport}
+            isBusy={isBusy}
+            onSelectFile={selectExcelImportFile}
+            onPreviewSheet={previewSelectedImportSheet}
+            onSaveImport={saveExcelImport}
+            onResolveRow={resolveImportRow}
+            onCreateMaterialFromRow={createMaterialFromImportRow}
+            onAcceptSuggestion={acceptImportSuggestion}
+            onCreateAliasFromRow={createAliasFromImportRow}
+          />
 
           <section id="ai" className="panel aiPanel" hidden={activeView !== "ai"}>
             <div className="panelHeader">

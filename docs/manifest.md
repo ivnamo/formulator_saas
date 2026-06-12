@@ -55,6 +55,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_042_formula_builder_component_files.md`](00-meta/meta_042_formula_builder_component_files.md)
 - [`00-meta/meta_043_formula_builder_ui_state.md`](00-meta/meta_043_formula_builder_ui_state.md)
 - [`00-meta/meta_044_formula_builder_catalog_hook.md`](00-meta/meta_044_formula_builder_catalog_hook.md)
+- [`00-meta/meta_045_excel_import_refactor.md`](00-meta/meta_045_excel_import_refactor.md)
 
 ## Producto
 
