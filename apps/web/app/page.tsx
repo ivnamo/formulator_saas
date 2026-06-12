@@ -3,13 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { request } from "./workspace-api";
-import {
-  emptyJiraConnectionForm,
-  formatDateTime,
-  type JiraConnection,
-  type JiraConnectionForm,
-  type JiraMetadataState,
-} from "./workspace-model";
+import { formatDateTime } from "./workspace-model";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
@@ -57,6 +51,7 @@ import { useRawMaterialWorkspaceState } from "./raw-material-state";
 import { useFormulaWorkspaceState } from "./formula-workspace-state";
 import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
+import { useJiraConnectionState } from "./jira-connection-state";
 
 export default function Home() {
   const {
@@ -133,10 +128,16 @@ export default function Home() {
     compatibilityRuleForm,
     setCompatibilityRuleForm,
   } = useCompatibilityState();
-  const [jiraConnections, setJiraConnections] = useState<JiraConnection[]>([]);
-  const [jiraConnectionForm, setJiraConnectionForm] = useState(emptyJiraConnectionForm);
-  const [jiraMetadata, setJiraMetadata] = useState<JiraMetadataState | null>(null);
-  const [jiraMappingKey, setJiraMappingKey] = useState("jira_project_id");
+  const {
+    jiraConnections,
+    setJiraConnections,
+    jiraConnectionForm,
+    setJiraConnectionForm,
+    jiraMetadata,
+    setJiraMetadata,
+    jiraMappingKey,
+    setJiraMappingKey,
+  } = useJiraConnectionState();
   const {
     requirementText,
     setRequirementText,
