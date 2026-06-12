@@ -103,8 +103,7 @@ import {
   formatSignedDelta,
   formatSignedInteger,
 } from "./formula-formatters";
-import { BuilderStep } from "./formula-builder-ui/builder-step";
-import { FormulaCalculationPanel } from "./formula-builder-ui/formula-calculation-panel";
+import { FormulaCalculationStep } from "./formula-builder-ui/formula-calculation-step";
 import { FormulaCompositionStep } from "./formula-builder-ui/formula-composition-step";
 import {
   FormulaBasicsStep,
@@ -2500,35 +2499,24 @@ export default function Home() {
               onDuplicateLine={duplicateFormulaLine}
               onRemoveLine={removeFormulaLine}
             />
-            <BuilderStep
-              section="calculation"
-              title="4. Calculo vivo"
-              summary={
-                <>
-                  {result ? "Backend oficial" : "Preview local"} - {parameterRows.length} parametros
-                </>
-              }
+            <FormulaCalculationStep
               isOpen={builderSections.calculation}
-              bodyClassName="builderCalculationPanel"
+              isBackendResult={Boolean(result)}
+              parameterRows={parameterRows}
+              visibleWarnings={visibleWarnings}
+              selectedPresetLabel={selectedParameterPreset.label}
+              visibleParameterSummary={visibleParameterSummary}
+              showOnlyPositiveParameters={showOnlyPositiveParameters}
+              parameterViewPreset={parameterViewPreset}
+              isFormulaBalanced={isFormulaBalanced}
+              totalPercentage={totalPercentage}
+              isBusy={isBusy}
+              canSaveFormula={canSaveFormula}
               onToggle={toggleBuilderSection}
-            >
-                  <FormulaCalculationPanel
-                    isBackendResult={Boolean(result)}
-                    parameterRows={parameterRows}
-                    visibleWarnings={visibleWarnings}
-                    selectedPresetLabel={selectedParameterPreset.label}
-                    visibleParameterSummary={visibleParameterSummary}
-                    showOnlyPositiveParameters={showOnlyPositiveParameters}
-                    parameterViewPreset={parameterViewPreset}
-                    isFormulaBalanced={isFormulaBalanced}
-                    totalPercentage={totalPercentage}
-                    isBusy={isBusy}
-                    canSaveFormula={canSaveFormula}
-                    onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
-                    onSelectParameterView={selectCurrentParameterView}
-                    onSaveFormula={saveFormula}
-                  />
-            </BuilderStep>
+              onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
+              onSelectParameterView={selectCurrentParameterView}
+              onSaveFormula={saveFormula}
+            />
           </section>
 
           <CalculationResultsPanel active={activeView === "results"} result={result} />
