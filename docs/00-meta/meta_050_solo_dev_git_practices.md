@@ -2,7 +2,7 @@
 
 ## Decision
 
-For this repository, Codex work should follow a solo-dev workflow optimized for clarity, small recoverable changes, and a clean `main`.
+For this repository, Codex work should follow a solo-dev workflow optimized for clarity, small recoverable changes, and a clean `main`. This is the default rule for implementation work unless the user explicitly asks for a different flow.
 
 ## Operating Rules
 
