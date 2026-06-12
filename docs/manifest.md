@@ -114,6 +114,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_101_formula_read_workspace_mapper.md`](00-meta/meta_101_formula_read_workspace_mapper.md)
 - [`00-meta/meta_102_formula_builder_derived_model.md`](00-meta/meta_102_formula_builder_derived_model.md)
 - [`00-meta/meta_103_workspace_model_utils.md`](00-meta/meta_103_workspace_model_utils.md)
+- [`00-meta/meta_104_jira_connection_model.md`](00-meta/meta_104_jira_connection_model.md)
 
 ## Producto
 
