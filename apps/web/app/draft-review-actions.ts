@@ -1,10 +1,9 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { BuilderSectionKey } from "./formula-builder-model";
 import { request } from "./workspace-api";
+import type { AgentFormulaCandidate, AgentPlan } from "./ai-workflow-model";
 import {
   makeLocalId,
-  type AgentFormulaCandidate,
-  type AgentPlan,
   type CalculationResult,
   type FormulaCalculationHistory,
   type FormulaLine,

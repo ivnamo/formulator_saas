@@ -1,12 +1,14 @@
 import { BrainCircuit, ListChecks, RefreshCw } from "lucide-react";
 import { AiAgentPlanPanel } from "./ai-agent-plan-panel";
+import type {
+  AiRun,
+  AgentFormulaCandidate,
+  AgentPlan,
+  RequirementConstraint,
+  RequirementParse,
+} from "./ai-workflow-model";
 import {
   formatDateTime,
-  type AiRun,
-  type AgentFormulaCandidate,
-  type AgentPlan,
-  type RequirementConstraint,
-  type RequirementParse,
 } from "./workspace-model";
 
 type AiAssistantPanelProps = {

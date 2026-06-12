@@ -123,6 +123,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_110_raw_material_create_helpers.md`](00-meta/meta_110_raw_material_create_helpers.md)
 - [`00-meta/meta_111_jira_model_helpers.md`](00-meta/meta_111_jira_model_helpers.md)
 - [`00-meta/meta_112_workspace_settings_model.md`](00-meta/meta_112_workspace_settings_model.md)
+- [`00-meta/meta_113_ai_domain_imports.md`](00-meta/meta_113_ai_domain_imports.md)
 
 ## Producto
 

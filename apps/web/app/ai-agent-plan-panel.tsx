@@ -1,5 +1,9 @@
 import { Check, Plus } from "lucide-react";
-import type { AgentCandidate, AgentFormulaCandidate, AgentPlan } from "./workspace-model";
+import type {
+  AgentCandidate,
+  AgentFormulaCandidate,
+  AgentPlan,
+} from "./ai-workflow-model";
 
 type AiAgentPlanPanelProps = {
   agentPlan: AgentPlan | null;

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import type { DraftReviewState } from "./workspace-comparison";
-import type { AiRun, AgentPlan, RequirementParse } from "./workspace-model";
+import type { AiRun, AgentPlan, RequirementParse } from "./ai-workflow-model";
 
 const defaultRequirementText =
   "Liquido barato con contenido activo minimo 12% y precio maximo 2 EUR/kg. Dame 2 alternativas.";

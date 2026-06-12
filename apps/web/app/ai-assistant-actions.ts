@@ -4,6 +4,8 @@ import type {
   AiRun,
   AgentPlan,
   RequirementParse,
+} from "./ai-workflow-model";
+import type {
   WorkspaceState,
 } from "./workspace-model";
 
