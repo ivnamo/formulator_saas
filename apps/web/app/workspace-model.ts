@@ -1,3 +1,5 @@
+import type { RawMaterial } from "./raw-material-model";
+
 export type Tenant = {
   id: string;
   name: string;
@@ -10,32 +12,6 @@ export type Parameter = {
   code: string;
   name: string;
   unit: string;
-};
-
-export type RawMaterial = {
-  id: string;
-  code: string | null;
-  externalCode: string | null;
-  name: string;
-  family: string | null;
-  isActive: boolean;
-  isObsolete: boolean;
-  price: number | null;
-  parameterValue: number | null;
-  parameterCount: number;
-  positiveParameterCount: number;
-  parameters: Record<string, RawMaterialParameterValue>;
-  aliases: string[];
-};
-
-export type RawMaterialParameterValue = {
-  parameterId: string;
-  code: string;
-  name: string;
-  value: number;
-  unit: string | null;
-  source: string | null;
-  confidence: number | null;
 };
 
 export type FormulaLine = {
@@ -80,84 +56,21 @@ export type ParameterRead = Parameter & {
   is_active: boolean;
 };
 
-export type RawMaterialRead = {
-  id: string;
-  tenant_id: string;
-  code: string | null;
-  external_code: string | null;
-  name: string;
-  normalized_name: string;
-  family: string | null;
-  subfamily: string | null;
-  is_active: boolean;
-  is_obsolete: boolean;
-  current_price: {
-    price: number;
-    currency: string;
-    unit: string;
-    supplier: string | null;
-    source: string;
-    valid_from: string;
-  } | null;
-  parameters: Array<{
-    parameter_id: string;
-    code: string;
-    name: string;
-    value: number;
-    unit: string | null;
-    source: string | null;
-    confidence: number | null;
-  }>;
-  aliases: string[];
-};
-
-export type RawMaterialCatalogItemRead = {
-  id: string;
-  tenant_id: string;
-  code: string | null;
-  external_code: string | null;
-  name: string;
-  family: string | null;
-  subfamily: string | null;
-  physical_state: string | null;
-  is_active: boolean;
-  is_obsolete: boolean;
-  current_price: {
-    price: number;
-    currency: string;
-    unit: string;
-    supplier: string | null;
-    source: string;
-    valid_from: string;
-  } | null;
-  parameter_count: number;
-  positive_parameter_count: number;
-  aliases: string[];
-};
-
-export type RawMaterialCatalogRead = {
-  items: RawMaterialCatalogItemRead[];
-  total: number;
-  limit: number;
-  offset: number;
-  families: string[];
-};
-
 export {
   mergeRawMaterials,
   toWorkspaceRawMaterial,
   toWorkspaceRawMaterialCatalogItem,
   withRawMaterialAlias,
 } from "./raw-material-model";
-
-export type RawMaterialAliasRead = {
-  id: string;
-  tenant_id: string;
-  raw_material_id: string;
-  alias: string;
-  normalized_alias: string;
-  source: string;
-};
+export type {
+  MaterialForm,
+  RawMaterial,
+  RawMaterialAliasRead,
+  RawMaterialCatalogItemRead,
+  RawMaterialCatalogRead,
+  RawMaterialParameterValue,
+  RawMaterialRead,
+} from "./raw-material-model";
 
 export type {
   CalculationResult,
@@ -206,13 +119,6 @@ export type {
 } from "./ai-workflow-model";
 
 export type Status = "idle" | "working" | "error";
-
-export type MaterialForm = {
-  code: string;
-  name: string;
-  price: string;
-  parameterValue: string;
-};
 
 export const emptyWorkspace: WorkspaceState = {
   tenant: null,
