@@ -110,6 +110,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_097_formula_builder_preview_helpers.md`](00-meta/meta_097_formula_builder_preview_helpers.md)
 - [`00-meta/meta_098_comparison_constraint_helpers.md`](00-meta/meta_098_comparison_constraint_helpers.md)
 - [`00-meta/meta_099_raw_material_model_helpers.md`](00-meta/meta_099_raw_material_model_helpers.md)
+- [`00-meta/meta_100_excel_import_model_helpers.md`](00-meta/meta_100_excel_import_model_helpers.md)
 
 ## Producto
 
