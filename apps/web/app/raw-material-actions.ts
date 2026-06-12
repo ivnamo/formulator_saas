@@ -1,15 +1,21 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { request } from "./workspace-api";
 import {
+  buildRawMaterialCreatePayload,
+  buildRawMaterialParameterValuePayload,
+  buildRawMaterialPricePayload,
   mergeRawMaterials,
-  parseOptionalNumber,
   toWorkspaceRawMaterial,
+  withManualParameterValue,
   withRawMaterialAlias,
-  type CalculationResult,
   type MaterialForm,
   type RawMaterial,
   type RawMaterialAliasRead,
   type RawMaterialRead,
+} from "./raw-material-model";
+import {
+  parseOptionalNumber,
+  type CalculationResult,
   type WorkspaceState,
 } from "./workspace-model";
 
@@ -153,10 +159,7 @@ export function useRawMaterialActions({
       const material = await request<RawMaterialRead>("/api/v1/raw-materials", {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          code: materialForm.code.trim() || null,
-          name: materialForm.name.trim(),
-        }),
+        body: JSON.stringify(buildRawMaterialCreatePayload(materialForm)),
       });
       const price = parseOptionalNumber(materialForm.price);
       const parameterValue = parseOptionalNumber(materialForm.parameterValue);
@@ -165,7 +168,7 @@ export function useRawMaterialActions({
         await request<Record<string, unknown>>(`/api/v1/raw-materials/${material.id}/prices`, {
           method: "POST",
           headers,
-          body: JSON.stringify({ price, currency: "EUR", unit: "kg" }),
+          body: JSON.stringify(buildRawMaterialPricePayload(price)),
         });
       }
       if (workspace.parameter && parameterValue !== null) {
@@ -174,10 +177,9 @@ export function useRawMaterialActions({
           {
             method: "POST",
             headers,
-            body: JSON.stringify({
-              parameter_id: workspace.parameter.id,
-              value: parameterValue,
-            }),
+            body: JSON.stringify(
+              buildRawMaterialParameterValuePayload(workspace.parameter, parameterValue),
+            ),
           },
         );
       }
@@ -192,18 +194,12 @@ export function useRawMaterialActions({
           current.parameters,
         );
         if (current.parameter && parameterValue !== null) {
-          fullMaterial.parameters[current.parameter.code] = {
-            parameterId: current.parameter.id,
-            code: current.parameter.code,
-            name: current.parameter.name,
-            value: parameterValue,
-            unit: current.parameter.unit,
-            source: "manual",
-            confidence: null,
+          return {
+            ...current,
+            rawMaterials: mergeRawMaterials(current.rawMaterials, [
+              withManualParameterValue(fullMaterial, current.parameter, parameterValue),
+            ]),
           };
-          fullMaterial.positiveParameterCount = Object.values(fullMaterial.parameters).filter(
-            (parameter) => Math.abs(parameter.value) > 0.0001,
-          ).length;
         }
         return {
           ...current,

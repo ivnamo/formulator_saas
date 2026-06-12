@@ -107,6 +107,53 @@ export type MaterialForm = {
   parameterValue: string;
 };
 
+export function buildRawMaterialCreatePayload(form: MaterialForm) {
+  return {
+    code: form.code.trim() || null,
+    name: form.name.trim(),
+  };
+}
+
+export function buildRawMaterialPricePayload(price: number) {
+  return { price, currency: "EUR", unit: "kg" };
+}
+
+export function buildRawMaterialParameterValuePayload(
+  parameter: Parameter,
+  value: number,
+) {
+  return {
+    parameter_id: parameter.id,
+    value,
+  };
+}
+
+export function withManualParameterValue(
+  material: RawMaterial,
+  parameter: Parameter,
+  value: number,
+): RawMaterial {
+  const parameters = {
+    ...material.parameters,
+    [parameter.code]: {
+      parameterId: parameter.id,
+      code: parameter.code,
+      name: parameter.name,
+      value,
+      unit: parameter.unit,
+      source: "manual",
+      confidence: null,
+    },
+  };
+  return {
+    ...material,
+    parameters,
+    positiveParameterCount: Object.values(parameters).filter(
+      (item) => Math.abs(item.value) > 0.0001,
+    ).length,
+  };
+}
+
 export function toWorkspaceRawMaterial(
   material: RawMaterialRead,
   values: { price?: number | null; parameterValue?: number | null } = {},
