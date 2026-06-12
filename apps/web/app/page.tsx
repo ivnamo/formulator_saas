@@ -6,14 +6,10 @@ import { request } from "./workspace-api";
 import {
   emptyJiraConnectionForm,
   formatDateTime,
-  type AiRun,
-  type AgentPlan,
   type JiraConnection,
   type JiraConnectionForm,
   type JiraMetadataState,
-  type RequirementParse,
 } from "./workspace-model";
-import { type DraftReviewState } from "./workspace-comparison";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
@@ -60,6 +56,7 @@ import { useWorkspaceCoreState } from "./workspace-core-state";
 import { useRawMaterialWorkspaceState } from "./raw-material-state";
 import { useFormulaWorkspaceState } from "./formula-workspace-state";
 import { useCompatibilityState } from "./compatibility-state";
+import { useAiWorkflowState } from "./ai-workflow-state";
 
 export default function Home() {
   const {
@@ -140,13 +137,18 @@ export default function Home() {
   const [jiraConnectionForm, setJiraConnectionForm] = useState(emptyJiraConnectionForm);
   const [jiraMetadata, setJiraMetadata] = useState<JiraMetadataState | null>(null);
   const [jiraMappingKey, setJiraMappingKey] = useState("jira_project_id");
-  const [requirementText, setRequirementText] = useState(
-    "Liquido barato con contenido activo minimo 12% y precio maximo 2 EUR/kg. Dame 2 alternativas.",
-  );
-  const [requirementParse, setRequirementParse] = useState<RequirementParse | null>(null);
-  const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null);
-  const [draftReview, setDraftReview] = useState<DraftReviewState | null>(null);
-  const [aiRuns, setAiRuns] = useState<AiRun[]>([]);
+  const {
+    requirementText,
+    setRequirementText,
+    requirementParse,
+    setRequirementParse,
+    agentPlan,
+    setAgentPlan,
+    draftReview,
+    setDraftReview,
+    aiRuns,
+    setAiRuns,
+  } = useAiWorkflowState();
   const {
     formulaCompareSelection,
     comparisonConstraintForm,
