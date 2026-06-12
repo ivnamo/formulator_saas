@@ -72,6 +72,7 @@ import {
 import {
   PARAMETER_VIEW_PRESETS,
   formatFormulaNumber,
+  type ParameterViewPresetKey,
 } from "./formula-builder-model";
 import {
   buildCalculationParameterRows,
@@ -111,10 +112,8 @@ import {
   FormulaBasicsStep,
   type FormulaBasicsValue,
 } from "./formula-builder-ui/formula-basics-step";
+import { FormulaMaterialsStep } from "./formula-builder-ui/formula-materials-step";
 import { JiraReviewPanel } from "./formula-builder-ui/jira-review-panel";
-import { MaterialCatalogControls } from "./formula-builder-ui/material-catalog-controls";
-import { MaterialCatalogWorkspace } from "./formula-builder-ui/material-catalog-workspace";
-import { ParameterViewPanel } from "./formula-builder-ui/parameter-view-panel";
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import { useSavedFormulaComparisonState } from "./saved-formula-comparison-state";
 
@@ -1402,6 +1401,18 @@ export default function Home() {
     markDraftReviewPending();
   }
 
+  function loadMoreCatalogMaterials() {
+    setMaterialResultLimit((current) => Math.min(current + 60, catalogTotal));
+  }
+
+  function selectCurrentParameterView(key: ParameterViewPresetKey) {
+    selectParameterView(key, visibleParameterCodes);
+  }
+
+  function clearComparisonMaterials() {
+    setComparisonMaterialIds([]);
+  }
+
   function updateDraftReviewNotes(notes: string) {
     setDraftReview((current) =>
       current
@@ -2399,82 +2410,60 @@ export default function Home() {
               onToggle={toggleBuilderSection}
               onChange={updateFormulaBasics}
             />
-            <BuilderStep
-              section="materials"
-              title="2. Materias primas"
-              summary={
-                <>
-                  {catalogLoading ? "Cargando catalogo" : `${catalogTotal} disponibles`} -{" "}
-                  {visibleParameterSummary}
-                </>
-              }
+            <FormulaMaterialsStep
               isOpen={builderSections.materials}
-              bodyClassName="builderSearch"
+              catalogLoading={catalogLoading}
+              catalogTotal={catalogTotal}
+              visibleParameterSummary={visibleParameterSummary}
+              selectedPresetHelper={selectedParameterPreset.helper}
+              showOnlyPositiveParameters={showOnlyPositiveParameters}
+              parameterViewPreset={parameterViewPreset}
+              parameterCatalog={parameterCatalog}
+              customParameterCodes={customParameterCodes}
+              formulaMaterialQuery={formulaMaterialQuery}
+              canSearch={Boolean(workspace.tenant) && !isBusy}
+              catalogParameterConditions={catalogParameterConditions}
+              catalogFamilyFilter={catalogFamilyFilter}
+              catalogMaterialFamilies={catalogMaterialFamilies}
+              catalogPriceFilter={catalogPriceFilter}
+              catalogPriceMin={catalogPriceMin}
+              catalogPriceMax={catalogPriceMax}
+              catalogParameterToAdd={catalogParameterToAdd}
+              visibleParameterCodeSet={visibleParameterCodeSet}
+              materialResultLimit={materialResultLimit}
+              materialSearchResults={materialSearchResults}
+              workspaceMaterialCount={workspace.rawMaterials.length}
+              formulaLines={workspace.formulaLines}
+              selectedMaterialId={selectedMaterialId}
+              selectedMaterial={selectedMaterial}
+              selectedMaterialParameters={selectedMaterialParameters}
+              comparisonMaterials={comparisonMaterials}
+              detailedMaterialIds={detailedMaterialIds}
+              expandedMaterialIds={expandedMaterialIds}
+              comparisonMaterialIds={comparisonMaterialIds}
+              visibleParameterCodes={visibleParameterCodes}
+              isBusy={isBusy}
               onToggle={toggleBuilderSection}
-            >
-                  <ParameterViewPanel
-                    selectedPresetHelper={selectedParameterPreset.helper}
-                    showOnlyPositiveParameters={showOnlyPositiveParameters}
-                    parameterViewPreset={parameterViewPreset}
-                    parameterCatalog={parameterCatalog}
-                    customParameterCodes={customParameterCodes}
-                    onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
-                    onSelectParameterView={(key) => selectParameterView(key, visibleParameterCodes)}
-                    onToggleCustomParameterCode={toggleCustomParameterCode}
-                  />
-                  <MaterialCatalogControls
-                    query={formulaMaterialQuery}
-                    canSearch={Boolean(workspace.tenant) && !isBusy}
-                    catalogParameterConditions={catalogParameterConditions}
-                    catalogFamilyFilter={catalogFamilyFilter}
-                    catalogMaterialFamilies={catalogMaterialFamilies}
-                    catalogPriceFilter={catalogPriceFilter}
-                    catalogPriceMin={catalogPriceMin}
-                    catalogPriceMax={catalogPriceMax}
-                    catalogParameterToAdd={catalogParameterToAdd}
-                    parameterCatalog={parameterCatalog}
-                    visibleParameterCodeSet={visibleParameterCodeSet}
-                    resultCount={materialSearchResults.length}
-                    catalogTotal={catalogTotal}
-                    catalogLoading={catalogLoading}
-                    materialResultLimit={materialResultLimit}
-                    onQueryChange={setFormulaMaterialQuery}
-                    onFamilyFilterChange={setCatalogFamilyFilter}
-                    onPriceFilterChange={setCatalogPriceFilter}
-                    onPriceMinChange={setCatalogPriceMin}
-                    onPriceMaxChange={setCatalogPriceMax}
-                    onParameterToAddChange={setCatalogParameterToAdd}
-                    onAddCondition={addCatalogParameterCondition}
-                    onUpdateCondition={updateCatalogParameterCondition}
-                    onRemoveCondition={removeCatalogParameterCondition}
-                    onLoadMore={() =>
-                      setMaterialResultLimit((current) => Math.min(current + 60, catalogTotal))
-                    }
-                    onResetFilters={resetCatalogFilters}
-                  />
-                  <MaterialCatalogWorkspace
-                    catalogLoading={catalogLoading}
-                    catalogTotal={catalogTotal}
-                    materials={materialSearchResults}
-                    workspaceMaterialCount={workspace.rawMaterials.length}
-                    formulaLines={workspace.formulaLines}
-                    selectedMaterialId={selectedMaterialId}
-                    selectedMaterial={selectedMaterial}
-                    selectedMaterialParameters={selectedMaterialParameters}
-                    comparisonMaterials={comparisonMaterials}
-                    detailedMaterialIds={detailedMaterialIds}
-                    expandedMaterialIds={expandedMaterialIds}
-                    comparisonMaterialIds={comparisonMaterialIds}
-                    visibleParameterCodes={visibleParameterCodes}
-                    showOnlyPositiveParameters={showOnlyPositiveParameters}
-                    isBusy={isBusy}
-                    onInspectMaterial={inspectMaterial}
-                    onToggleCompareMaterial={toggleCompareMaterial}
-                    onAddFormulaLine={addFormulaLine}
-                    onToggleExpandedMaterial={toggleExpandedMaterial}
-                    onClearComparison={() => setComparisonMaterialIds([])}
-                  />
-            </BuilderStep>
+              onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
+              onSelectParameterView={selectCurrentParameterView}
+              onToggleCustomParameterCode={toggleCustomParameterCode}
+              onQueryChange={setFormulaMaterialQuery}
+              onFamilyFilterChange={setCatalogFamilyFilter}
+              onPriceFilterChange={setCatalogPriceFilter}
+              onPriceMinChange={setCatalogPriceMin}
+              onPriceMaxChange={setCatalogPriceMax}
+              onParameterToAddChange={setCatalogParameterToAdd}
+              onAddCondition={addCatalogParameterCondition}
+              onUpdateCondition={updateCatalogParameterCondition}
+              onRemoveCondition={removeCatalogParameterCondition}
+              onLoadMoreMaterials={loadMoreCatalogMaterials}
+              onResetFilters={resetCatalogFilters}
+              onInspectMaterial={inspectMaterial}
+              onToggleCompareMaterial={toggleCompareMaterial}
+              onAddFormulaLine={addFormulaLine}
+              onToggleExpandedMaterial={toggleExpandedMaterial}
+              onClearComparison={clearComparisonMaterials}
+            />
             <BuilderStep
               section="formula"
               title="3. Formula editable"
@@ -2552,7 +2541,7 @@ export default function Home() {
                     isBusy={isBusy}
                     canSaveFormula={canSaveFormula}
                     onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
-                    onSelectParameterView={(key) => selectParameterView(key, visibleParameterCodes)}
+                    onSelectParameterView={selectCurrentParameterView}
                     onSaveFormula={saveFormula}
                   />
             </BuilderStep>
