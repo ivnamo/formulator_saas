@@ -71,7 +71,6 @@ import { useJiraConnectionActions } from "./jira-connection-actions";
 import { useAiAssistantActions } from "./ai-assistant-actions";
 import { useCompatibilityActions } from "./compatibility-actions";
 import { useRawMaterialActions } from "./raw-material-actions";
-import { isTenantAdminRole } from "./tenant-roles";
 import { useWorkspaceSettingsActions } from "./workspace-settings-actions";
 import { useDraftReviewActions } from "./draft-review-actions";
 import { useFormulaBuilderLocalActions } from "./formula-builder-local-actions";
@@ -79,6 +78,7 @@ import {
   useAuthenticatedWorkspaceLoad,
   useWorkspaceAuthSession,
 } from "./workspace-auth-session";
+import { useWorkspaceCapabilities } from "./workspace-capabilities";
 
 type WorkspaceView =
   | "formula"
@@ -361,64 +361,42 @@ export default function Home() {
     savedFormulaComparison,
     showOnlyConstraintIssues,
   });
-  const isBusy = status === "working";
-  const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
-  const canManageTenantUsers = isTenantAdminRole(workspace.tenant?.role) && !isBusy;
-  const hasPendingDraftReview = draftReview !== null && draftReview.status !== "confirmed";
-  const canConfirmDraftReview =
-    draftReview !== null &&
-    draftReview.status !== "confirmed" &&
-    draftReview.notes.trim().length >= 3 &&
-    !isBusy;
-  const canCalculate =
-    Boolean(workspace.tenant) &&
-    workspace.formulaLines.length > 0 &&
-    !hasPendingDraftReview &&
-    !isBusy;
-  const canSaveFormula = canCalculate && isFormulaBalanced;
-  const canCompareSavedFormulas =
-    Boolean(workspace.tenant) &&
-    Boolean(formulaCompareSelection.baselineId) &&
-    Boolean(formulaCompareSelection.candidateId) &&
-    formulaCompareSelection.baselineId !== formulaCompareSelection.candidateId &&
-    !isBusy;
-  const canSelectImportSheet = availableImportSheets.length > 1 && Boolean(importFile) && !isBusy;
-  const canSaveImport =
-    Boolean(importPreview) &&
-    importPreview?.rows.length !== 0 &&
-    importPreview?.pending_rows === 0 &&
-    !isBusy;
-  const canParseRequirements =
-    Boolean(workspace.tenant) && requirementText.trim().length >= 3 && !isBusy;
-  const canPlanRequirements = canParseRequirements;
-  const canCreateCompatibilityRule =
-    Boolean(workspace.tenant) &&
-    Boolean(compatibilityRuleForm.materialAId) &&
-    Boolean(compatibilityRuleForm.materialBId) &&
-    compatibilityRuleForm.materialAId !== compatibilityRuleForm.materialBId &&
-    compatibilityRuleForm.message.trim().length > 0 &&
-    !isBusy;
-  const activeJiraConnection = useMemo(
-    () => jiraConnections.find((connection) => connection.is_active) ?? jiraConnections[0] ?? null,
-    [jiraConnections],
-  );
-  const canSaveJiraConnection =
-    Boolean(workspace.tenant) &&
-    jiraConnectionForm.baseUrl.trim().length > 0 &&
-    jiraConnectionForm.defaultProjectKey.trim().length > 0 &&
-    jiraConnectionForm.defaultIssueType.trim().length > 0 &&
-    !isBusy;
-  const canTestJiraConnection = Boolean(activeJiraConnection) && !isBusy;
-  const canLoadJiraMetadata = Boolean(activeJiraConnection) && canEditTenantData;
-  const canAuthorizeJiraOAuth =
-    Boolean(workspace.tenant) && jiraConnectionForm.authType === "oauth" && !isBusy;
-  const canPrepareJiraReview =
-    Boolean(workspace.tenant) &&
-    Boolean(workspace.formulaId) &&
-    workspace.formulaJiraProjectId.trim().length > 0 &&
-    Boolean(activeJiraConnection) &&
-    result !== null &&
-    !isBusy;
+  const {
+    isBusy,
+    canEditTenantData,
+    canManageTenantUsers,
+    showInvitationAdminPanel,
+    hasPendingDraftReview,
+    canConfirmDraftReview,
+    canSaveFormula,
+    canCompareSavedFormulas,
+    canSelectImportSheet,
+    canSaveImport,
+    canParseRequirements,
+    canPlanRequirements,
+    canCreateCompatibilityRule,
+    activeJiraConnection,
+    canSaveJiraConnection,
+    canTestJiraConnection,
+    canLoadJiraMetadata,
+    canAuthorizeJiraOAuth,
+    canPrepareJiraReview,
+    canSearchCatalog,
+  } = useWorkspaceCapabilities({
+    workspace,
+    status,
+    draftReview,
+    isFormulaBalanced,
+    formulaCompareSelection,
+    availableImportSheets,
+    importFile,
+    importPreview,
+    requirementText,
+    compatibilityRuleForm,
+    jiraConnections,
+    jiraConnectionForm,
+    result,
+  });
   const {
     ensureRawMaterialDetail,
     inspectMaterial,
@@ -784,7 +762,7 @@ export default function Home() {
             canTestJiraConnection={canTestJiraConnection}
             canLoadJiraMetadata={canLoadJiraMetadata}
             canAuthorizeJiraOAuth={canAuthorizeJiraOAuth}
-            showInvitationAdminPanel={isTenantAdminRole(workspace.tenant?.role)}
+            showInvitationAdminPanel={showInvitationAdminPanel}
             onWorkspaceNameChange={setWorkspaceName}
             onCreateWorkspace={createWorkspace}
             onInvitationFormChange={setInvitationForm}
@@ -918,7 +896,7 @@ export default function Home() {
               parameterCatalog={parameterCatalog}
               customParameterCodes={customParameterCodes}
               formulaMaterialQuery={formulaMaterialQuery}
-              canSearch={Boolean(workspace.tenant) && !isBusy}
+              canSearch={canSearchCatalog}
               catalogParameterConditions={catalogParameterConditions}
               catalogFamilyFilter={catalogFamilyFilter}
               catalogMaterialFamilies={catalogMaterialFamilies}
