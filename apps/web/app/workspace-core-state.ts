@@ -4,31 +4,21 @@ import {
   type TenantInvitationRead,
   type WorkspaceState,
 } from "./workspace-model";
+import {
+  defaultInvitationForm,
+  defaultParameterForm,
+  type InvitationForm,
+  type ParameterForm,
+} from "./workspace-settings-model";
 
-export type InvitationForm = {
-  email: string;
-  role: string;
-};
-
-export type ParameterForm = {
-  code: string;
-  name: string;
-  unit: string;
-};
+export type { InvitationForm, ParameterForm } from "./workspace-settings-model";
 
 export function useWorkspaceCoreState() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(emptyWorkspace);
   const [workspaceName, setWorkspaceName] = useState("Workspace Lab");
-  const [parameterForm, setParameterForm] = useState<ParameterForm>({
-    code: "active_content",
-    name: "Active content",
-    unit: "% p/p",
-  });
+  const [parameterForm, setParameterForm] = useState<ParameterForm>(defaultParameterForm);
   const [tenantInvitations, setTenantInvitations] = useState<TenantInvitationRead[]>([]);
-  const [invitationForm, setInvitationForm] = useState<InvitationForm>({
-    email: "",
-    role: "formulator",
-  });
+  const [invitationForm, setInvitationForm] = useState<InvitationForm>(defaultInvitationForm);
 
   return {
     workspace,

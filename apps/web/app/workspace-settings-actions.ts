@@ -4,8 +4,6 @@ import { getSupabaseBrowserClient } from "./supabase-client";
 import { isTenantAdminRole } from "./tenant-roles";
 import {
   emptyWorkspace,
-  normalizeCode,
-  slugify,
   type CalculationResult,
   type ParameterRead,
   type Status,
@@ -14,7 +12,14 @@ import {
   type WorkspaceState,
 } from "./workspace-model";
 import type { ComparisonConstraintField } from "./saved-formula-comparison-state";
-import type { InvitationForm, ParameterForm } from "./workspace-core-state";
+import {
+  buildParameterCreatePayload,
+  buildTenantInvitationPayload,
+  buildWorkspaceCreatePayload,
+  mergeParameters,
+  type InvitationForm,
+  type ParameterForm,
+} from "./workspace-settings-model";
 
 type WorkspaceSettingsActionsOptions = {
   workspace: WorkspaceState;
@@ -43,17 +48,6 @@ type WorkspaceSettingsActionsOptions = {
   setError: (message: string) => void;
   setMessage: (message: string) => void;
 };
-
-function mergeParameters(
-  parameters: WorkspaceState["parameters"],
-  parameter: ParameterRead,
-): WorkspaceState["parameters"] {
-  const next = new Map<string, WorkspaceState["parameters"][number]>(
-    parameters.map((item) => [item.id, item]),
-  );
-  next.set(parameter.id, parameter);
-  return Array.from(next.values()).sort((left, right) => left.code.localeCompare(right.code));
-}
 
 export function useWorkspaceSettingsActions({
   workspace,
@@ -93,10 +87,7 @@ export function useWorkspaceSettingsActions({
       const tenant = await request<TenantRead>("/api/v1/tenants", {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({
-          name,
-          slug: `${slugify(name)}-${Date.now()}`,
-        }),
+        body: JSON.stringify(buildWorkspaceCreatePayload(name)),
       });
       setWorkspace({
         ...emptyWorkspace,
@@ -227,11 +218,7 @@ export function useWorkspaceSettingsActions({
       const invitation = await request<TenantInvitationRead>("/api/v1/tenant-invitations", {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          email,
-          role: invitationForm.role,
-          send_link: true,
-        }),
+        body: JSON.stringify(buildTenantInvitationPayload(invitationForm)),
       });
       setTenantInvitations((current) => {
         const rest = current.filter((item) => item.id !== invitation.id);
@@ -266,11 +253,7 @@ export function useWorkspaceSettingsActions({
       const parameter = await request<ParameterRead>("/api/v1/parameters", {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          code: normalizeCode(parameterForm.code),
-          name: parameterForm.name.trim(),
-          unit: parameterForm.unit.trim(),
-        }),
+        body: JSON.stringify(buildParameterCreatePayload(parameterForm)),
       });
       setWorkspace((current) => ({
         ...current,
