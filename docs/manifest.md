@@ -72,6 +72,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_059_jira_review_actions_hook.md`](00-meta/meta_059_jira_review_actions_hook.md)
 - [`00-meta/meta_060_excel_import_actions_hook.md`](00-meta/meta_060_excel_import_actions_hook.md)
 - [`00-meta/meta_061_jira_connection_actions_hook.md`](00-meta/meta_061_jira_connection_actions_hook.md)
+- [`00-meta/meta_062_ai_assistant_actions_hook.md`](00-meta/meta_062_ai_assistant_actions_hook.md)
 
 ## Producto
 

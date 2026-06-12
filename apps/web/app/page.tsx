@@ -109,6 +109,7 @@ import { useSavedFormulaActions } from "./saved-formula-actions";
 import { useJiraReviewActions } from "./jira-review-actions";
 import { useExcelImportActions } from "./excel-import-actions";
 import { useJiraConnectionActions } from "./jira-connection-actions";
+import { useAiAssistantActions } from "./ai-assistant-actions";
 
 type WorkspaceView =
   | "formula"
@@ -622,6 +623,23 @@ export default function Home() {
     setJiraConnectionForm,
     setJiraMetadata,
     setStatus,
+    runAction,
+    setError,
+    setMessage,
+  });
+  const {
+    parseRequirements,
+    planRequirements,
+    refreshAiRuns,
+    reuseInfeasibilityAction,
+  } = useAiAssistantActions({
+    workspace,
+    requirementText,
+    headers,
+    setRequirementParse,
+    setAgentPlan,
+    setAiRuns,
+    setRequirementText,
     runAction,
     setError,
     setMessage,
@@ -1284,86 +1302,6 @@ export default function Home() {
         notes: "",
       });
       setMessage("Optimizer draft applied and recalculated");
-    });
-  }
-
-  async function parseRequirements() {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    if (requirementText.trim().length < 3) {
-      setError("Requirement text is required");
-      return;
-    }
-
-    await runAction("Parsing requirements", async () => {
-      const parsed = await request<RequirementParse>("/api/v1/ai/requirements/parse", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ text: requirementText.trim() }),
-      });
-      setRequirementParse(parsed);
-      await refreshAiRuns({ silent: true });
-      setMessage("Requirements parsed");
-    });
-  }
-
-  async function planRequirements() {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    if (requirementText.trim().length < 3) {
-      setError("Requirement text is required");
-      return;
-    }
-
-    await runAction("Planning with supervisor", async () => {
-      const plan = await request<AgentPlan>("/api/v1/ai/supervisor/plan", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ text: requirementText.trim() }),
-      });
-      setAgentPlan(plan);
-      await refreshAiRuns({ silent: true });
-      setMessage("Supervisor plan ready");
-    });
-  }
-
-  function reuseInfeasibilityAction(action: string) {
-    const suggestedAction = action.trim();
-    if (!suggestedAction) {
-      return;
-    }
-
-    setRequirementText((current) => {
-      const currentText = current.trim();
-      if (!currentText) {
-        return suggestedAction;
-      }
-      if (currentText.includes(suggestedAction)) {
-        return current;
-      }
-      return `${currentText}\n${suggestedAction}`;
-    });
-    setMessage("Action added to requirement");
-  }
-
-  async function refreshAiRuns(options: { silent?: boolean } = {}) {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    if (options.silent) {
-      const runs = await request<AiRun[]>("/api/v1/ai/runs", { method: "GET", headers });
-      setAiRuns(runs);
-      return;
-    }
-    await runAction("Refreshing AI runs", async () => {
-      const runs = await request<AiRun[]>("/api/v1/ai/runs", { method: "GET", headers });
-      setAiRuns(runs);
-      setMessage("AI runs refreshed");
     });
   }
 
