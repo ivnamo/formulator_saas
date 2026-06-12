@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { apiUrl, request } from "./workspace-api";
+import { request } from "./workspace-api";
 import { getSupabaseBrowserClient } from "./supabase-client";
 import {
   aliasFromImportRow,
@@ -113,6 +113,7 @@ import { FormulaMaterialsStep } from "./formula-builder-ui/formula-materials-ste
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import { useSavedFormulaComparisonState } from "./saved-formula-comparison-state";
 import { useSavedFormulaActions } from "./saved-formula-actions";
+import { useJiraReviewActions } from "./jira-review-actions";
 
 type WorkspaceView =
   | "formula"
@@ -634,6 +635,28 @@ export default function Home() {
     setBuilderSections,
     ensureRawMaterialDetail,
     resetImportState,
+    runAction,
+    setError,
+    setMessage,
+  });
+  const {
+    prepareJiraReview,
+    sendCurrentFormulaToJira,
+    generateJiraReviewExcel,
+    downloadJiraReviewArtifact,
+    sendJiraReviewToJira,
+    retryJiraReviewAttachment,
+    syncJiraReviewStatus,
+  } = useJiraReviewActions({
+    workspace,
+    activeJiraConnection,
+    result,
+    formulaReviewRequests,
+    headers,
+    uploadHeaders,
+    setFormulaReviewRequests,
+    setFormulaReviewArtifacts,
+    loadFormulaReviewRequests,
     runAction,
     setError,
     setMessage,
@@ -1220,183 +1243,6 @@ export default function Home() {
         },
       );
       window.location.href = authorization.authorization_url;
-    });
-  }
-
-  async function prepareJiraReview() {
-    if (!workspace.tenant || !workspace.formulaId) {
-      setError("Save the formula before preparing Jira review");
-      return;
-    }
-    if (!activeJiraConnection) {
-      setError("Configure Jira before preparing review");
-      return;
-    }
-    if (result === null) {
-      setError("Save and calculate before preparing Jira review");
-      return;
-    }
-
-    await runAction("Preparing Jira review", async () => {
-      const review = await request<FormulaReviewRequest>(
-        `/api/v1/formulas/${workspace.formulaId}/reviews/jira`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({}),
-        },
-      );
-      setFormulaReviewRequests((current) => [
-        review,
-        ...current.filter((item) => item.id !== review.id),
-      ]);
-      setFormulaReviewArtifacts((current) => ({ ...current, [review.id]: [] }));
-      setMessage("Jira review prepared");
-    });
-  }
-
-  async function sendCurrentFormulaToJira() {
-    if (!workspace.tenant || !workspace.formulaId) {
-      setError("Save and calculate the formula before sending to Jira");
-      return;
-    }
-    if (!activeJiraConnection) {
-      setError("Configure Jira before sending");
-      return;
-    }
-    if (result === null) {
-      setError("Calculate before sending to Jira");
-      return;
-    }
-    if (!workspace.formulaJiraProjectId.trim()) {
-      setError("ProyectoID is required before sending to Jira");
-      return;
-    }
-
-    await runAction("Sending formula to Jira", async () => {
-      const existingDraftReview = formulaReviewRequests.find((review) => !review.jira_issue_key);
-      const review =
-        existingDraftReview ??
-        (await request<FormulaReviewRequest>(
-          `/api/v1/formulas/${workspace.formulaId}/reviews/jira`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({}),
-          },
-        ));
-      const sentReview = await request<FormulaReviewRequest>(
-        `/api/v1/formula-reviews/${review.id}/jira/send`,
-        {
-          method: "POST",
-          headers,
-        },
-      );
-      setFormulaReviewRequests((current) => [
-        sentReview,
-        ...current.filter((item) => item.id !== sentReview.id),
-      ]);
-      await loadFormulaReviewRequests(sentReview.formula_id);
-      setMessage(
-        sentReview.review_status === "partial_failure"
-          ? "Jira issue created; Excel attachment failed"
-          : "Jira issue created",
-      );
-    });
-  }
-
-  async function generateJiraReviewExcel(reviewId: string) {
-    await runAction("Generating Jira Excel", async () => {
-      const artifact = await request<FormulaReviewArtifact>(
-        `/api/v1/formula-reviews/${reviewId}/artifacts/excel`,
-        {
-          method: "POST",
-          headers,
-        },
-      );
-      setFormulaReviewArtifacts((current) => ({
-        ...current,
-        [reviewId]: [
-          artifact,
-          ...(current[reviewId] ?? []).filter((item) => item.id !== artifact.id),
-        ],
-      }));
-      setMessage("Jira Excel ready");
-    });
-  }
-
-  async function downloadJiraReviewArtifact(artifact: FormulaReviewArtifact) {
-    await runAction("Downloading Jira Excel", async () => {
-      const response = await fetch(
-        `${apiUrl}/api/v1/formula-review-artifacts/${artifact.id}/download`,
-        { method: "GET", headers: uploadHeaders },
-      );
-      if (!response.ok) {
-        throw new Error(`API ${response.status}: ${await response.text()}`);
-      }
-      const blobUrl = URL.createObjectURL(await response.blob());
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = artifact.file_name;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(blobUrl);
-      setMessage("Jira Excel downloaded");
-    });
-  }
-
-  async function sendJiraReviewToJira(reviewId: string) {
-    await runAction("Sending Jira review", async () => {
-      const review = await request<FormulaReviewRequest>(
-        `/api/v1/formula-reviews/${reviewId}/jira/send`,
-        {
-          method: "POST",
-          headers,
-        },
-      );
-      setFormulaReviewRequests((current) =>
-        current.map((item) => (item.id === review.id ? review : item)),
-      );
-      await loadFormulaReviewRequests(review.formula_id);
-      setMessage(
-        review.review_status === "partial_failure"
-          ? "Jira issue created; Excel attachment failed"
-          : "Jira issue created",
-      );
-    });
-  }
-
-  async function retryJiraReviewAttachment(reviewId: string) {
-    await runAction("Retrying Jira Excel attachment", async () => {
-      const review = await request<FormulaReviewRequest>(
-        `/api/v1/formula-reviews/${reviewId}/jira/retry-attachment`,
-        {
-          method: "POST",
-          headers,
-        },
-      );
-      setFormulaReviewRequests((current) =>
-        current.map((item) => (item.id === review.id ? review : item)),
-      );
-      await loadFormulaReviewRequests(review.formula_id);
-      setMessage("Jira Excel attachment retried");
-    });
-  }
-
-  async function syncJiraReviewStatus(reviewId: string) {
-    await runAction("Syncing Jira review", async () => {
-      const review = await request<FormulaReviewRequest>(
-        `/api/v1/formula-reviews/${reviewId}/sync`,
-        {
-          method: "POST",
-          headers,
-        },
-      );
-      setFormulaReviewRequests((current) =>
-        current.map((item) => (item.id === review.id ? review : item)),
-      );
-      setMessage("Jira status synced");
     });
   }
 
