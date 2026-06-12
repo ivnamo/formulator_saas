@@ -12,7 +12,6 @@ import {
   Loader2,
   LogOut,
   RefreshCw,
-  Save,
   Settings2,
   Upload,
   UserCircle,
@@ -97,6 +96,7 @@ import { useExcelImportState } from "./excel-import-state";
 import { AiAssistantPanel } from "./ai-assistant-panel";
 import { SettingsPanel } from "./settings-panel";
 import { RawMaterialsPanel } from "./raw-materials-panel";
+import { CompatibilityPanel } from "./compatibility-panel";
 import {
   formatResultPrice,
   formatSignedDelta,
@@ -2301,133 +2301,17 @@ export default function Home() {
             onCreateAlias={createAlias}
           />
 
-          <section
-            id="compatibility"
-            className="panel compatibilityPanel"
-            hidden={activeView !== "compatibility"}
-          >
-            <div className="panelHeader">
-              <h2>Compatibility</h2>
-              <span>{compatibilityRules.length} rules</span>
-            </div>
-            <div className="compatibilityForm">
-              <label>
-                <span>Material A</span>
-                <select
-                  aria-label="Compatibility material A"
-                  value={compatibilityRuleForm.materialAId}
-                  onChange={(event) =>
-                    setCompatibilityRuleForm((current) => ({
-                      ...current,
-                      materialAId: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData || workspace.rawMaterials.length < 2}
-                >
-                  <option value="">Select material</option>
-                  {workspace.rawMaterials.map((material) => (
-                    <option key={material.id} value={material.id}>
-                      {material.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Material B</span>
-                <select
-                  aria-label="Compatibility material B"
-                  value={compatibilityRuleForm.materialBId}
-                  onChange={(event) =>
-                    setCompatibilityRuleForm((current) => ({
-                      ...current,
-                      materialBId: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData || workspace.rawMaterials.length < 2}
-                >
-                  <option value="">Select material</option>
-                  {workspace.rawMaterials.map((material) => (
-                    <option key={material.id} value={material.id}>
-                      {material.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Severity</span>
-                <select
-                  aria-label="Compatibility severity"
-                  value={compatibilityRuleForm.severity}
-                  onChange={(event) =>
-                    setCompatibilityRuleForm((current) => ({
-                      ...current,
-                      severity: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                >
-                  <option value="warning">warning</option>
-                  <option value="blocker">blocker</option>
-                  <option value="info">info</option>
-                </select>
-              </label>
-              <label>
-                <span>Message</span>
-                <input
-                  value={compatibilityRuleForm.message}
-                  onChange={(event) =>
-                    setCompatibilityRuleForm((current) => ({
-                      ...current,
-                      message: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <label>
-                <span>Recommended action</span>
-                <input
-                  value={compatibilityRuleForm.recommendedAction}
-                  onChange={(event) =>
-                    setCompatibilityRuleForm((current) => ({
-                      ...current,
-                      recommendedAction: event.target.value,
-                    }))
-                  }
-                  disabled={!canEditTenantData}
-                />
-              </label>
-              <button
-                className="secondaryButton"
-                type="button"
-                onClick={createCompatibilityRule}
-                disabled={!canCreateCompatibilityRule}
-              >
-                <Save size={17} />
-                Save rule
-              </button>
-            </div>
-            <div className="compatibilityList">
-              {compatibilityRules.length === 0 ? (
-                <div className="empty">No compatibility rules yet.</div>
-              ) : (
-                compatibilityRules.map((rule) => {
-                  const materialNames =
-                    rule.condition_json.raw_material_ids
-                      ?.map((id) => rawMaterialsById.get(id)?.name ?? `Material ${id.slice(0, 8)}`)
-                      .join(" + ") ?? "Material pair";
-                  return (
-                    <div className="compatibilityRow" key={rule.id}>
-                      <code data-severity={rule.severity}>{rule.severity}</code>
-                      <span>{materialNames}</span>
-                      <strong>{rule.message}</strong>
-                      <span>{rule.condition_json.recommended_action ?? "-"}</span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </section>
+          <CompatibilityPanel
+            active={activeView === "compatibility"}
+            rules={compatibilityRules}
+            rawMaterials={workspace.rawMaterials}
+            rawMaterialsById={rawMaterialsById}
+            form={compatibilityRuleForm}
+            canEditTenantData={canEditTenantData}
+            canCreateRule={canCreateCompatibilityRule}
+            onFormChange={setCompatibilityRuleForm}
+            onCreateRule={createCompatibilityRule}
+          />
 
           <SavedFormulaComparisonPanel
             active={activeView === "library"}
