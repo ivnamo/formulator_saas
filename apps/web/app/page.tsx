@@ -25,7 +25,7 @@ import {
   Upload,
   UserCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { apiUrl, request } from "./workspace-api";
 import { getSupabaseBrowserClient } from "./supabase-client";
@@ -39,7 +39,6 @@ import {
   normalizeCode,
   parseOptionalNumber,
   slugify,
-  toWorkspaceRawMaterialCatalogItem,
   toWorkspaceRawMaterial,
   withRawMaterialAlias,
   withResolvedImportRow,
@@ -65,7 +64,6 @@ import {
   type JiraConnectionTest,
   type MaterialForm,
   type RawMaterial,
-  type RawMaterialCatalogRead,
   type RawMaterialAliasRead,
   type ParameterRead,
   type RawMaterialRead,
@@ -104,6 +102,7 @@ import {
   isFormulaPercentageBalanced,
   selectVisibleParameterCodes,
 } from "./formula-builder-derived";
+import { useRawMaterialCatalog } from "./formula-builder-catalog";
 import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
 import { BuilderStep } from "./formula-builder-ui/builder-step";
 import { DraftReviewPanel } from "./formula-builder-ui/draft-review-panel";
@@ -226,11 +225,6 @@ export default function Home() {
     resetCatalogFilters,
     toggleBuilderSection,
   } = useFormulaBuilderUiState();
-  const [catalogMaterialIds, setCatalogMaterialIds] = useState<string[]>([]);
-  const [catalogTotal, setCatalogTotal] = useState(0);
-  const [catalogFamilies, setCatalogFamilies] = useState<string[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [catalogRefreshKey, setCatalogRefreshKey] = useState(0);
   const [detailedMaterialIds, setDetailedMaterialIds] = useState<string[]>([]);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [aliasInputs, setAliasInputs] = useState<Record<string, string>>({});
@@ -322,6 +316,35 @@ export default function Home() {
         .join("||"),
     [catalogParameterConditions],
   );
+  const mergeCatalogMaterials = useCallback((materials: RawMaterial[]) => {
+    setWorkspace((current) => ({
+      ...current,
+      rawMaterials: mergeRawMaterials(current.rawMaterials, materials),
+    }));
+  }, []);
+  const handleCatalogError = useCallback((errorMessage: string) => {
+    setError(errorMessage);
+  }, []);
+  const {
+    catalogMaterialIds,
+    catalogTotal,
+    catalogFamilies,
+    catalogLoading,
+    refreshCatalog,
+  } = useRawMaterialCatalog({
+    enabled: Boolean(workspace.tenant && session?.access_token),
+    headers,
+    query: formulaMaterialQuery,
+    familyFilter: catalogFamilyFilter,
+    priceFilter: catalogPriceFilter,
+    priceMin: catalogPriceMin,
+    priceMax: catalogPriceMax,
+    parameterConditions: catalogParameterConditions,
+    materialResultLimit,
+    showOnlyPositiveParameters,
+    onMaterialsLoaded: mergeCatalogMaterials,
+    onError: handleCatalogError,
+  });
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -374,92 +397,6 @@ export default function Home() {
     formulaMaterialQuery,
     parameterViewPreset,
     showOnlyPositiveParameters,
-  ]);
-
-  useEffect(() => {
-    if (!workspace.tenant || !session?.access_token) {
-      setCatalogMaterialIds([]);
-      setCatalogTotal(0);
-      setCatalogFamilies([]);
-      return;
-    }
-
-    let cancelled = false;
-    const searchParams = new URLSearchParams({
-      limit: String(materialResultLimit),
-      offset: "0",
-      price_filter: catalogPriceFilter,
-      only_positive: String(showOnlyPositiveParameters),
-    });
-    const query = formulaMaterialQuery.trim();
-    if (query) {
-      searchParams.set("q", query);
-    }
-    if (catalogFamilyFilter !== "all") {
-      searchParams.set("family", catalogFamilyFilter);
-    }
-    if (catalogPriceMin.trim()) {
-      searchParams.set("price_min", catalogPriceMin.trim());
-    }
-    if (catalogPriceMax.trim()) {
-      searchParams.set("price_max", catalogPriceMax.trim());
-    }
-    for (const condition of catalogParameterConditions) {
-      if (!condition.code) {
-        continue;
-      }
-      searchParams.append(
-        "parameter_range",
-        `${condition.code}|${condition.min.trim()}|${condition.max.trim()}`,
-      );
-    }
-
-    setCatalogLoading(true);
-    request<RawMaterialCatalogRead>(`/api/v1/raw-materials/catalog?${searchParams}`, {
-      method: "GET",
-      headers,
-    })
-      .then((catalog) => {
-        if (cancelled) {
-          return;
-        }
-        const materials = catalog.items.map(toWorkspaceRawMaterialCatalogItem);
-        setCatalogMaterialIds(materials.map((material) => material.id));
-        setCatalogTotal(catalog.total);
-        setCatalogFamilies(catalog.families);
-        setWorkspace((current) => ({
-          ...current,
-          rawMaterials: mergeRawMaterials(current.rawMaterials, materials),
-        }));
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setError(error instanceof Error ? error.message : "Could not load raw materials");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setCatalogLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    catalogFamilyFilter,
-    catalogParameterConditionKey,
-    catalogParameterConditions,
-    catalogPriceMax,
-    catalogPriceMin,
-    catalogPriceFilter,
-    catalogRefreshKey,
-    formulaMaterialQuery,
-    headers,
-    materialResultLimit,
-    session?.access_token,
-    showOnlyPositiveParameters,
-    workspace.tenant,
   ]);
 
   const rawMaterialsById = useMemo(
@@ -804,9 +741,6 @@ export default function Home() {
         rawMaterials: [],
         formulaName: `${tenant.name} Formula`,
       });
-      setCatalogMaterialIds([]);
-      setCatalogTotal(0);
-      setCatalogFamilies([]);
       setSelectedMaterialId(null);
       setComparisonMaterialIds([]);
       setDetailedMaterialIds([]);
@@ -900,7 +834,7 @@ export default function Home() {
         ...current,
         parameterCode: parameter.code,
       }));
-      setCatalogRefreshKey((current) => current + 1);
+      refreshCatalog();
       setResult(null);
       setMessage("Parameter ready");
     });
@@ -980,7 +914,7 @@ export default function Home() {
       setDetailedMaterialIds((current) =>
         current.includes(material.id) ? current : [...current, material.id],
       );
-      setCatalogRefreshKey((current) => current + 1);
+      refreshCatalog();
       setMaterialForm({ code: "", name: "", price: "", parameterValue: "" });
       setResult(null);
       resetImportState();
@@ -1020,7 +954,7 @@ export default function Home() {
       setDetailedMaterialIds((current) =>
         current.includes(material.id) ? current : [...current, material.id],
       );
-      setCatalogRefreshKey((current) => current + 1);
+      refreshCatalog();
       setImportPreview((current) =>
         current ? withResolvedImportRow(current, row.row_number, material.id) : current,
       );
@@ -1049,7 +983,7 @@ export default function Home() {
         ...current,
         rawMaterials: withRawMaterialAlias(current.rawMaterials, rawMaterialId, created.alias),
       }));
-      setCatalogRefreshKey((current) => current + 1);
+      refreshCatalog();
       setAliasInputs((current) => ({ ...current, [rawMaterialId]: "" }));
       resetImportState();
       setMessage("Alias ready");
