@@ -6,14 +6,9 @@ import { request } from "./workspace-api";
 import {
   emptyJiraConnectionForm,
   formatDateTime,
-  type CalculationResult,
   type CompatibilityRuleRead,
   type AiRun,
   type AgentPlan,
-  type FormulaCalculationHistory,
-  type FormulaReviewArtifact,
-  type FormulaRead,
-  type FormulaReviewRequest,
   type JiraConnection,
   type JiraConnectionForm,
   type JiraMetadataState,
@@ -64,6 +59,7 @@ import { AppShell, type WorkspaceView } from "./app-shell";
 import { useWorkspaceActionStatus } from "./workspace-action-status";
 import { useWorkspaceCoreState } from "./workspace-core-state";
 import { useRawMaterialWorkspaceState } from "./raw-material-state";
+import { useFormulaWorkspaceState } from "./formula-workspace-state";
 
 export default function Home() {
   const {
@@ -122,13 +118,18 @@ export default function Home() {
     resetCatalogFilters,
     toggleBuilderSection,
   } = useFormulaBuilderUiState();
-  const [result, setResult] = useState<CalculationResult | null>(null);
-  const [formulas, setFormulas] = useState<FormulaRead[]>([]);
-  const [calculationHistory, setCalculationHistory] = useState<FormulaCalculationHistory[]>([]);
-  const [formulaReviewRequests, setFormulaReviewRequests] = useState<FormulaReviewRequest[]>([]);
-  const [formulaReviewArtifacts, setFormulaReviewArtifacts] = useState<
-    Record<string, FormulaReviewArtifact[]>
-  >({});
+  const {
+    result,
+    setResult,
+    formulas,
+    setFormulas,
+    calculationHistory,
+    setCalculationHistory,
+    formulaReviewRequests,
+    setFormulaReviewRequests,
+    formulaReviewArtifacts,
+    setFormulaReviewArtifacts,
+  } = useFormulaWorkspaceState();
   const [compatibilityRules, setCompatibilityRules] = useState<CompatibilityRuleRead[]>([]);
   const [compatibilityRuleForm, setCompatibilityRuleForm] = useState({
     materialAId: "",
