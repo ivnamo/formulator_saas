@@ -9,9 +9,7 @@ import {
   Check,
   Copy,
   Database,
-  Download,
   ExternalLink,
-  FileSpreadsheet,
   FlaskConical,
   FolderOpen,
   History,
@@ -100,9 +98,11 @@ import {
 } from "./formula-builder-model";
 import {
   BuilderStep,
+  DraftReviewPanel,
   FormulaCalculationPanel,
   FormulaLineTable,
   FormulaProgressSummary,
+  JiraReviewPanel,
   MaterialCatalogControls,
   MaterialCatalogWorkspace,
   ParameterPresetPicker,
@@ -4344,221 +4344,30 @@ export default function Home() {
                     }
                     source={result ? "Backend official" : "Local preview"}
                   />
-            {draftReview ? (
-              <div className="draftReview" data-state={draftReview.status}>
-                <div className="draftReviewHeader">
-                  <div>
-                    <span>Draft review</span>
-                    <strong>{draftReview.candidateName}</strong>
-                  </div>
-                  <code>{draftReview.status}</code>
-                </div>
-                <label className="fullWidthLabel">
-                  <span>Decision notes</span>
-                  <textarea
-                    value={draftReview.notes}
-                    onChange={(event) => updateDraftReviewNotes(event.target.value)}
-                    disabled={isBusy}
-                  />
-                </label>
-                <div className="draftReviewActions">
-                  <span>
-                    {draftReview.status === "confirmed" ? "Ready to save" : "Pending confirmation"}
-                  </span>
-                  <button
-                    className="secondaryButton"
-                    type="button"
-                    onClick={confirmDraftReview}
-                    disabled={!canConfirmDraftReview}
-                  >
-                    <Check size={16} />
-                    Confirm review
-                  </button>
-                </div>
-                {draftComparison && draftReview.reviewedResult ? (
-                  <div className="draftComparison">
-                    <div className="draftComparisonStats">
-                      <div>
-                        <span>Price</span>
-                        <strong>
-                          {formatResultPrice(draftReview.baselineResult)} /{" "}
-                          {formatResultPrice(draftReview.reviewedResult)}
-                        </strong>
-                        <code>
-                          {formatSignedDelta(
-                            draftComparison.priceDelta,
-                            ` ${draftReview.reviewedResult.currency}/kg`,
-                          )}
-                        </code>
-                      </div>
-                      <div>
-                        <span>Total</span>
-                        <strong>
-                          {draftReview.baselineResult.total_percentage.toFixed(1)}% /{" "}
-                          {draftReview.reviewedResult.total_percentage.toFixed(1)}%
-                        </strong>
-                        <code>{formatSignedDelta(draftComparison.totalDelta, "%")}</code>
-                      </div>
-                      <div>
-                        <span>Lines</span>
-                        <strong>
-                          {draftComparison.proposedLineCount} /{" "}
-                          {draftComparison.reviewedLineCount}
-                        </strong>
-                        <code>
-                          {formatSignedInteger(
-                            draftComparison.reviewedLineCount -
-                              draftComparison.proposedLineCount,
-                          )}
-                        </code>
-                      </div>
-                    </div>
-                    {draftComparison.lineChanges.length ? (
-                      <div className="draftLineChanges">
-                        {draftComparison.lineChanges.map((line) => (
-                          <div key={line.rawMaterialId}>
-                            <span>{line.name}</span>
-                            <strong>
-                              {line.proposed.toFixed(1)}% / {line.reviewed.toFixed(1)}%
-                            </strong>
-                            <code>{formatSignedDelta(line.delta, "%")}</code>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="draftLineChanges">
-                        <div>
-                          <span>Formula lines</span>
-                          <strong>No percentage changes</strong>
-                          <code>0.00%</code>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            {activeJiraConnection || formulaReviewRequests.length > 0 ? (
-            <div className="jiraReviewBox">
-              <div className="jiraReviewHeader">
-                <div>
-                  <span>Jira review</span>
-                  <strong>{activeJiraConnection ? "Configured" : "Not configured"}</strong>
-                </div>
-                <button
-                  className="secondaryButton"
-                  type="button"
-                  onClick={sendCurrentFormulaToJira}
-                  disabled={!canPrepareJiraReview}
-                >
-                  <Send size={16} />
-                  Send to Jira
-                </button>
-              </div>
-              {formulaReviewRequests.length === 0 ? (
-                <div className="jiraReviewEmpty">No Jira review prepared for this formula.</div>
-              ) : (
-                <div className="jiraReviewList">
-                  {formulaReviewRequests.map((review) => {
-                    const excelArtifact =
-                      (formulaReviewArtifacts[review.id] ?? []).find(
-                        (artifact) => artifact.artifact_type === "jira_review_xlsx",
-                      ) ?? null;
-                    return (
-                      <div className="jiraReviewRow" key={review.id}>
-                        <code>{review.review_status}</code>
-                        <span>
-                          <strong>
-                            {review.snapshot.jira?.issue_summary ?? "Formula review"}
-                          </strong>
-                          {review.snapshot.jira?.project_key ?? "-"} - v{review.formula_version} -{" "}
-                          {formatDateTime(review.created_at)}
-                          <small>
-                            {review.jira_issue_key
-                              ? `${review.jira_issue_key} - ${excelArtifact?.file_name ?? "Excel pending"}`
-                              : (excelArtifact?.file_name ?? "Excel pending")}
-                          </small>
-                        </span>
-                        <div className="jiraReviewActions">
-                          <button
-                            className="iconButton"
-                            type="button"
-                            onClick={() => generateJiraReviewExcel(review.id)}
-                            disabled={isBusy}
-                            title="Generate Excel"
-                            aria-label="Generate Jira review Excel"
-                          >
-                            <FileSpreadsheet size={16} />
-                          </button>
-                          {excelArtifact ? (
-                            <button
-                              className="iconButton"
-                              type="button"
-                              onClick={() => downloadJiraReviewArtifact(excelArtifact)}
-                              disabled={isBusy}
-                              title="Download Excel"
-                              aria-label="Download Jira review Excel"
-                            >
-                              <Download size={16} />
-                            </button>
-                          ) : null}
-                          {!review.jira_issue_key ? (
-                            <button
-                              className="iconButton"
-                              type="button"
-                              onClick={() => sendJiraReviewToJira(review.id)}
-                              disabled={isBusy}
-                              title="Send to Jira"
-                              aria-label="Send review to Jira"
-                            >
-                              <Send size={16} />
-                            </button>
-                          ) : (
-                            <>
-                              <button
-                                className="iconButton"
-                                type="button"
-                                onClick={() => syncJiraReviewStatus(review.id)}
-                                disabled={isBusy}
-                                title="Sync Jira status"
-                                aria-label="Sync Jira status"
-                              >
-                                <RefreshCw size={16} />
-                              </button>
-                              {review.review_status === "partial_failure" ? (
-                                <button
-                                  className="iconButton"
-                                  type="button"
-                                  onClick={() => retryJiraReviewAttachment(review.id)}
-                                  disabled={isBusy}
-                                  title="Retry Excel attachment"
-                                  aria-label="Retry Jira Excel attachment"
-                                >
-                                  <RefreshCw size={16} />
-                                </button>
-                              ) : null}
-                              {review.jira_issue_url ? (
-                                <a
-                                  className="iconButton"
-                                  href={review.jira_issue_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title="Open Jira issue"
-                                  aria-label="Open Jira issue"
-                                >
-                                  <ExternalLink size={16} />
-                                </a>
-                              ) : null}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            ) : null}
+            <DraftReviewPanel
+              draftReview={draftReview}
+              draftComparison={draftComparison}
+              isBusy={isBusy}
+              canConfirmDraftReview={canConfirmDraftReview}
+              formatResultPrice={formatResultPrice}
+              formatSignedDelta={formatSignedDelta}
+              formatSignedInteger={formatSignedInteger}
+              onNotesChange={updateDraftReviewNotes}
+              onConfirmDraftReview={confirmDraftReview}
+            />
+            <JiraReviewPanel
+              activeJiraConnection={activeJiraConnection}
+              formulaReviewRequests={formulaReviewRequests}
+              formulaReviewArtifacts={formulaReviewArtifacts}
+              canPrepareJiraReview={canPrepareJiraReview}
+              isBusy={isBusy}
+              onSendCurrentFormulaToJira={sendCurrentFormulaToJira}
+              onGenerateReviewExcel={generateJiraReviewExcel}
+              onDownloadArtifact={downloadJiraReviewArtifact}
+              onSendReviewToJira={sendJiraReviewToJira}
+              onSyncReviewStatus={syncJiraReviewStatus}
+              onRetryReviewAttachment={retryJiraReviewAttachment}
+            />
             <FormulaLineTable
               lines={formulaLineDetails}
               visibleParameterCodes={visibleParameterCodes}
