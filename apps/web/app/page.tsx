@@ -107,10 +107,14 @@ import { DraftReviewPanel } from "./formula-builder-ui/draft-review-panel";
 import { FormulaCalculationPanel } from "./formula-builder-ui/formula-calculation-panel";
 import { FormulaLineTable } from "./formula-builder-ui/formula-line-table";
 import { FormulaProgressSummary } from "./formula-builder-ui/formula-progress-summary";
+import {
+  FormulaBasicsStep,
+  type FormulaBasicsValue,
+} from "./formula-builder-ui/formula-basics-step";
 import { JiraReviewPanel } from "./formula-builder-ui/jira-review-panel";
 import { MaterialCatalogControls } from "./formula-builder-ui/material-catalog-controls";
 import { MaterialCatalogWorkspace } from "./formula-builder-ui/material-catalog-workspace";
-import { ParameterPresetPicker } from "./formula-builder-ui/parameter-preset-picker";
+import { ParameterViewPanel } from "./formula-builder-ui/parameter-view-panel";
 import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import { useSavedFormulaComparisonState } from "./saved-formula-comparison-state";
 
@@ -416,6 +420,20 @@ export default function Home() {
   const selectedParameterPreset =
     PARAMETER_VIEW_PRESETS.find((option) => option.key === parameterViewPreset) ??
     PARAMETER_VIEW_PRESETS[0];
+  const formulaBasicsValue = useMemo<FormulaBasicsValue>(
+    () => ({
+      formulaName: workspace.formulaName,
+      formulaJiraProjectId: workspace.formulaJiraProjectId,
+      formulaJiraIssueType: workspace.formulaJiraIssueType,
+      formulaJiraProductType: workspace.formulaJiraProductType,
+    }),
+    [
+      workspace.formulaJiraIssueType,
+      workspace.formulaJiraProductType,
+      workspace.formulaJiraProjectId,
+      workspace.formulaName,
+    ],
+  );
   const visibleParameterSummary = formatVisibleParameterSummary(visibleParameterCodes);
   const localPreview = useMemo(
     () => buildLocalFormulaPreview(formulaLineDetails, visibleParameterCodeSet),
@@ -1374,6 +1392,14 @@ export default function Home() {
         ? { ...current, reviewedResult: null, status: "pending" }
         : current,
     );
+  }
+
+  function updateFormulaBasics(patch: Partial<FormulaBasicsValue>) {
+    setWorkspace((current) => ({
+      ...current,
+      ...patch,
+    }));
+    markDraftReviewPending();
   }
 
   function updateDraftReviewNotes(notes: string) {
@@ -2365,88 +2391,14 @@ export default function Home() {
               <h2>Formula Builder</h2>
               <span>{isFormulaBalanced ? "Balanced" : `${totalPercentage.toFixed(1)}%`}</span>
             </div>
-            <BuilderStep
-              section="basics"
-              title="1. Datos basicos"
-              summary="Nombre de formula y, solo si procede, datos de revision."
+            <FormulaBasicsStep
               isOpen={builderSections.basics}
+              isBusy={isBusy}
+              hasActiveJiraConnection={Boolean(activeJiraConnection)}
+              values={formulaBasicsValue}
               onToggle={toggleBuilderSection}
-            >
-                  <label className="fullWidthLabel">
-                    <span>Name</span>
-                    <input
-                      value={workspace.formulaName}
-                      onChange={(event) => {
-                        setWorkspace((current) => ({
-                          ...current,
-                          formulaName: event.target.value,
-                        }));
-                        markDraftReviewPending();
-                      }}
-                      disabled={isBusy}
-                    />
-                  </label>
-                  {activeJiraConnection ? (
-                    <div className="formulaMetaGrid">
-                      <label>
-                        <span>ProyectoID Jira opcional</span>
-                        <input
-                          placeholder="FLOWER"
-                          value={workspace.formulaJiraProjectId}
-                          onChange={(event) => {
-                            setWorkspace((current) => ({
-                              ...current,
-                              formulaJiraProjectId: event.target.value,
-                            }));
-                            markDraftReviewPending();
-                          }}
-                          disabled={isBusy}
-                        />
-                      </label>
-                      <label>
-                        <span>Jira activity</span>
-                        <input
-                          list="jira-activity-options"
-                          value={workspace.formulaJiraIssueType}
-                          onChange={(event) => {
-                            setWorkspace((current) => ({
-                              ...current,
-                              formulaJiraIssueType: event.target.value,
-                            }));
-                            markDraftReviewPending();
-                          }}
-                          disabled={isBusy}
-                        />
-                      </label>
-                      <label>
-                        <span>Tipo producto</span>
-                        <input
-                          list="jira-product-type-options"
-                          value={workspace.formulaJiraProductType}
-                          onChange={(event) => {
-                            setWorkspace((current) => ({
-                              ...current,
-                              formulaJiraProductType: event.target.value,
-                            }));
-                            markDraftReviewPending();
-                          }}
-                          disabled={isBusy}
-                        />
-                      </label>
-                      <datalist id="jira-activity-options">
-                        <option value="Calidad" />
-                        <option value="Prototipo" />
-                        <option value="PoC" />
-                      </datalist>
-                      <datalist id="jira-product-type-options">
-                        <option value="Nuevo" />
-                        <option value="Mod A" />
-                        <option value="Mod B" />
-                        <option value="Mod C" />
-                      </datalist>
-                    </div>
-                  ) : null}
-            </BuilderStep>
+              onChange={updateFormulaBasics}
+            />
             <BuilderStep
               section="materials"
               title="2. Materias primas"
@@ -2460,46 +2412,16 @@ export default function Home() {
               bodyClassName="builderSearch"
               onToggle={toggleBuilderSection}
             >
-                  <div className="parameterViewPanel">
-                    <div className="parameterViewHeader">
-                      <span>
-                        <strong>Que parametros quieres ver</strong>
-                        <small>{selectedParameterPreset.helper}</small>
-                      </span>
-                      <label className="switchControl">
-                        <input
-                          type="checkbox"
-                          checked={showOnlyPositiveParameters}
-                          onChange={(event) => setShowOnlyPositiveParameters(event.target.checked)}
-                        />
-                        <span>Solo &gt; 0</span>
-                      </label>
-                    </div>
-                    <ParameterPresetPicker
-                      value={parameterViewPreset}
-                      onChange={(key) => selectParameterView(key, visibleParameterCodes)}
-                    />
-                    {parameterViewPreset === "custom" ? (
-                      <div className="parameterPicker">
-                        {parameterCatalog.map((parameter) => (
-                          <label key={parameter.code}>
-                            <input
-                              type="checkbox"
-                              checked={customParameterCodes.includes(parameter.code)}
-                              onChange={() => toggleCustomParameterCode(parameter.code)}
-                            />
-                            <span>
-                              {parameter.code}
-                              <small>
-                                {parameter.family} - {parameter.positiveMaterialCount}/
-                                {parameter.materialCount} con valor
-                              </small>
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
+                  <ParameterViewPanel
+                    selectedPresetHelper={selectedParameterPreset.helper}
+                    showOnlyPositiveParameters={showOnlyPositiveParameters}
+                    parameterViewPreset={parameterViewPreset}
+                    parameterCatalog={parameterCatalog}
+                    customParameterCodes={customParameterCodes}
+                    onShowOnlyPositiveChange={setShowOnlyPositiveParameters}
+                    onSelectParameterView={(key) => selectParameterView(key, visibleParameterCodes)}
+                    onToggleCustomParameterCode={toggleCustomParameterCode}
+                  />
                   <MaterialCatalogControls
                     query={formulaMaterialQuery}
                     canSearch={Boolean(workspace.tenant) && !isBusy}
