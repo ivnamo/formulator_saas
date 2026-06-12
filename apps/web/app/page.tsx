@@ -54,7 +54,6 @@ import {
 import {
   PARAMETER_VIEW_PRESETS,
   formatFormulaNumber,
-  type ParameterViewPresetKey,
 } from "./formula-builder-model";
 import {
   buildCalculationParameterRows,
@@ -105,6 +104,7 @@ import { useRawMaterialActions } from "./raw-material-actions";
 import { isTenantAdminRole } from "./tenant-roles";
 import { useWorkspaceSettingsActions } from "./workspace-settings-actions";
 import { useDraftReviewActions } from "./draft-review-actions";
+import { useFormulaBuilderLocalActions } from "./formula-builder-local-actions";
 
 type WorkspaceView =
   | "formula"
@@ -693,6 +693,20 @@ export default function Home() {
     markDraftReviewPending,
   });
   const {
+    updateFormulaBasics,
+    loadMoreCatalogMaterials,
+    selectCurrentParameterView,
+    clearComparisonMaterials,
+  } = useFormulaBuilderLocalActions({
+    catalogTotal,
+    visibleParameterCodes,
+    setWorkspace,
+    setMaterialResultLimit,
+    setComparisonMaterialIds,
+    selectParameterView,
+    markDraftReviewPending,
+  });
+  const {
     refreshJiraConnections,
     saveJiraConnection,
     testJiraConnection,
@@ -824,26 +838,6 @@ export default function Home() {
     setError,
     setMessage,
   });
-
-  function updateFormulaBasics(patch: Partial<FormulaBasicsValue>) {
-    setWorkspace((current) => ({
-      ...current,
-      ...patch,
-    }));
-    markDraftReviewPending();
-  }
-
-  function loadMoreCatalogMaterials() {
-    setMaterialResultLimit((current) => Math.min(current + 60, catalogTotal));
-  }
-
-  function selectCurrentParameterView(key: ParameterViewPresetKey) {
-    selectParameterView(key, visibleParameterCodes);
-  }
-
-  function clearComparisonMaterials() {
-    setComparisonMaterialIds([]);
-  }
 
   if (!authChecked || !session) {
     return (
