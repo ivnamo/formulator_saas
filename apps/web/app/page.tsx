@@ -20,7 +20,6 @@ import type { Session } from "@supabase/supabase-js";
 import { request } from "./workspace-api";
 import { getSupabaseBrowserClient } from "./supabase-client";
 import {
-  aliasFromImportRow,
   emptyJiraConnectionForm,
   emptyWorkspace,
   formatDateTime,
@@ -37,9 +36,6 @@ import {
   type AgentFormulaCandidate,
   type AgentPlan,
   type FormulaLine,
-  type ExcelImportPreview,
-  type ExcelImportPreviewRow,
-  type ExcelImportSheets,
   type FormulaCalculationHistory,
   type FormulaReviewArtifact,
   type FormulaRead,
@@ -114,6 +110,7 @@ import { SavedFormulaComparisonPanel } from "./saved-formula-comparison-panel";
 import { useSavedFormulaComparisonState } from "./saved-formula-comparison-state";
 import { useSavedFormulaActions } from "./saved-formula-actions";
 import { useJiraReviewActions } from "./jira-review-actions";
+import { useExcelImportActions } from "./excel-import-actions";
 
 type WorkspaceView =
   | "formula"
@@ -661,6 +658,36 @@ export default function Home() {
     setError,
     setMessage,
   });
+  const {
+    selectExcelImportFile,
+    previewSelectedImportSheet,
+    saveExcelImport,
+    resolveImportRow,
+    acceptImportSuggestion,
+    createMaterialFromImportRow,
+    createAliasFromImportRow,
+  } = useExcelImportActions({
+    workspace,
+    importPreview,
+    importFile,
+    headers,
+    uploadHeaders,
+    setWorkspace,
+    setDetailedMaterialIds,
+    setResult,
+    setDraftReview,
+    setSavedFormulaComparison,
+    setPendingFile,
+    setImportPreview,
+    setSelectedImportSheet,
+    resolveImportRowState,
+    refreshCatalog,
+    refreshFormulaLibrary,
+    loadCalculationHistory,
+    runAction,
+    setError,
+    setMessage,
+  });
 
   async function ensureRawMaterialDetail(rawMaterialId: string): Promise<RawMaterial | null> {
     const existing = rawMaterialsById.get(rawMaterialId);
@@ -982,45 +1009,6 @@ export default function Home() {
     });
   }
 
-  async function createMaterialFromImportRow(row: ExcelImportPreviewRow) {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    const materialCode = row.material_code?.trim() ?? "";
-    const materialName = row.material_name?.trim() ?? "";
-    const name = materialName || materialCode;
-
-    if (!name) {
-      setError("Import row needs a material name or code");
-      return;
-    }
-
-    await runAction("Creating material from import row", async () => {
-      const material = await request<RawMaterialRead>("/api/v1/raw-materials", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          code: materialCode || null,
-          name,
-        }),
-      });
-      setWorkspace((current) => ({
-        ...current,
-        rawMaterials: mergeRawMaterials(current.rawMaterials, [
-          toWorkspaceRawMaterial(material, {}, current.parameters),
-        ]),
-      }));
-      setDetailedMaterialIds((current) =>
-        current.includes(material.id) ? current : [...current, material.id],
-      );
-      refreshCatalog();
-      resolveImportRowState(row.row_number, material.id);
-      setResult(null);
-      setMessage("Import material created");
-    });
-  }
-
   async function createAlias(rawMaterialId: string) {
     const alias = aliasInputs[rawMaterialId]?.trim();
     if (!alias) {
@@ -1243,35 +1231,6 @@ export default function Home() {
         },
       );
       window.location.href = authorization.authorization_url;
-    });
-  }
-
-  async function createAliasFromImportRow(row: ExcelImportPreviewRow) {
-    if (!row.raw_material_id) {
-      setError("Resolve import row before saving alias");
-      return;
-    }
-    const rawMaterialId = row.raw_material_id;
-    const alias = aliasFromImportRow(row);
-    if (!alias) {
-      setError("Import row needs a material name or code");
-      return;
-    }
-
-    await runAction("Creating import alias", async () => {
-      const created = await request<RawMaterialAliasRead>(
-        `/api/v1/raw-materials/${rawMaterialId}/aliases`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ alias, source: "excel_import" }),
-        },
-      );
-      setWorkspace((current) => ({
-        ...current,
-        rawMaterials: withRawMaterialAlias(current.rawMaterials, rawMaterialId, created.alias),
-      }));
-      setMessage("Import alias ready");
     });
   }
 
@@ -1544,128 +1503,6 @@ export default function Home() {
     });
   }
 
-  async function selectExcelImportFile(file: File | null) {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    if (!file) {
-      return;
-    }
-    await runAction("Reading Excel file", async () => {
-      const sheets = await listExcelImportSheets(file);
-      const selectedSheet = sheets.sheets.length === 1 ? sheets.default_sheet : "";
-      setPendingFile(file, sheets, selectedSheet);
-      if (!selectedSheet) {
-        setMessage("Select Excel sheet");
-        return;
-      }
-      const preview = await requestExcelImportPreview(file, selectedSheet);
-      setImportPreview(preview);
-      setMessage("Import preview ready");
-    });
-  }
-
-  async function previewSelectedImportSheet(sheetName: string) {
-    if (!importFile) {
-      setError("Upload an Excel file first");
-      return;
-    }
-    setSelectedImportSheet(sheetName);
-    await runAction("Reading Excel sheet", async () => {
-      const preview = await requestExcelImportPreview(importFile, sheetName);
-      setImportPreview(preview);
-      setMessage("Import preview ready");
-    });
-  }
-
-  async function listExcelImportSheets(file: File): Promise<ExcelImportSheets> {
-    const formData = new FormData();
-    formData.append("file", file);
-    return request<ExcelImportSheets>("/api/v1/imports/formulas/excel/sheets", {
-      method: "POST",
-      headers: uploadHeaders,
-      body: formData,
-    });
-  }
-
-  async function requestExcelImportPreview(
-    file: File,
-    sheetName: string,
-  ): Promise<ExcelImportPreview> {
-    const formData = new FormData();
-    formData.append("file", file);
-    if (sheetName) {
-      formData.append("sheet_name", sheetName);
-    }
-    return request<ExcelImportPreview>("/api/v1/imports/formulas/excel/preview", {
-      method: "POST",
-      headers: uploadHeaders,
-      body: formData,
-    });
-  }
-
-  async function saveExcelImport() {
-    if (!workspace.tenant || !importPreview) {
-      setError("Preview an Excel file first");
-      return;
-    }
-    if (importPreview.pending_rows > 0) {
-      setError("Resolve import rows before saving");
-      return;
-    }
-
-    await runAction("Saving imported formula", async () => {
-      const formula = await request<FormulaRead>("/api/v1/imports/formulas/excel/save", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          name: `${workspace.tenant?.name ?? "Imported"} Excel Formula`,
-          jira_project_id: workspace.formulaJiraProjectId.trim() || null,
-          jira_issue_type: workspace.formulaJiraIssueType,
-          jira_product_type: workspace.formulaJiraProductType,
-          rows: importPreview.rows.map((row) => ({
-            raw_material_id: row.raw_material_id,
-            percentage: row.percentage,
-          })),
-        }),
-      });
-      setWorkspace((current) => ({
-        ...current,
-        formulaId: formula.id,
-        formulaName: formula.name,
-        formulaJiraProjectId: formula.jira_project_id ?? "",
-        formulaJiraIssueType: textOrDefault(formula.jira_issue_type, "Calidad"),
-        formulaJiraProductType: textOrDefault(formula.jira_product_type, "Nuevo"),
-        formulaLines: formula.items.map((item) => ({
-          localId: makeLocalId(),
-          rawMaterialId: item.raw_material_id,
-          percentage: item.percentage,
-        })),
-      }));
-      await refreshFormulaLibrary({ silent: true });
-      await loadCalculationHistory(formula.id);
-      setResult(null);
-      setDraftReview(null);
-      setSavedFormulaComparison(null);
-      setMessage("Imported formula saved");
-    });
-  }
-
-  function resolveImportRow(rowNumber: number, rawMaterialId: string) {
-    if (resolveImportRowState(rowNumber, rawMaterialId)) {
-      setMessage("Import row resolved");
-    }
-  }
-
-  function acceptImportSuggestion(row: ExcelImportPreviewRow) {
-    if (!row.suggested_raw_material_id) {
-      setError("Import row has no suggestion");
-      return;
-    }
-    resolveImportRow(row.row_number, row.suggested_raw_material_id);
-  }
-
   function jiraConnectionFormFromRead(connection: JiraConnection): JiraConnectionForm {
     return {
       authType: connection.auth_type === "oauth" ? "oauth" : "api_token",
@@ -1712,10 +1549,6 @@ export default function Home() {
       throw new Error(`${label} must be a JSON object with string values`);
     }
     return parsed as Record<string, string>;
-  }
-
-  function textOrDefault(value: string | null | undefined, fallback: string): string {
-    return value?.trim() || fallback;
   }
 
   async function runAction(label: string, action: () => Promise<void>) {

@@ -70,6 +70,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_057_formula_line_actions_hook.md`](00-meta/meta_057_formula_line_actions_hook.md)
 - [`00-meta/meta_058_saved_formula_actions_hook.md`](00-meta/meta_058_saved_formula_actions_hook.md)
 - [`00-meta/meta_059_jira_review_actions_hook.md`](00-meta/meta_059_jira_review_actions_hook.md)
+- [`00-meta/meta_060_excel_import_actions_hook.md`](00-meta/meta_060_excel_import_actions_hook.md)
 
 ## Producto
 
