@@ -112,6 +112,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_099_raw_material_model_helpers.md`](00-meta/meta_099_raw_material_model_helpers.md)
 - [`00-meta/meta_100_excel_import_model_helpers.md`](00-meta/meta_100_excel_import_model_helpers.md)
 - [`00-meta/meta_101_formula_read_workspace_mapper.md`](00-meta/meta_101_formula_read_workspace_mapper.md)
+- [`00-meta/meta_102_formula_builder_derived_model.md`](00-meta/meta_102_formula_builder_derived_model.md)
 
 ## Producto
 
