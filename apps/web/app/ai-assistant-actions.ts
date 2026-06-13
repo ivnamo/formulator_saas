@@ -1,5 +1,9 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { request } from "./workspace-api";
+import {
+  createSupervisorPlan,
+  listAiRuns,
+  parseRequirementText,
+} from "./ai-workflow-api";
 import type {
   AiRun,
   AgentPlan,
@@ -39,7 +43,7 @@ export function useAiAssistantActions({
         return;
       }
       const loadRuns = async () => {
-        const runs = await request<AiRun[]>("/api/v1/ai/runs", { method: "GET", headers });
+        const runs = await listAiRuns(headers);
         setAiRuns(runs);
         return runs;
       };
@@ -67,11 +71,7 @@ export function useAiAssistantActions({
     }
 
     await runAction("Parsing requirements", async () => {
-      const parsed = await request<RequirementParse>("/api/v1/ai/requirements/parse", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ text }),
-      });
+      const parsed = await parseRequirementText(headers, text);
       setRequirementParse(parsed);
       await refreshAiRuns({ silent: true });
       setMessage("Requirements parsed");
@@ -99,11 +99,7 @@ export function useAiAssistantActions({
     }
 
     await runAction("Planning with supervisor", async () => {
-      const plan = await request<AgentPlan>("/api/v1/ai/supervisor/plan", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ text }),
-      });
+      const plan = await createSupervisorPlan(headers, text);
       setAgentPlan(plan);
       await refreshAiRuns({ silent: true });
       setMessage("Supervisor plan ready");

@@ -146,6 +146,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_133_missing_parameters_as_zero.md`](00-meta/meta_133_missing_parameters_as_zero.md)
 - [`00-meta/meta_134_optimizer_zero_parameter_candidates.md`](00-meta/meta_134_optimizer_zero_parameter_candidates.md)
 - [`00-meta/meta_135_compatibility_api_client.md`](00-meta/meta_135_compatibility_api_client.md)
+- [`00-meta/meta_136_ai_workflow_api_client.md`](00-meta/meta_136_ai_workflow_api_client.md)
 
 ## Producto
 
