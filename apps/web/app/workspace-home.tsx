@@ -34,6 +34,7 @@ import { useJiraConnectionState } from "./jira-connection-state";
 import { WorkspaceAuthGate } from "./workspace-auth-gate";
 import { WorkspaceHomeView, type WorkspaceHomePanels } from "./workspace-home-view";
 import { useWorkspaceShellState } from "./workspace-shell-state";
+import { buildWorkspaceRawMaterialsPanelProps } from "./workspace-raw-materials-panel-props";
 import { buildWorkspaceSettingsPanelProps } from "./workspace-settings-panel-props";
 
 export function WorkspaceHome() {
@@ -556,19 +557,19 @@ export function WorkspaceHome() {
       setJiraMappingKey,
       mapJiraField,
     }),
-    rawMaterials: {
+    rawMaterials: buildWorkspaceRawMaterialsPanelProps({
       rawMaterials: workspace.rawMaterials,
       parameter: workspace.parameter,
       materialForm,
       aliasInputs,
       canEditTenantData,
       isBusy,
-      onMaterialFormChange: setMaterialForm,
-      onAliasInputsChange: setAliasInputs,
-      onCreateMaterial: createMaterial,
-      onAddFormulaLine: addFormulaLine,
-      onCreateAlias: createAlias,
-    },
+      setMaterialForm,
+      setAliasInputs,
+      createMaterial,
+      addFormulaLine,
+      createAlias,
+    }),
     compatibility: {
       rules: compatibilityRules,
       rawMaterials: workspace.rawMaterials,

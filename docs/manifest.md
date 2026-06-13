@@ -152,6 +152,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_139_raw_material_catalog_api_client.md`](00-meta/meta_139_raw_material_catalog_api_client.md)
 - [`00-meta/meta_140_frontend_api_boundary_check.md`](00-meta/meta_140_frontend_api_boundary_check.md)
 - [`00-meta/meta_141_workspace_settings_panel_props.md`](00-meta/meta_141_workspace_settings_panel_props.md)
+- [`00-meta/meta_142_workspace_raw_materials_panel_props.md`](00-meta/meta_142_workspace_raw_materials_panel_props.md)
 
 ## Producto
 
