@@ -20,7 +20,7 @@ type JiraReviewActionsOptions = {
   activeJiraConnection: JiraConnection | null;
   result: CalculationResult | null;
   formulaReviewRequests: FormulaReviewRequest[];
-  selectedIsoDesignProjectId: string;
+  selectedJiraIsoDesignProjectId: string;
   headers: HeadersInit;
   uploadHeaders: HeadersInit;
   setFormulaReviewRequests: Dispatch<SetStateAction<FormulaReviewRequest[]>>;
@@ -45,7 +45,7 @@ export function useJiraReviewActions({
   activeJiraConnection,
   result,
   formulaReviewRequests,
-  selectedIsoDesignProjectId,
+  selectedJiraIsoDesignProjectId,
   headers,
   uploadHeaders,
   setFormulaReviewRequests,
@@ -74,17 +74,16 @@ export function useJiraReviewActions({
       return;
     }
     const formulaId = workspace.formulaId;
-    const isoProjectId = selectedIsoDesignProjectId || null;
+    const isoProjectId = selectedJiraIsoDesignProjectId || null;
 
     await runAction("Sending formula to Jira", async () => {
-      const existingDraftReview =
-        formulaReviewRequests.find(
-          (review) =>
-            !review.jira_issue_key &&
-            (isoProjectId
-              ? review.snapshot.iso?.design_project_id === isoProjectId
-              : !review.snapshot.iso?.design_project_id),
-        ) ?? (isoProjectId ? null : formulaReviewRequests.find((review) => !review.jira_issue_key));
+      const existingDraftReview = formulaReviewRequests.find(
+        (review) =>
+          !review.jira_issue_key &&
+          (isoProjectId
+            ? review.snapshot.iso?.design_project_id === isoProjectId
+            : !review.snapshot.iso?.design_project_id),
+      );
       const review =
         existingDraftReview ??
         (await createJiraFormulaReview(headers, formulaId, {
@@ -107,7 +106,7 @@ export function useJiraReviewActions({
     onIsoModuleRefresh,
     result,
     runAction,
-    selectedIsoDesignProjectId,
+    selectedJiraIsoDesignProjectId,
     setError,
     setFormulaReviewRequests,
     setMessage,

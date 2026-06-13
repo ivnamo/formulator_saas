@@ -1008,10 +1008,14 @@ def _upsert_trial_from_review(
     existing = session.exec(
         select(IsoDesignTrial).where(
             IsoDesignTrial.tenant_id == tenant_id,
-            IsoDesignTrial.design_project_id == project_id,
             IsoDesignTrial.review_request_id == review.id,
         )
     ).first()
+    if existing is not None and existing.design_project_id != project_id:
+        raise HTTPException(
+            status_code=409,
+            detail="This Jira review is already linked to another ISO design project.",
+        )
     trial = existing or IsoDesignTrial(
         tenant_id=tenant_id,
         design_project_id=project_id,

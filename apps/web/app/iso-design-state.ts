@@ -20,6 +20,7 @@ export function useIsoDesignState() {
     Record<string, IsoProductValidation | null>
   >({});
   const [selectedIsoDesignProjectId, setSelectedIsoDesignProjectId] = useState("");
+  const [selectedJiraIsoDesignProjectId, setSelectedJiraIsoDesignProjectId] = useState("");
   const [isoProjectForm, setIsoProjectForm] = useState<IsoDesignProjectForm>(
     initialIsoDesignProjectForm,
   );
@@ -36,6 +37,7 @@ export function useIsoDesignState() {
     setIsoDesignTrialsByProjectId({});
     setIsoProductValidationsByProjectId({});
     setSelectedIsoDesignProjectId("");
+    setSelectedJiraIsoDesignProjectId("");
     setIsoProjectForm(initialIsoDesignProjectForm);
     setIsoLegacyImportFormat("f10_01");
     setIsoLegacyImportFile(null);
@@ -54,6 +56,8 @@ export function useIsoDesignState() {
     setIsoProductValidationsByProjectId,
     selectedIsoDesignProjectId,
     setSelectedIsoDesignProjectId,
+    selectedJiraIsoDesignProjectId,
+    setSelectedJiraIsoDesignProjectId,
     isoProjectForm,
     setIsoProjectForm,
     isoLegacyImportFormat,

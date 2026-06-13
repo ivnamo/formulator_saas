@@ -145,6 +145,8 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setIsoProductValidationsByProjectId,
     selectedIsoDesignProjectId,
     setSelectedIsoDesignProjectId,
+    selectedJiraIsoDesignProjectId,
+    setSelectedJiraIsoDesignProjectId,
     isoProjectForm,
     setIsoProjectForm,
     isoLegacyImportFormat,
@@ -484,6 +486,11 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     }
     void loadIsoModule({ silent: true });
   }, [loadIsoModule, session?.access_token, workspace.tenant]);
+  useEffect(() => {
+    setSelectedJiraIsoDesignProjectId((current) =>
+      current && isoDesignProjects.some((project) => project.id === current) ? current : "",
+    );
+  }, [isoDesignProjects, setSelectedJiraIsoDesignProjectId]);
   const {
     parseRequirements,
     planRequirements,
@@ -554,7 +561,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     activeJiraConnection,
     result,
     formulaReviewRequests,
-    selectedIsoDesignProjectId,
+    selectedJiraIsoDesignProjectId,
     headers,
     uploadHeaders,
     setFormulaReviewRequests,
@@ -789,7 +796,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       formulaReviewRequests,
       formulaReviewArtifacts,
       isoDesignProjects,
-      selectedIsoDesignProjectId,
+      selectedIsoDesignProjectId: selectedJiraIsoDesignProjectId,
       canPrepareJiraReview,
       formulaLineDetails,
       parameterRows,
@@ -819,7 +826,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       clearComparisonMaterials,
       updateDraftReviewNotes,
       confirmDraftReview,
-      setSelectedIsoDesignProjectId,
+      setSelectedIsoDesignProjectId: setSelectedJiraIsoDesignProjectId,
       sendCurrentFormulaToJira,
       generateJiraReviewExcel,
       downloadJiraReviewArtifact,

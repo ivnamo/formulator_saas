@@ -377,6 +377,62 @@ def test_iso_design_trial_can_be_created_from_jira_review_snapshot() -> None:
     assert [item["id"] for item in trials.json()] == [trial["id"]]
 
 
+def test_iso_design_trial_from_jira_review_rejects_cross_project_relink() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    enable_iso(client, tenant_id)
+    project_a = create_iso_project(client, tenant_id)
+    project_b = client.post(
+        "/api/v1/iso/design-projects",
+        headers=headers(USER_A, tenant_id),
+        json={
+            "iso_request_number": "2/2026",
+            "project_code": "ROOT",
+            "product_name": "Root Power",
+            "requester": "Comercial",
+            "accepted_status": "accepted",
+            "lifecycle_status": "design",
+        },
+    )
+    assert project_b.status_code == 201
+    review_id = uuid.uuid4()
+    with Session(client.app.state.engine) as session:
+        session.add(
+            FormulaReviewRequest(
+                id=review_id,
+                tenant_id=uuid.UUID(tenant_id),
+                formula_id=uuid.uuid4(),
+                formula_version=1,
+                jira_connection_id=uuid.uuid4(),
+                review_status="closed",
+                jira_issue_key="ID-700",
+                sent_by_user_id=uuid.UUID(USER_A),
+                snapshot_json={
+                    "formula": {"name": "Formula A", "jira_issue_type": "Calidad"},
+                    "jira": {"issue_summary": "CALIDAD - Formula A"},
+                },
+            )
+        )
+        session.commit()
+
+    first_link = client.post(
+        f"/api/v1/iso/design-projects/{project_a['id']}/trials/from-jira-review",
+        headers=headers(USER_A, tenant_id),
+        json={"review_id": str(review_id)},
+    )
+    relink = client.post(
+        f"/api/v1/iso/design-projects/{project_b.json()['id']}/trials/from-jira-review",
+        headers=headers(USER_A, tenant_id),
+        json={"review_id": str(review_id)},
+    )
+
+    assert first_link.status_code == 201
+    assert relink.status_code == 409
+    assert relink.json()["detail"] == (
+        "This Jira review is already linked to another ISO design project."
+    )
+
+
 def test_iso_technical_results_are_configurable_per_tenant() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
