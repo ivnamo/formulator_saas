@@ -34,6 +34,7 @@ import { useJiraConnectionState } from "./jira-connection-state";
 import { WorkspaceAuthGate } from "./workspace-auth-gate";
 import { WorkspaceHomeView, type WorkspaceHomePanels } from "./workspace-home-view";
 import { useWorkspaceShellState } from "./workspace-shell-state";
+import { buildWorkspaceSettingsPanelProps } from "./workspace-settings-panel-props";
 
 export function WorkspaceHome() {
   const {
@@ -521,7 +522,7 @@ export function WorkspaceHome() {
   }
 
   const panels = {
-    settings: {
+    settings: buildWorkspaceSettingsPanelProps({
       workspace,
       workspaceName,
       sessionEmail: session.user.email,
@@ -540,21 +541,21 @@ export function WorkspaceHome() {
       canLoadJiraMetadata,
       canAuthorizeJiraOAuth,
       showInvitationAdminPanel,
-      onWorkspaceNameChange: setWorkspaceName,
-      onCreateWorkspace: createWorkspace,
-      onInvitationFormChange: setInvitationForm,
-      onCreateTenantInvitation: createTenantInvitation,
-      onParameterFormChange: setParameterForm,
-      onCreateParameter: createParameter,
-      onJiraConnectionFormChange: setJiraConnectionForm,
-      onSaveJiraConnection: saveJiraConnection,
-      onRefreshJiraConnections: refreshJiraConnections,
-      onTestJiraConnection: testJiraConnection,
-      onLoadJiraMetadata: loadJiraMetadata,
-      onAuthorizeJiraOAuth: authorizeJiraOAuth,
-      onJiraMappingKeyChange: setJiraMappingKey,
-      onMapJiraField: mapJiraField,
-    },
+      setWorkspaceName,
+      createWorkspace,
+      setInvitationForm,
+      createTenantInvitation,
+      setParameterForm,
+      createParameter,
+      setJiraConnectionForm,
+      saveJiraConnection,
+      refreshJiraConnections,
+      testJiraConnection,
+      loadJiraMetadata,
+      authorizeJiraOAuth,
+      setJiraMappingKey,
+      mapJiraField,
+    }),
     rawMaterials: {
       rawMaterials: workspace.rawMaterials,
       parameter: workspace.parameter,
