@@ -481,6 +481,9 @@ def update_material_metadata_from_sap_row(
         updates["external_code"] = parsed.external_code
     if parsed.family and parsed.family != material.family:
         updates["family"] = parsed.family
+    if parsed.name and normalize_name(parsed.name) != normalize_name(material.name):
+        updates["name"] = parsed.name
+        updates["normalized_name"] = normalize_name(parsed.name)
     if not updates:
         return
     ensure_raw_material_identity_available(
@@ -488,7 +491,7 @@ def update_material_metadata_from_sap_row(
         tenant_id,
         code=material.code,
         external_code=updates.get("external_code", material.external_code),
-        normalized_name=material.normalized_name,
+        normalized_name=updates.get("normalized_name", material.normalized_name),
         exclude_raw_material_id=material.id,
     )
     for key, value in updates.items():

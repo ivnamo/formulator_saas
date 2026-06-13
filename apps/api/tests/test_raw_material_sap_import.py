@@ -144,3 +144,50 @@ def test_sap_import_apply_updates_prices_and_creates_materials_idempotently() ->
     assert len(materials) == 2
     assert [row["price"] for row in urea_prices] == [1.4, 1.0]
     assert [row["price"] for row in boron_prices] == [2.5]
+
+
+def test_sap_import_apply_updates_existing_material_name_metadata() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    existing = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={
+            "name": "Urea Technical",
+            "code": "UREA",
+            "external_code": "SAP-001",
+            "family": "Nitrogen",
+        },
+    ).json()
+    client.post(
+        f"/api/v1/raw-materials/{existing['id']}/prices",
+        headers=headers,
+        json={"price": 1.0, "currency": "EUR", "unit": "kg", "valid_from": "2026-01-01"},
+    )
+    csv_content = "\n".join(
+        [
+            "Codigo SAP;Materia Prima;Precio EUR/kg;Familia",
+            "SAP-001;Urea Granular;1.00;Nitrogen",
+        ]
+    ).encode()
+    preview = client.post(
+        "/api/v1/raw-material-imports/sap/preview",
+        headers=headers,
+        data={"valid_from": "2026-06-01", "source": "sap-june"},
+        files={"file": ("sap.csv", csv_content, "text/csv")},
+    )
+
+    applied = client.post(
+        f"/api/v1/raw-material-imports/{preview.json()['id']}/apply",
+        headers=headers,
+    )
+    materials = client.get("/api/v1/raw-materials", headers=headers).json()
+    updated = next(material for material in materials if material["id"] == existing["id"])
+
+    assert preview.status_code == 201
+    assert preview.json()["rows"][0]["action"] == "metadata_update"
+    assert preview.json()["rows"][0]["status"] == "ready"
+    assert applied.status_code == 200
+    assert applied.json()["summary_json"]["applied_rows"] == 1
+    assert updated["name"] == "Urea Granular"

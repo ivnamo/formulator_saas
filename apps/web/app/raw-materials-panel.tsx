@@ -899,9 +899,13 @@ function formatPrice(material: RawMaterial) {
 }
 
 function formatDate(value: string) {
+  const calendarDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const date = calendarDate
+    ? new Date(Number(calendarDate[1]), Number(calendarDate[2]) - 1, Number(calendarDate[3]))
+    : new Date(value);
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "short",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 function formatImportAction(action: string) {
