@@ -177,6 +177,31 @@ class RawMaterialParameterValueCreate(BaseModel):
     confidence: float | None = None
 
 
+class RawMaterialImportRowRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    import_id: uuid.UUID
+    row_number: int
+    raw_material_id: uuid.UUID | None
+    raw_name: str | None
+    action: str
+    status: str
+    raw_row_json: dict[str, Any] = Field(default_factory=dict)
+    message: str | None = None
+
+
+class RawMaterialImportRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    file_name: str
+    source: str
+    source_hash: str
+    status: str
+    summary_json: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    rows: list[RawMaterialImportRowRead] = Field(default_factory=list)
+
+
 class FormulaItemCreate(BaseModel):
     raw_material_id: uuid.UUID
     percentage: float

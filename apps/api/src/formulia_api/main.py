@@ -57,6 +57,7 @@ from .models import (
     Parameter,
     RawMaterial,
     RawMaterialAlias,
+    RawMaterialImport,
     RawMaterialParameterValue,
     RawMaterialPrice,
     Tenant,
@@ -71,6 +72,12 @@ from .raw_material_master import (
     ensure_valid_raw_material_price,
     list_raw_material_prices,
     normalize_name as normalize_raw_material_name,
+)
+from .raw_material_import import (
+    apply_sap_import,
+    create_sap_import_preview,
+    import_read,
+    load_import_rows,
 )
 from .schemas import (
     CalculationRead,
@@ -90,6 +97,7 @@ from .schemas import (
     RawMaterialCatalogRead,
     RawMaterialAliasCreate,
     RawMaterialAliasRead,
+    RawMaterialImportRead,
     RawMaterialParameterValueCreate,
     RawMaterialPriceCreate,
     RawMaterialPriceRead,
@@ -495,6 +503,66 @@ def register_routes(app: FastAPI) -> None:
         session.commit()
         session.refresh(value)
         return _model_dict(value)
+
+    @app.post(
+        "/api/v1/raw-material-imports/sap/preview",
+        response_model=RawMaterialImportRead,
+        status_code=201,
+    )
+    async def preview_raw_material_sap_import(
+        file: UploadFile = File(...),
+        sheet_name: str | None = Form(default=None),
+        source: str | None = Form(default=None),
+        valid_from: date | None = Form(default=None),
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="Import file needs a filename.")
+        import_record = create_sap_import_preview(
+            session,
+            tenant.tenant_id,
+            file_name=file.filename,
+            content=await file.read(),
+            sheet_name=sheet_name,
+            source=source,
+            valid_from=valid_from or date.today(),
+        )
+        return import_read(
+            import_record,
+            load_import_rows(session, tenant.tenant_id, import_record.id),
+        )
+
+    @app.get(
+        "/api/v1/raw-material-imports/{import_id}",
+        response_model=RawMaterialImportRead,
+    )
+    def get_raw_material_import(
+        import_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        import_record = _get_raw_material_import(session, tenant.tenant_id, import_id)
+        return import_read(
+            import_record,
+            load_import_rows(session, tenant.tenant_id, import_id),
+        )
+
+    @app.post(
+        "/api/v1/raw-material-imports/{import_id}/apply",
+        response_model=RawMaterialImportRead,
+    )
+    def apply_raw_material_sap_import(
+        import_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        import_record = _get_raw_material_import(session, tenant.tenant_id, import_id)
+        import_record = apply_sap_import(session, tenant.tenant_id, import_record)
+        return import_read(
+            import_record,
+            load_import_rows(session, tenant.tenant_id, import_id),
+        )
 
     @app.get("/api/v1/compatibility-rules", response_model=list[CompatibilityRuleRead])
     def list_compatibility_rules(
@@ -915,6 +983,22 @@ def _get_raw_material(
     if raw_material is None:
         raise HTTPException(status_code=404, detail="Raw material not found.")
     return raw_material
+
+
+def _get_raw_material_import(
+    session: Session,
+    tenant_id: uuid.UUID,
+    import_id: uuid.UUID,
+) -> RawMaterialImport:
+    import_record = session.exec(
+        select(RawMaterialImport).where(
+            RawMaterialImport.id == import_id,
+            RawMaterialImport.tenant_id == tenant_id,
+        )
+    ).first()
+    if import_record is None:
+        raise HTTPException(status_code=404, detail="Raw material import not found.")
+    return import_record
 
 
 def _get_parameter(session: Session, tenant_id: uuid.UUID, parameter_id: uuid.UUID) -> Parameter:
