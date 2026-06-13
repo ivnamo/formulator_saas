@@ -394,7 +394,7 @@ def _solve_grid_formula(
         for constraint in technical_constraints
         if isinstance(constraint.get("target"), str)
     }
-    solver_candidates = _solver_candidates(candidates, required_parameter_codes)
+    solver_candidates = _solver_candidates(candidates)
     if not solver_candidates:
         return None
 
@@ -438,15 +438,11 @@ def _solve_grid_formula(
     return None if best is None else best[2]
 
 
-def _solver_candidates(
-    candidates: list[dict[str, Any]],
-    required_parameter_codes: set[str],
-) -> list[dict[str, Any]]:
+def _solver_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     usable = [
         candidate
         for candidate in candidates
         if candidate.get("price_eur_per_kg") is not None
-        and required_parameter_codes.issubset(candidate.get("parameters", {}).keys())
     ]
     return usable[:MAX_SOLVER_CANDIDATES]
 

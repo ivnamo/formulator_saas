@@ -328,6 +328,57 @@ def test_optimization_explains_missing_parameter_coverage(monkeypatch) -> None:
     ]
 
 
+def test_optimization_allows_missing_parameter_as_zero_for_maximum_constraint(
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv("AGENT_ORCHESTRATOR_PROVIDER", raising=False)
+    monkeypatch.delenv("REQUIREMENT_PARSER_PROVIDER", raising=False)
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    parameter = create_parameter(client, headers)
+    carrier = create_raw_material(
+        client,
+        headers,
+        parameter["id"],
+        name="Priced Carrier",
+        code="CAR-P",
+        price=0.8,
+    )
+
+    response = client.post(
+        "/api/v1/ai/supervisor/plan",
+        headers=headers,
+        json={"text": "Liquido con contenido activo maximo 1%."},
+    )
+
+    assert response.status_code == 200
+    plan = response.json()
+    assert plan["candidate_research"]["candidate_count"] == 1
+    assert plan["optimization_plan"]["status"] == "solved"
+    assert plan["optimization_plan"]["candidate_raw_material_ids"] == [carrier["id"]]
+    assert plan["optimization_plan"]["infeasibility_explanations"] == []
+
+    formula = plan["optimization_plan"]["formula_candidates"][0]
+    assert formula["items"] == [
+        {"raw_material_id": carrier["id"], "name": "Priced Carrier", "percentage": 100.0}
+    ]
+    assert formula["parameters"] == [
+        {"code": "active_content", "value": 0.0, "unit": "% p/p"}
+    ]
+    assert formula["constraints_status"] == [
+        {
+            "scope": "technical",
+            "target": "active_content",
+            "operator": "<=",
+            "value": 1.0,
+            "unit": "%",
+            "actual": 0.0,
+            "status": "satisfied",
+        }
+    ]
+
+
 def test_optimization_marks_infeasible_when_grid_has_no_solution(monkeypatch) -> None:
     monkeypatch.delenv("AGENT_ORCHESTRATOR_PROVIDER", raising=False)
     monkeypatch.delenv("REQUIREMENT_PARSER_PROVIDER", raising=False)
