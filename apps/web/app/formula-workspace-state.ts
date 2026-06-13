@@ -1,11 +1,11 @@
 import { useCallback, useState } from "react";
-import {
-  type CalculationResult,
-  type FormulaCalculationHistory,
-  type FormulaRead,
-  type FormulaReviewArtifact,
-  type FormulaReviewRequest,
-} from "./workspace-model";
+import type {
+  CalculationResult,
+  FormulaCalculationHistory,
+  FormulaRead,
+  FormulaReviewArtifact,
+  FormulaReviewRequest,
+} from "./formula-model";
 
 export function useFormulaWorkspaceState() {
   const [result, setResult] = useState<CalculationResult | null>(null);

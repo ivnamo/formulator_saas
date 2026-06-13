@@ -1,4 +1,4 @@
-import type { CalculationResult, FormulaRead } from "./workspace-model";
+import type { CalculationResult, FormulaRead } from "./formula-model";
 import type { SavedFormulaComparison } from "./workspace-comparison";
 
 export type SavedFormulaComparisonConstraints = {

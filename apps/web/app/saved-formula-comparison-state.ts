@@ -5,12 +5,9 @@ import {
   hasConstraintIssue,
   type SavedFormulaComparison,
 } from "./workspace-comparison";
-import {
-  normalizeCode,
-  parseOptionalNumber,
-  type FormulaRead,
-  type RawMaterial,
-} from "./workspace-model";
+import type { FormulaRead } from "./formula-model";
+import type { RawMaterial } from "./raw-material-model";
+import { normalizeCode, parseOptionalNumber } from "./workspace-utils";
 
 export type FormulaCompareSelection = {
   baselineId: string;

@@ -1,4 +1,4 @@
-import type { CalculationResult } from "./workspace-model";
+import type { CalculationResult } from "./formula-model";
 
 export function formatResultPrice(resultValue: CalculationResult | null): string {
   return resultValue?.price_total == null

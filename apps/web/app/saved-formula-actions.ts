@@ -12,15 +12,15 @@ import {
   type DraftReviewState,
   type SavedFormulaComparison,
 } from "./workspace-comparison";
-import {
-  type CalculationResult,
-  type FormulaCalculationHistory,
-  type FormulaRead,
-  type FormulaReviewArtifact,
-  type FormulaReviewRequest,
-  type RawMaterial,
-  type WorkspaceState,
-} from "./workspace-model";
+import type {
+  CalculationResult,
+  FormulaCalculationHistory,
+  FormulaRead,
+  FormulaReviewArtifact,
+  FormulaReviewRequest,
+} from "./formula-model";
+import type { RawMaterial } from "./raw-material-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 type SavedFormulaActionsOptions = {
   workspace: WorkspaceState;

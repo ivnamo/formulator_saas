@@ -3,7 +3,7 @@ import {
   formatResultPrice,
   normalizeWarningSeverity,
 } from "./formula-formatters";
-import type { CalculationResult } from "./workspace-model";
+import type { CalculationResult } from "./formula-model";
 
 type CalculationResultsPanelProps = {
   active: boolean;

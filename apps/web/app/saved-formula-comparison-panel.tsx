@@ -6,16 +6,13 @@ import type {
   FormulaCompareSelectionField,
 } from "./saved-formula-comparison-state";
 import { SavedFormulaComparisonResult } from "./saved-formula-comparison-result";
-import {
-  formatDateTime,
-  type FormulaCalculationHistory,
-  type FormulaRead,
-} from "./workspace-model";
+import type { FormulaCalculationHistory, FormulaRead } from "./formula-model";
 import type {
   SavedFormulaComparison,
   SavedFormulaComplianceSummary,
   SavedFormulaConstraintEvaluation,
 } from "./workspace-comparison";
+import { formatDateTime } from "./workspace-utils";
 
 type ComparisonMaterialOption = {
   id: string;

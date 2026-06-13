@@ -1,4 +1,5 @@
-import type { CalculationResult, FormulaLine, FormulaRead } from "./workspace-model";
+import type { CalculationResult, FormulaRead } from "./formula-model";
+import type { FormulaLine } from "./workspace-base-model";
 
 export {
   buildConstraintComplianceSummary,
