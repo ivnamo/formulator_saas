@@ -1,11 +1,18 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { request } from "./workspace-api";
 import type { BuilderSectionKey } from "./formula-builder-model";
 import {
   toEditableFormulaMetadata,
   toEditableFormulaState,
 } from "./formula-read-model";
 import { buildManualFormulaSavePayload } from "./formula-save-model";
+import {
+  calculateSavedFormula,
+  fetchFormulaCalculationHistory,
+  fetchFormulaReviewArtifactsByReview,
+  fetchFormulaReviewRequests,
+  listSavedFormulas,
+  persistSavedFormula,
+} from "./saved-formula-api";
 import type { FormulaCompareSelection } from "./saved-formula-comparison-state";
 import {
   buildSavedFormulaComparison,
@@ -73,35 +80,20 @@ export function useSavedFormulaActions({
 }: SavedFormulaActionsOptions) {
   const calculatePersistedFormula = useCallback(
     async (formulaId: string): Promise<CalculationResult> =>
-      request<CalculationResult>(`/api/v1/formulas/${formulaId}/calculate`, {
-        method: "POST",
-        headers,
-      }),
+      calculateSavedFormula(headers, formulaId),
     [headers],
   );
 
   const loadFormulaReviewArtifacts = useCallback(
     async (reviews: FormulaReviewRequest[]) => {
-      const entries = await Promise.all(
-        reviews.map(async (review) => {
-          const artifacts = await request<FormulaReviewArtifact[]>(
-            `/api/v1/formula-reviews/${review.id}/artifacts`,
-            { method: "GET", headers },
-          );
-          return [review.id, artifacts] as const;
-        }),
-      );
-      setFormulaReviewArtifacts(Object.fromEntries(entries));
+      setFormulaReviewArtifacts(await fetchFormulaReviewArtifactsByReview(headers, reviews));
     },
     [headers, setFormulaReviewArtifacts],
   );
 
   const loadFormulaReviewRequests = useCallback(
     async (formulaId: string) => {
-      const reviews = await request<FormulaReviewRequest[]>(
-        `/api/v1/formulas/${formulaId}/reviews`,
-        { method: "GET", headers },
-      );
+      const reviews = await fetchFormulaReviewRequests(headers, formulaId);
       setFormulaReviewRequests(reviews);
       await loadFormulaReviewArtifacts(reviews);
     },
@@ -110,10 +102,7 @@ export function useSavedFormulaActions({
 
   const loadCalculationHistory = useCallback(
     async (formulaId: string) => {
-      const history = await request<FormulaCalculationHistory[]>(
-        `/api/v1/formulas/${formulaId}/calculations`,
-        { method: "GET", headers },
-      );
+      const history = await fetchFormulaCalculationHistory(headers, formulaId);
       setCalculationHistory(history);
     },
     [headers, setCalculationHistory],
@@ -126,18 +115,12 @@ export function useSavedFormulaActions({
         return;
       }
       if (options.silent) {
-        const nextFormulas = await request<FormulaRead[]>("/api/v1/formulas", {
-          method: "GET",
-          headers,
-        });
+        const nextFormulas = await listSavedFormulas(headers);
         setFormulas(nextFormulas);
         return;
       }
       await runAction("Refreshing formula library", async () => {
-        const nextFormulas = await request<FormulaRead[]>("/api/v1/formulas", {
-          method: "GET",
-          headers,
-        });
+        const nextFormulas = await listSavedFormulas(headers);
         setFormulas(nextFormulas);
         setMessage("Formula library refreshed");
       });
@@ -226,17 +209,7 @@ export function useSavedFormulaActions({
 
     await runAction("Saving formula", async () => {
       const payload = buildManualFormulaSavePayload(workspace, workspace.formulaLines);
-      const formula = workspace.formulaId
-        ? await request<FormulaRead>(`/api/v1/formulas/${workspace.formulaId}`, {
-            method: "PATCH",
-            headers,
-            body: JSON.stringify(payload),
-          })
-        : await request<FormulaRead>("/api/v1/formulas", {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-          });
+      const formula = await persistSavedFormula(headers, workspace.formulaId, payload);
       const calculation = await calculatePersistedFormula(formula.id);
       setWorkspace((current) => ({
         ...current,
