@@ -5,9 +5,7 @@ import type {
   AgentPlan,
   RequirementParse,
 } from "./ai-workflow-model";
-import type {
-  WorkspaceState,
-} from "./workspace-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 type AiAssistantActionsOptions = {
   workspace: WorkspaceState;

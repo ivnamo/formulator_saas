@@ -2,14 +2,11 @@ import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { BuilderSectionKey } from "./formula-builder-model";
 import { request } from "./workspace-api";
 import type { AgentFormulaCandidate, AgentPlan } from "./ai-workflow-model";
-import {
-  makeLocalId,
-  type CalculationResult,
-  type FormulaCalculationHistory,
-  type FormulaLine,
-  type WorkspaceState,
-} from "./workspace-model";
+import type { CalculationResult, FormulaCalculationHistory } from "./formula-model";
+import type { FormulaLine } from "./workspace-base-model";
 import type { DraftReviewState } from "./workspace-comparison";
+import type { WorkspaceState } from "./workspace-state-model";
+import { makeLocalId } from "./workspace-utils";
 
 type DraftReviewActionsOptions = {
   workspace: WorkspaceState;

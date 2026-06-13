@@ -7,9 +7,7 @@ import type {
   RequirementConstraint,
   RequirementParse,
 } from "./ai-workflow-model";
-import {
-  formatDateTime,
-} from "./workspace-model";
+import { formatDateTime } from "./workspace-utils";
 
 type AiAssistantPanelProps = {
   active: boolean;
