@@ -6,7 +6,7 @@ import type { WorkspaceState } from "./workspace-state-model";
 
 export type WorkspaceHomePanels = Omit<WorkspacePanelsProps, "activeView">;
 
-type WorkspaceHomeViewProps = {
+export type WorkspaceHomeViewProps = {
   activeView: WorkspaceView;
   workspace: WorkspaceState;
   sessionEmail: string | undefined;
