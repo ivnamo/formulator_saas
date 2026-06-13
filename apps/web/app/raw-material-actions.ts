@@ -13,11 +13,9 @@ import {
   type RawMaterialAliasRead,
   type RawMaterialRead,
 } from "./raw-material-model";
-import {
-  parseOptionalNumber,
-  type CalculationResult,
-  type WorkspaceState,
-} from "./workspace-model";
+import type { CalculationResult } from "./formula-model";
+import type { WorkspaceState } from "./workspace-state-model";
+import { parseOptionalNumber } from "./workspace-utils";
 
 type RawMaterialActionsOptions = {
   workspace: WorkspaceState;

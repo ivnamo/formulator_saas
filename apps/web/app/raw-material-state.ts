@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { type MaterialForm } from "./workspace-model";
+import type { MaterialForm } from "./raw-material-model";
 
 const emptyMaterialForm: MaterialForm = {
   code: "",

@@ -1,11 +1,12 @@
 import { Plus, Save } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import type { MaterialForm, RawMaterial, WorkspaceState } from "./workspace-model";
+import type { MaterialForm, RawMaterial } from "./raw-material-model";
+import type { Parameter } from "./workspace-base-model";
 
 type RawMaterialsPanelProps = {
   active: boolean;
   rawMaterials: RawMaterial[];
-  parameter: WorkspaceState["parameter"];
+  parameter: Parameter | null;
   materialForm: MaterialForm;
   aliasInputs: Record<string, string>;
   canEditTenantData: boolean;
