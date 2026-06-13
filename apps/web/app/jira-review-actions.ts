@@ -4,9 +4,9 @@ import type {
   CalculationResult,
   FormulaReviewArtifact,
   FormulaReviewRequest,
-  JiraConnection,
-  WorkspaceState,
-} from "./workspace-model";
+} from "./formula-model";
+import type { JiraConnection } from "./jira-connection-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 type JiraReviewActionsOptions = {
   workspace: WorkspaceState;

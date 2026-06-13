@@ -12,9 +12,9 @@ import type {
   JiraFieldMetadata,
   JiraMetadataState,
   JiraOAuthAuthorize,
-  Status,
-  WorkspaceState,
-} from "./workspace-model";
+} from "./jira-connection-model";
+import type { Status } from "./workspace-base-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 type JiraConnectionActionsOptions = {
   workspace: WorkspaceState;

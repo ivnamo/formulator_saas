@@ -4,7 +4,7 @@ import {
   type JiraConnection,
   type JiraConnectionForm,
   type JiraMetadataState,
-} from "./workspace-model";
+} from "./jira-connection-model";
 
 export function useJiraConnectionState() {
   const [jiraConnections, setJiraConnections] = useState<JiraConnection[]>([]);

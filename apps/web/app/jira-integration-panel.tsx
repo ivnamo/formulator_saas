@@ -6,7 +6,7 @@ import type {
   JiraConnectionForm,
   JiraFieldMetadata,
   JiraMetadataState,
-} from "./workspace-model";
+} from "./jira-connection-model";
 
 type JiraIntegrationPanelProps = {
   active: boolean;

@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import type { JiraFieldMetadata, JiraMetadataState } from "./workspace-model";
+import type { JiraFieldMetadata, JiraMetadataState } from "./jira-connection-model";
 
 const JIRA_MAPPING_KEYS = [
   "formula_id",

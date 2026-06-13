@@ -1,6 +1,6 @@
 import { Check, ExternalLink, ListChecks, RefreshCw, Save } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import type { JiraConnection, JiraConnectionForm } from "./workspace-model";
+import type { JiraConnection, JiraConnectionForm } from "./jira-connection-model";
 
 type JiraConnectionSettingsProps = {
   activeJiraConnection: JiraConnection | null;

@@ -2,8 +2,8 @@
 
 import { Check, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { JiraOAuthCallbackResult } from "../jira-connection-model";
 import { request } from "../workspace-api";
-import type { JiraOAuthCallbackResult } from "../workspace-model";
 
 type CallbackState =
   | { status: "working"; message: string }
