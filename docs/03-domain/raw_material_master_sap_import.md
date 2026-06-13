@@ -1,8 +1,9 @@
 # Maestro de materias primas e importacion SAP
 
-Estado: borrador vivo de alto nivel a implementacion
+Estado: MVP backend + UI maestro/import SAP implementado; validacion e2e autenticada pendiente
 Fecha: 2026-06-13
 Rama documental: `codex/raw-material-master-sap-plan`
+Rama implementacion: `codex/raw-material-master-sap-mvp`
 
 ## Fuentes revisadas
 
@@ -458,13 +459,64 @@ UX minima:
 | L0 | Diagnostico | Brechas CRUD/SAP y datos actuales | Hecho |
 | L1 | Producto | Maestro vs catalogo, workflows y no objetivos | Este documento |
 | L2 | Datos | Constraints, precios historicos e import staging | Planificado |
-| L3 | Backend CRUD | Validaciones, filtros, price history | Planificado |
-| L4 | Backend import | Preview, matching, diff, apply | Planificado |
-| L5 | UI maestro | Tabla, filtros, ficha, edicion | Planificado |
-| L6 | UI import SAP | Upload, preview, revision, apply | Planificado |
-| L7 | Testing | Unit/API/import/frontend/Playwright | Planificado |
+| L3 | Backend CRUD | Validaciones, filtros, price history | Hecho |
+| L4 | Backend import | Preview, matching, diff, apply | Hecho |
+| L5 | UI maestro | Tabla, filtros, ficha, edicion | Hecho |
+| L6 | UI import SAP | Upload, preview, revision, apply | Hecho |
+| L7 | Testing | Unit/API/import/frontend/Playwright | Parcial |
 | L8 | Migracion Atlantica | Validar 373 materias y siguiente Excel SAP | Planificado |
 | L9 | Rollout | PRs pequenos, rollback, documentacion | Planificado |
+
+## Implementacion ejecutada
+
+Branch: `codex/raw-material-master-sap-mvp`
+
+Commits realizados:
+
+1. `api: add raw material master guardrails`
+2. `api: add SAP raw material import preview apply`
+3. `web: add raw material master SAP import UI`
+
+Backend implementado:
+
+- Validacion centralizada de maestro en `apps/api/src/formulia_api/raw_material_master.py`.
+- Bloqueo de nombre vacio, precio negativo y duplicados activos por codigo, codigo SAP y nombre normalizado.
+- Endpoint `GET /api/v1/raw-materials/{raw_material_id}/prices`.
+- Servicio `apps/api/src/formulia_api/raw_material_import.py` para preview/apply SAP.
+- Preview multipart `.csv`, `.xlsx` y `.xlsm`.
+- Matching por codigo SAP, codigo interno, nombre normalizado, alias y fuzzy match.
+- Clasificacion de filas `new_material`, `price_update`, `metadata_update`, `unchanged`, `needs_review` y `error`.
+- Apply idempotente sobre filas `ready`, con creacion de materias, upsert de precio por fuente/fecha y metadata limitada.
+
+Frontend implementado:
+
+- La pantalla `Materias primas` pasa de alta rapida a maestro operativo.
+- Resumen de total, activas, sin precio, sin SAP y obsoletas.
+- Filtros por busqueda, estado, precio y codigo SAP.
+- Tabla de maestro con seleccion y accion de uso en formula.
+- Ficha editable con codigos, familia, subfamilia, estado fisico, densidad, pH, solubilidad, notas, activo y obsoleto.
+- Gestion de alias desde la ficha seleccionada.
+- Historico de precios con alta de precio, moneda, unidad, proveedor, fuente y fecha.
+- Panel de importacion SAP con fichero, fuente, hoja, fecha de validez, preview y apply de filas listas.
+- Tipos frontend ampliados para reflejar el contrato real de backend.
+
+Validacion ejecutada:
+
+- `.venv\Scripts\python.exe -m pytest apps/api/tests/test_raw_material_sap_import.py apps/api/tests/test_api_foundation.py`
+  - Resultado: 18 passed, 1 warning de dependencia `fastapi.testclient`.
+- `npm run typecheck --workspace apps/web`
+  - Resultado: passed.
+- `npm run build:web`
+  - Resultado: passed.
+- Playwright headless contra `http://localhost:3000`
+  - Resultado: la app carga, redirige a `http://localhost:3000/login?next=%2F`, sin errores de consola.
+  - Limitacion: no se pudo validar visualmente el panel autenticado de materias primas en headless porque no hay sesion Supabase de QA disponible en este entorno.
+
+Pendiente para cerrar L7:
+
+- Crear seed o modo e2e autenticado para abrir `Materias primas` en Playwright.
+- Ejecutar flujo visual completo: abrir maestro, editar ficha, anadir precio, subir fixture SAP, preview y apply.
+- Validar responsive desktop/movil sobre la pantalla autenticada.
 
 ## Ramas y commits propuestos
 

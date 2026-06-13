@@ -14,6 +14,11 @@ type BuildWorkspaceRawMaterialsPanelPropsArgs = {
   createMaterial: RawMaterialsPanelProps["onCreateMaterial"];
   addFormulaLine: RawMaterialsPanelProps["onAddFormulaLine"];
   createAlias: RawMaterialsPanelProps["onCreateAlias"];
+  updateMaterial: RawMaterialsPanelProps["onUpdateMaterial"];
+  loadMaterialPriceHistory: RawMaterialsPanelProps["onLoadMaterialPriceHistory"];
+  addMaterialPrice: RawMaterialsPanelProps["onAddMaterialPrice"];
+  previewSapImport: RawMaterialsPanelProps["onPreviewSapImport"];
+  applySapImport: RawMaterialsPanelProps["onApplySapImport"];
 };
 
 export function buildWorkspaceRawMaterialsPanelProps(
@@ -31,5 +36,10 @@ export function buildWorkspaceRawMaterialsPanelProps(
     onCreateMaterial: args.createMaterial,
     onAddFormulaLine: args.addFormulaLine,
     onCreateAlias: args.createAlias,
+    onUpdateMaterial: args.updateMaterial,
+    onLoadMaterialPriceHistory: args.loadMaterialPriceHistory,
+    onAddMaterialPrice: args.addMaterialPrice,
+    onPreviewSapImport: args.previewSapImport,
+    onApplySapImport: args.applySapImport,
   };
 }
