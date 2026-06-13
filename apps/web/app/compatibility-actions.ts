@@ -1,11 +1,9 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import type { CompatibilityRuleRead } from "./compatibility-model";
 import type { CompatibilityRuleForm } from "./compatibility-state";
+import type { CalculationResult } from "./formula-model";
+import type { WorkspaceState } from "./workspace-state-model";
 import { request } from "./workspace-api";
-import type {
-  CalculationResult,
-  CompatibilityRuleRead,
-  WorkspaceState,
-} from "./workspace-model";
 
 type CompatibilityActionsOptions = {
   workspace: WorkspaceState;

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { CompatibilityRuleRead } from "./workspace-model";
+import type { CompatibilityRuleRead } from "./compatibility-model";
 
 export type CompatibilityRuleForm = {
   materialAId: string;
