@@ -154,6 +154,22 @@ class RawMaterialPriceCreate(BaseModel):
     valid_from: date | None = None
 
 
+class RawMaterialPriceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    raw_material_id: uuid.UUID
+    price: float
+    currency: str
+    unit: str
+    supplier: str | None
+    source: str
+    valid_from: date
+    valid_to: date | None
+    created_at: datetime
+
+
 class RawMaterialParameterValueCreate(BaseModel):
     parameter_id: uuid.UUID
     value: float

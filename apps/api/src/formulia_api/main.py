@@ -65,6 +65,13 @@ from .models import (
     User,
     utc_now,
 )
+from .raw_material_master import (
+    clean_raw_material_payload,
+    ensure_raw_material_identity_available,
+    ensure_valid_raw_material_price,
+    list_raw_material_prices,
+    normalize_name as normalize_raw_material_name,
+)
 from .schemas import (
     CalculationRead,
     CompatibilityRuleCreate,
@@ -85,6 +92,7 @@ from .schemas import (
     RawMaterialAliasRead,
     RawMaterialParameterValueCreate,
     RawMaterialPriceCreate,
+    RawMaterialPriceRead,
     RawMaterialRead,
     RawMaterialUpdate,
     AgentPlanRead,
@@ -320,10 +328,19 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        values = clean_raw_material_payload(payload.model_dump())
+        normalized_name = normalize_raw_material_name(values["name"])
+        ensure_raw_material_identity_available(
+            session,
+            tenant.tenant_id,
+            code=values.get("code"),
+            external_code=values.get("external_code"),
+            normalized_name=normalized_name,
+        )
         raw_material = RawMaterial(
             tenant_id=tenant.tenant_id,
-            normalized_name=_normalize(payload.name),
-            **payload.model_dump(),
+            normalized_name=normalized_name,
+            **values,
         )
         session.add(raw_material)
         session.commit()
@@ -351,9 +368,18 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         raw_material = _get_raw_material(session, tenant.tenant_id, raw_material_id)
-        updates = payload.model_dump(exclude_unset=True)
+        updates = clean_raw_material_payload(payload.model_dump(exclude_unset=True))
         if "name" in updates and updates["name"] is not None:
-            updates["normalized_name"] = _normalize(updates["name"])
+            updates["normalized_name"] = normalize_raw_material_name(updates["name"])
+        if updates.get("is_active", raw_material.is_active):
+            ensure_raw_material_identity_available(
+                session,
+                tenant.tenant_id,
+                code=updates.get("code", raw_material.code),
+                external_code=updates.get("external_code", raw_material.external_code),
+                normalized_name=updates.get("normalized_name", raw_material.normalized_name),
+                exclude_raw_material_id=raw_material.id,
+            )
         for key, value in updates.items():
             setattr(raw_material, key, value)
         raw_material.updated_at = utc_now()
@@ -406,6 +432,18 @@ def register_routes(app: FastAPI) -> None:
         session.refresh(raw_alias)
         return raw_alias
 
+    @app.get(
+        "/api/v1/raw-materials/{raw_material_id}/prices",
+        response_model=list[RawMaterialPriceRead],
+    )
+    def list_raw_material_price_history(
+        raw_material_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[RawMaterialPrice]:
+        _get_raw_material(session, tenant.tenant_id, raw_material_id)
+        return list_raw_material_prices(session, tenant.tenant_id, raw_material_id)
+
     @app.post("/api/v1/raw-materials/{raw_material_id}/prices", status_code=201)
     def add_raw_material_price(
         raw_material_id: uuid.UUID,
@@ -414,6 +452,7 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         _get_raw_material(session, tenant.tenant_id, raw_material_id)
+        ensure_valid_raw_material_price(payload.price)
         price = RawMaterialPrice(
             tenant_id=tenant.tenant_id,
             raw_material_id=raw_material_id,
