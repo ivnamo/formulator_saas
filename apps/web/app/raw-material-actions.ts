@@ -1,17 +1,18 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { request } from "./workspace-api";
 import {
-  buildRawMaterialCreatePayload,
-  buildRawMaterialParameterValuePayload,
-  buildRawMaterialPricePayload,
+  createRawMaterial,
+  createRawMaterialAlias,
+  createRawMaterialParameterValue,
+  createRawMaterialPrice,
+  fetchRawMaterialDetail,
+} from "./raw-material-api";
+import {
   mergeRawMaterials,
   toWorkspaceRawMaterial,
   withManualParameterValue,
   withRawMaterialAlias,
   type MaterialForm,
   type RawMaterial,
-  type RawMaterialAliasRead,
-  type RawMaterialRead,
 } from "./raw-material-model";
 import type { CalculationResult } from "./formula-model";
 import type { WorkspaceState } from "./workspace-state-model";
@@ -71,10 +72,7 @@ export function useRawMaterialActions({
       }
 
       try {
-        const material = await request<RawMaterialRead>(`/api/v1/raw-materials/${rawMaterialId}`, {
-          method: "GET",
-          headers,
-        });
+        const material = await fetchRawMaterialDetail(headers, rawMaterialId);
         const detailed = toWorkspaceRawMaterial(
           material,
           {
@@ -154,31 +152,19 @@ export function useRawMaterialActions({
     }
 
     await runAction("Creating raw material", async () => {
-      const material = await request<RawMaterialRead>("/api/v1/raw-materials", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(buildRawMaterialCreatePayload(materialForm)),
-      });
+      const material = await createRawMaterial(headers, materialForm);
       const price = parseOptionalNumber(materialForm.price);
       const parameterValue = parseOptionalNumber(materialForm.parameterValue);
 
       if (price !== null) {
-        await request<Record<string, unknown>>(`/api/v1/raw-materials/${material.id}/prices`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(buildRawMaterialPricePayload(price)),
-        });
+        await createRawMaterialPrice(headers, material.id, price);
       }
       if (workspace.parameter && parameterValue !== null) {
-        await request<Record<string, unknown>>(
-          `/api/v1/raw-materials/${material.id}/parameter-values`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify(
-              buildRawMaterialParameterValuePayload(workspace.parameter, parameterValue),
-            ),
-          },
+        await createRawMaterialParameterValue(
+          headers,
+          material.id,
+          workspace.parameter,
+          parameterValue,
         );
       }
 
@@ -238,14 +224,7 @@ export function useRawMaterialActions({
       }
 
       await runAction("Creating alias", async () => {
-        const created = await request<RawMaterialAliasRead>(
-          `/api/v1/raw-materials/${rawMaterialId}/aliases`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ alias }),
-          },
-        );
+        const created = await createRawMaterialAlias(headers, rawMaterialId, alias);
         setWorkspace((current) => ({
           ...current,
           rawMaterials: withRawMaterialAlias(current.rawMaterials, rawMaterialId, created.alias),
