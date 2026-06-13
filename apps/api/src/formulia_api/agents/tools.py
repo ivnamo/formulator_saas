@@ -97,7 +97,7 @@ def build_optimization_plan(
         if not target:
             continue
         has_coverage = any(
-            target in candidate.get("parameters", {})
+            _candidate_covers_technical_constraint(candidate, constraint)
             for candidate in candidates
         )
         if candidates and not has_coverage:
@@ -331,6 +331,34 @@ def _candidate_score(
         ):
             score += 0.08
     return round(max(0.0, min(score, 1.0)), 2)
+
+
+def _candidate_parameter_value(candidate: dict[str, Any], parameter_code: str) -> float:
+    parameter = candidate.get("parameters", {}).get(parameter_code)
+    if not isinstance(parameter, dict):
+        return 0.0
+    value = parameter.get("value")
+    return float(value) if isinstance(value, int | float) else 0.0
+
+
+def _candidate_covers_technical_constraint(
+    candidate: dict[str, Any],
+    constraint: dict[str, Any],
+) -> bool:
+    target = constraint.get("target")
+    if not isinstance(target, str):
+        return False
+
+    expected = constraint.get("value")
+    operator = constraint.get("operator")
+    value = _candidate_parameter_value(candidate, target)
+    if operator in {">", ">="} and isinstance(expected, int | float) and expected > 0:
+        return value > 0
+    if operator in {"<", "<="} and isinstance(expected, int | float):
+        return _satisfies(value, operator, expected)
+    if operator == "=" and isinstance(expected, int | float):
+        return _satisfies(value, operator, expected) or value > 0
+    return value > 0
 
 
 def _research_warnings(

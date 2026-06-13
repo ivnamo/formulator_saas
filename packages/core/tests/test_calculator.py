@@ -69,13 +69,38 @@ def test_missing_price_returns_no_official_price_total() -> None:
     assert WarningCode.MISSING_PRICE in {warning.code for warning in result.warnings}
 
 
-def test_warns_for_required_missing_parameter() -> None:
+def test_required_missing_parameter_is_treated_as_zero() -> None:
     result = calculate_formula(
         items=[FormulaItem(raw_material_id="rm-1", percentage=100)],
         raw_materials=[RawMaterial(id="rm-1", name="Active A", price=2.0)],
         required_parameter_codes={"viscosity"},
     )
 
-    assert result.parameters == {}
-    assert result.warnings[0].code == WarningCode.MISSING_PARAMETER
-    assert result.warnings[0].parameter_code == "viscosity"
+    assert result.parameters["viscosity"].value == 0.0
+    assert result.parameters["viscosity"].unit is None
+    assert result.warnings == ()
+
+
+def test_required_parameter_zero_keeps_unit_when_a_material_has_value() -> None:
+    result = calculate_formula(
+        items=[
+            FormulaItem(raw_material_id="rm-1", percentage=50),
+            FormulaItem(raw_material_id="rm-2", percentage=50),
+        ],
+        raw_materials=[
+            RawMaterial(
+                id="rm-1",
+                name="Active A",
+                price=2.0,
+                parameters={
+                    "boron": ParameterValue(code="boron", value=4.0, unit="% p/p"),
+                },
+            ),
+            RawMaterial(id="rm-2", name="Carrier B", price=1.0),
+        ],
+        required_parameter_codes={"boron"},
+    )
+
+    assert result.parameters["boron"].value == 2.0
+    assert result.parameters["boron"].unit == "% p/p"
+    assert result.warnings == ()

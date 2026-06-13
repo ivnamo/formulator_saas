@@ -71,7 +71,9 @@ def calculate_formula(
     total_percentage = sum(item.percentage for item in items)
     price_total = 0.0
     has_missing_price = False
-    weighted_parameters: dict[str, tuple[float, str | None]] = {}
+    weighted_parameters: dict[str, tuple[float, str | None]] = {
+        code: (0.0, None) for code in required_parameters
+    }
 
     if not isclose(
         total_percentage,
@@ -114,20 +116,6 @@ def calculate_formula(
         else:
             price_total += material.price * weight
 
-        for parameter_code in required_parameters:
-            if parameter_code not in material.parameters:
-                warnings.append(
-                    FormulaWarning(
-                        code=WarningCode.MISSING_PARAMETER,
-                        message=(
-                            f"Raw material {material.name} has no value for "
-                            f"parameter {parameter_code}."
-                        ),
-                        raw_material_id=material.id,
-                        parameter_code=parameter_code,
-                    )
-                )
-
         for parameter in material.parameters.values():
             current_value, current_unit = weighted_parameters.get(
                 parameter.code,
@@ -135,7 +123,7 @@ def calculate_formula(
             )
             weighted_parameters[parameter.code] = (
                 current_value + parameter.value * weight,
-                current_unit,
+                current_unit or parameter.unit,
             )
 
     parameters = {
