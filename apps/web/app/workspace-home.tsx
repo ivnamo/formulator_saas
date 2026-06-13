@@ -32,8 +32,11 @@ import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
 import { useJiraConnectionState } from "./jira-connection-state";
 import { WorkspaceAuthGate } from "./workspace-auth-gate";
+import { buildWorkspaceAiAssistantPanelProps } from "./workspace-ai-assistant-panel-props";
 import { buildWorkspaceCompatibilityPanelProps } from "./workspace-compatibility-panel-props";
+import { buildWorkspaceExcelImportPanelProps } from "./workspace-excel-import-panel-props";
 import { WorkspaceHomeView, type WorkspaceHomePanels } from "./workspace-home-view";
+import { buildWorkspaceLibraryPanelProps } from "./workspace-library-panel-props";
 import { useWorkspaceShellState } from "./workspace-shell-state";
 import { buildWorkspaceRawMaterialsPanelProps } from "./workspace-raw-materials-panel-props";
 import { buildWorkspaceSettingsPanelProps } from "./workspace-settings-panel-props";
@@ -581,7 +584,7 @@ export function WorkspaceHome() {
       setCompatibilityRuleForm,
       createCompatibilityRule,
     }),
-    library: {
+    library: buildWorkspaceLibraryPanelProps({
       formulas,
       calculationHistory,
       formulaCompareSelection,
@@ -596,14 +599,14 @@ export function WorkspaceHome() {
       comparisonConstraintIssueCount,
       visibleComparisonConstraintEvaluations,
       showOnlyConstraintIssues,
-      onSelectFormula: selectFormulaForComparison,
-      onRefreshLibrary: refreshFormulaLibrary,
-      onCompareSavedFormulas: compareSavedFormulas,
-      onOpenFormula: openFormula,
-      onUpdateConstraint: updateComparisonConstraint,
-      onShowOnlyConstraintIssuesChange: setShowOnlyConstraintIssues,
-    },
-    excelImport: {
+      selectFormulaForComparison,
+      refreshFormulaLibrary,
+      compareSavedFormulas,
+      openFormula,
+      updateComparisonConstraint,
+      setShowOnlyConstraintIssues,
+    }),
+    excelImport: buildWorkspaceExcelImportPanelProps({
       importPreview,
       importFileName,
       availableImportSheets,
@@ -613,15 +616,15 @@ export function WorkspaceHome() {
       canSelectImportSheet,
       canSaveImport,
       isBusy,
-      onSelectFile: selectExcelImportFile,
-      onPreviewSheet: previewSelectedImportSheet,
-      onSaveImport: saveExcelImport,
-      onResolveRow: resolveImportRow,
-      onCreateMaterialFromRow: createMaterialFromImportRow,
-      onAcceptSuggestion: acceptImportSuggestion,
-      onCreateAliasFromRow: createAliasFromImportRow,
-    },
-    aiAssistant: {
+      selectExcelImportFile,
+      previewSelectedImportSheet,
+      saveExcelImport,
+      resolveImportRow,
+      createMaterialFromImportRow,
+      acceptImportSuggestion,
+      createAliasFromImportRow,
+    }),
+    aiAssistant: buildWorkspaceAiAssistantPanelProps({
       requirementText,
       requirementParse,
       agentPlan,
@@ -630,13 +633,13 @@ export function WorkspaceHome() {
       canPlanRequirements,
       canEditTenantData,
       isBusy,
-      onRequirementTextChange: setRequirementText,
-      onParseRequirements: parseRequirements,
-      onPlanRequirements: planRequirements,
-      onRefreshAiRuns: refreshAiRuns,
-      onReuseInfeasibilityAction: reuseInfeasibilityAction,
-      onApplyOptimizerDraft: applyOptimizerDraft,
-    },
+      setRequirementText,
+      parseRequirements,
+      planRequirements,
+      refreshAiRuns,
+      reuseInfeasibilityAction,
+      applyOptimizerDraft,
+    }),
     formulaBuilder: buildFormulaBuilderPanelProps({
       workspace,
       builderSections,

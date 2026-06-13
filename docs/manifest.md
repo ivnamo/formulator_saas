@@ -154,6 +154,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_141_workspace_settings_panel_props.md`](00-meta/meta_141_workspace_settings_panel_props.md)
 - [`00-meta/meta_142_workspace_raw_materials_panel_props.md`](00-meta/meta_142_workspace_raw_materials_panel_props.md)
 - [`00-meta/meta_143_workspace_compatibility_panel_props.md`](00-meta/meta_143_workspace_compatibility_panel_props.md)
+- [`00-meta/meta_144_workspace_secondary_panel_props.md`](00-meta/meta_144_workspace_secondary_panel_props.md)
 
 ## Producto
 
