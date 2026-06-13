@@ -145,6 +145,13 @@ Slice implementado:
   - F10-01: 74 filas, 55 listas y 19 ambiguas por falta de solicitud/ID o producto.
   - F10-02: 125 ensayos listos.
   - F10-03: 46 hojas, 29 listas y 17 ambiguas por falta de `Formula OK`.
+- Importacion historica aplicada en remoto para tenant `atlantica-agricola` el 2026-06-13:
+  - F10-01: 54 proyectos creados, 1 actualizado, 19 filas ambiguas omitidas.
+  - F10-02: 124 ensayos creados, 1 actualizado, 0 ambiguos.
+  - F10-03: 28 validaciones creadas, 1 actualizada, 17 hojas ambiguas omitidas.
+  - Totales remotos tras importacion: 54 proyectos ISO, 124 ensayos F10-02 y 28 validaciones F10-03.
+  - Resultados F10-02: 78 `NOK`, 17 `OK_NO_LIBERADO`, 29 `LIBERADO`.
+  - Estado F10-03: 8 `published`, 20 `draft`.
 - UI ISO ampliada: seccion `Importacion historica` con selector de formato, fichero, hoja, preview y apply.
 - Script administrativo implementado: `scripts/configure_iso_tenant.py` activa ISO/Jira por tenant de forma idempotente.
 
