@@ -1,17 +1,20 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { request } from "./workspace-api";
 import {
-  buildJiraConnectionPayload,
   jiraConnectionFormFromRead,
   parseJiraJsonObject,
 } from "./jira-connection-model";
+import {
+  fetchJiraMetadata,
+  fetchJiraOAuthAuthorizeUrl,
+  listJiraConnections,
+  saveJiraConnectionConfig,
+  testJiraConnectionConfig,
+} from "./jira-connection-api";
 import type {
   JiraConnection,
   JiraConnectionForm,
-  JiraConnectionTest,
   JiraFieldMetadata,
   JiraMetadataState,
-  JiraOAuthAuthorize,
 } from "./jira-connection-model";
 import type { Status } from "./workspace-base-model";
 import type { WorkspaceState } from "./workspace-state-model";
@@ -54,10 +57,7 @@ export function useJiraConnectionActions({
         return;
       }
       const loadConnections = async () => {
-        const connections = await request<JiraConnection[]>("/api/v1/integrations/jira", {
-          method: "GET",
-          headers,
-        });
+        const connections = await listJiraConnections(headers);
         setJiraConnections(connections);
         const preferredConnection =
           connections.find((connection) => connection.is_active) ?? connections[0] ?? null;
@@ -100,18 +100,11 @@ export function useJiraConnectionActions({
     }
 
     await runAction("Saving Jira connection", async () => {
-      const payload = buildJiraConnectionPayload(jiraConnectionForm);
-      const connection = activeJiraConnection
-        ? await request<JiraConnection>(`/api/v1/integrations/jira/${activeJiraConnection.id}`, {
-            method: "PATCH",
-            headers,
-            body: JSON.stringify(payload),
-          })
-        : await request<JiraConnection>("/api/v1/integrations/jira", {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-          });
+      const connection = await saveJiraConnectionConfig(
+        headers,
+        activeJiraConnection?.id ?? null,
+        jiraConnectionForm,
+      );
       setJiraConnections((current) => [
         connection,
         ...current.filter((item) => item.id !== connection.id),
@@ -141,13 +134,7 @@ export function useJiraConnectionActions({
     }
 
     await runAction("Testing Jira configuration", async () => {
-      const result = await request<JiraConnectionTest>(
-        `/api/v1/integrations/jira/${activeJiraConnection.id}/test`,
-        {
-          method: "POST",
-          headers,
-        },
-      );
+      const result = await testJiraConnectionConfig(headers, activeJiraConnection.id);
       await refreshJiraConnections({ silent: true });
       setMessage(`${result.status}: ${result.message}`);
     });
@@ -162,26 +149,14 @@ export function useJiraConnectionActions({
       jiraConnectionForm.defaultProjectKey.trim() || activeJiraConnection.default_project_key;
     const issueType =
       jiraConnectionForm.defaultIssueType.trim() || activeJiraConnection.default_issue_type;
-    const query = new URLSearchParams({
-      project_key: projectKey,
-      issue_type: issueType,
-    });
 
     await runAction("Loading Jira metadata", async () => {
-      const [projects, issueTypes, fields] = await Promise.all([
-        request<JiraMetadataState["projects"]>(
-          `/api/v1/integrations/jira/${activeJiraConnection.id}/projects`,
-          { method: "GET", headers },
-        ),
-        request<JiraMetadataState["issueTypes"]>(
-          `/api/v1/integrations/jira/${activeJiraConnection.id}/issue-types?${query.toString()}`,
-          { method: "GET", headers },
-        ),
-        request<JiraMetadataState["fields"]>(
-          `/api/v1/integrations/jira/${activeJiraConnection.id}/fields?${query.toString()}`,
-          { method: "GET", headers },
-        ),
-      ]);
+      const { projects, issueTypes, fields } = await fetchJiraMetadata(
+        headers,
+        activeJiraConnection.id,
+        projectKey,
+        issueType,
+      );
       setJiraMetadata({ projectKey, issueType, projects, issueTypes, fields });
       setMessage(`Jira metadata loaded: ${fields.length} fields`);
     });
@@ -235,13 +210,7 @@ export function useJiraConnectionActions({
     }
 
     await runAction("Opening Jira authorization", async () => {
-      const authorization = await request<JiraOAuthAuthorize>(
-        "/api/v1/integrations/jira/oauth/authorize-url",
-        {
-          method: "GET",
-          headers,
-        },
-      );
+      const authorization = await fetchJiraOAuthAuthorizeUrl(headers);
       window.location.href = authorization.authorization_url;
     });
   }, [
