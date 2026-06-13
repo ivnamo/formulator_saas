@@ -1,6 +1,6 @@
 # Maestro de materias primas e importacion SAP
 
-Estado: MVP backend + UI maestro/import SAP implementado; validacion e2e autenticada pendiente
+Estado: MVP backend + UI maestro/import SAP implementado y validado con harness e2e
 Fecha: 2026-06-13
 Rama documental: `codex/raw-material-master-sap-plan`
 Rama implementacion: `codex/raw-material-master-sap-mvp`
@@ -463,7 +463,7 @@ UX minima:
 | L4 | Backend import | Preview, matching, diff, apply | Hecho |
 | L5 | UI maestro | Tabla, filtros, ficha, edicion | Hecho |
 | L6 | UI import SAP | Upload, preview, revision, apply | Hecho |
-| L7 | Testing | Unit/API/import/frontend/Playwright | Parcial |
+| L7 | Testing | Unit/API/import/frontend/Playwright | Hecho |
 | L8 | Migracion Atlantica | Validar 373 materias y siguiente Excel SAP | Planificado |
 | L9 | Rollout | PRs pequenos, rollback, documentacion | Planificado |
 
@@ -499,6 +499,8 @@ Frontend implementado:
 - Historico de precios con alta de precio, moneda, unidad, proveedor, fuente y fecha.
 - Panel de importacion SAP con fichero, fuente, hoja, fecha de validez, preview y apply de filas listas.
 - Tipos frontend ampliados para reflejar el contrato real de backend.
+- Harness Playwright gated en `/e2e/raw-materials`, accesible solo con `FORMULIA_E2E_AUTH_BYPASS=1`.
+- Script repetible `npm run e2e:raw-materials` para validar el modulo sin credenciales Supabase ni API real.
 
 Validacion ejecutada:
 
@@ -508,15 +510,16 @@ Validacion ejecutada:
   - Resultado: passed.
 - `npm run build:web`
   - Resultado: passed.
-- Playwright headless contra `http://localhost:3000`
-  - Resultado: la app carga, redirige a `http://localhost:3000/login?next=%2F`, sin errores de consola.
-  - Limitacion: no se pudo validar visualmente el panel autenticado de materias primas en headless porque no hay sesion Supabase de QA disponible en este entorno.
+- `FORMULIA_E2E_AUTH_BYPASS=1 npm --workspace apps/web run start -- -H 127.0.0.1 -p 3102`
+  - Resultado: servidor de produccion local listo.
+- `RAW_MATERIALS_E2E_URL=http://127.0.0.1:3102 npm run e2e:raw-materials`
+  - Resultado: passed.
+  - Cobertura: abrir maestro, filtrar materia, abrir ficha, editar codigo SAP, guardar maestro, anadir precio, subir fixture SAP, preview, apply y capturas desktop/movil.
 
-Pendiente para cerrar L7:
+Pendiente no bloqueante para cerrar validacion real de tenant:
 
-- Crear seed o modo e2e autenticado para abrir `Materias primas` en Playwright.
-- Ejecutar flujo visual completo: abrir maestro, editar ficha, anadir precio, subir fixture SAP, preview y apply.
-- Validar responsive desktop/movil sobre la pantalla autenticada.
+- Ejecutar el mismo flujo contra una sesion QA Supabase real cuando existan credenciales/seed.
+- Probar un Excel SAP real de Atlantica y registrar resumen antes/despues.
 
 ## Ramas y commits propuestos
 

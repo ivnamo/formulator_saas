@@ -849,6 +849,7 @@ label span {
 .formulaLines,
 .importTable {
   display: grid;
+  min-width: 0;
 }
 
 .materialHead,
@@ -983,6 +984,10 @@ label span {
   align-items: start;
 }
 
+.materialMasterGrid > * {
+  min-width: 0;
+}
+
 .materialMasterHead,
 .materialMasterRow {
   grid-template-columns:
@@ -1063,6 +1068,12 @@ label span {
   gap: 10px;
 }
 
+.materialDetailForm label,
+.priceForm label,
+.sapImportControls label {
+  min-width: 0;
+}
+
 .materialDetailForm .wide {
   grid-column: 1 / -1;
 }
@@ -1131,6 +1142,14 @@ label span {
   grid-template-columns:
     minmax(90px, 0.5fr) minmax(78px, 0.38fr) minmax(70px, 0.35fr) minmax(120px, 0.7fr)
     minmax(110px, 0.55fr) minmax(130px, 0.6fr) auto;
+}
+
+.materialDetail .priceForm {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.materialDetail .priceForm .secondaryButton {
+  width: fit-content;
 }
 
 .priceHistoryList {

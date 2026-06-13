@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PREFIXES = ["/login", "/reset-password", "/update-password", "/auth/callback"];
+const E2E_PUBLIC_PREFIXES = ["/e2e"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -30,8 +31,11 @@ export async function proxy(request: NextRequest) {
   const isPublicPath = PUBLIC_PREFIXES.some((prefix) =>
     request.nextUrl.pathname.startsWith(prefix),
   );
+  const isE2EPublicPath =
+    process.env.FORMULIA_E2E_AUTH_BYPASS === "1" &&
+    E2E_PUBLIC_PREFIXES.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
 
-  if (!user && !isPublicPath) {
+  if (!user && !isPublicPath && !isE2EPublicPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", request.nextUrl.pathname);
