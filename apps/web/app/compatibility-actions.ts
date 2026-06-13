@@ -1,9 +1,9 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { createCompatibilityRuleApi } from "./compatibility-api";
 import type { CompatibilityRuleRead } from "./compatibility-model";
 import type { CompatibilityRuleForm } from "./compatibility-state";
 import type { CalculationResult } from "./formula-model";
 import type { WorkspaceState } from "./workspace-state-model";
-import { request } from "./workspace-api";
 
 type CompatibilityActionsOptions = {
   workspace: WorkspaceState;
@@ -48,16 +48,12 @@ export function useCompatibilityActions({
     }
 
     await runAction("Creating compatibility rule", async () => {
-      const rule = await request<CompatibilityRuleRead>("/api/v1/compatibility-rules", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          material_a_id: compatibilityRuleForm.materialAId,
-          material_b_id: compatibilityRuleForm.materialBId,
-          severity: compatibilityRuleForm.severity,
-          message,
-          recommended_action: compatibilityRuleForm.recommendedAction.trim() || null,
-        }),
+      const rule = await createCompatibilityRuleApi(headers, {
+        material_a_id: compatibilityRuleForm.materialAId,
+        material_b_id: compatibilityRuleForm.materialBId,
+        severity: compatibilityRuleForm.severity,
+        message,
+        recommended_action: compatibilityRuleForm.recommendedAction.trim() || null,
       });
       setCompatibilityRules((current) => [rule, ...current]);
       setCompatibilityRuleForm((current) => ({
