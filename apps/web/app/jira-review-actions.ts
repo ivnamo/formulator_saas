@@ -1,5 +1,12 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { apiUrl, request } from "./workspace-api";
+import {
+  createJiraFormulaReview,
+  downloadFormulaReviewArtifactBlob,
+  generateJiraReviewExcelArtifact,
+  retryJiraReviewExcelAttachment,
+  sendFormulaReviewToJira,
+  syncFormulaReviewJiraStatus,
+} from "./jira-review-api";
 import type {
   CalculationResult,
   FormulaReviewArtifact,
@@ -62,26 +69,14 @@ export function useJiraReviewActions({
       setError("ProyectoID is required before sending to Jira");
       return;
     }
+    const formulaId = workspace.formulaId;
 
     await runAction("Sending formula to Jira", async () => {
       const existingDraftReview = formulaReviewRequests.find((review) => !review.jira_issue_key);
       const review =
         existingDraftReview ??
-        (await request<FormulaReviewRequest>(
-          `/api/v1/formulas/${workspace.formulaId}/reviews/jira`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({}),
-          },
-        ));
-      const sentReview = await request<FormulaReviewRequest>(
-        `/api/v1/formula-reviews/${review.id}/jira/send`,
-        {
-          method: "POST",
-          headers,
-        },
-      );
+        (await createJiraFormulaReview(headers, formulaId));
+      const sentReview = await sendFormulaReviewToJira(headers, review.id);
       setFormulaReviewRequests((current) => [
         sentReview,
         ...current.filter((item) => item.id !== sentReview.id),
@@ -107,13 +102,7 @@ export function useJiraReviewActions({
   const generateJiraReviewExcel = useCallback(
     async (reviewId: string) => {
       await runAction("Generating Jira Excel", async () => {
-        const artifact = await request<FormulaReviewArtifact>(
-          `/api/v1/formula-reviews/${reviewId}/artifacts/excel`,
-          {
-            method: "POST",
-            headers,
-          },
-        );
+        const artifact = await generateJiraReviewExcelArtifact(headers, reviewId);
         setFormulaReviewArtifacts((current) => ({
           ...current,
           [reviewId]: [
@@ -130,14 +119,9 @@ export function useJiraReviewActions({
   const downloadJiraReviewArtifact = useCallback(
     async (artifact: FormulaReviewArtifact) => {
       await runAction("Downloading Jira Excel", async () => {
-        const response = await fetch(
-          `${apiUrl}/api/v1/formula-review-artifacts/${artifact.id}/download`,
-          { method: "GET", headers: uploadHeaders },
+        const blobUrl = URL.createObjectURL(
+          await downloadFormulaReviewArtifactBlob(uploadHeaders, artifact.id),
         );
-        if (!response.ok) {
-          throw new Error(`API ${response.status}: ${await response.text()}`);
-        }
-        const blobUrl = URL.createObjectURL(await response.blob());
         const link = document.createElement("a");
         link.href = blobUrl;
         link.download = artifact.file_name;
@@ -154,13 +138,7 @@ export function useJiraReviewActions({
   const sendJiraReviewToJira = useCallback(
     async (reviewId: string) => {
       await runAction("Sending Jira review", async () => {
-        const review = await request<FormulaReviewRequest>(
-          `/api/v1/formula-reviews/${reviewId}/jira/send`,
-          {
-            method: "POST",
-            headers,
-          },
-        );
+        const review = await sendFormulaReviewToJira(headers, reviewId);
         setFormulaReviewRequests((current) =>
           current.map((item) => (item.id === review.id ? review : item)),
         );
@@ -174,13 +152,7 @@ export function useJiraReviewActions({
   const retryJiraReviewAttachment = useCallback(
     async (reviewId: string) => {
       await runAction("Retrying Jira Excel attachment", async () => {
-        const review = await request<FormulaReviewRequest>(
-          `/api/v1/formula-reviews/${reviewId}/jira/retry-attachment`,
-          {
-            method: "POST",
-            headers,
-          },
-        );
+        const review = await retryJiraReviewExcelAttachment(headers, reviewId);
         setFormulaReviewRequests((current) =>
           current.map((item) => (item.id === review.id ? review : item)),
         );
@@ -194,13 +166,7 @@ export function useJiraReviewActions({
   const syncJiraReviewStatus = useCallback(
     async (reviewId: string) => {
       await runAction("Syncing Jira review", async () => {
-        const review = await request<FormulaReviewRequest>(
-          `/api/v1/formula-reviews/${reviewId}/sync`,
-          {
-            method: "POST",
-            headers,
-          },
-        );
+        const review = await syncFormulaReviewJiraStatus(headers, reviewId);
         setFormulaReviewRequests((current) =>
           current.map((item) => (item.id === review.id ? review : item)),
         );

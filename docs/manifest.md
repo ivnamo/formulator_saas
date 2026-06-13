@@ -142,6 +142,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_129_workspace_settings_api_client.md`](00-meta/meta_129_workspace_settings_api_client.md)
 - [`00-meta/meta_130_raw_material_api_client.md`](00-meta/meta_130_raw_material_api_client.md)
 - [`00-meta/meta_131_jira_connection_api_client.md`](00-meta/meta_131_jira_connection_api_client.md)
+- [`00-meta/meta_132_jira_review_api_client.md`](00-meta/meta_132_jira_review_api_client.md)
 
 ## Producto
 
