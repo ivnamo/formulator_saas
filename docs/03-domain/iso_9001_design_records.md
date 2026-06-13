@@ -129,7 +129,7 @@ Slice implementado:
 - Backend ISO tenant-scoped: `iso_tenant_settings`, `iso_design_projects`, `iso_design_trials`, `iso_product_validations`, `iso_record_artifacts`.
 - Endpoints ISO: settings, CRUD inicial de proyectos F10-01, listado/alta de ensayos F10-02, alta desde Jira review, validacion final F10-03, exports F10 y dossier ZIP.
 - Guard de activacion: los endpoints operativos devuelven `403` si el tenant no tiene ISO activo.
-- Configuracion activa y verificada en local para tenant `atlantica-agricola`; remoto previamente configurado, con re-verificacion actual bloqueada por limite de conexiones del pool Supabase.
+- Configuracion activa y verificada en local y remoto para tenant `atlantica-agricola`.
 - Jira bridge base: sync de `Resultado I+D` desde Jira, normalizacion tecnica en snapshot y validacion por issue type real.
 - Frontend inicial: panel `ISO 9001` dentro del shell, resumen de tenant, formulario de alta F10-01 y tabla que separa F10-01/F10-02/F10-03.
 - Bridge Jira/ISO implementado: `POST /api/v1/formulas/{formula_id}/reviews/jira` acepta `design_project_id` opcional, guarda bloque `iso` en el snapshot y crea/actualiza un ensayo F10-02 asociado.
@@ -152,8 +152,17 @@ Slice implementado:
   - Totales remotos tras importacion: 54 proyectos ISO, 124 ensayos F10-02 y 28 validaciones F10-03.
   - Resultados F10-02: 78 `NOK`, 17 `OK_NO_LIBERADO`, 29 `LIBERADO`.
   - Estado F10-03: 8 `published`, 20 `draft`.
+- Backfill F10-01 desde Jira 2026 aplicado en remoto para tenant `atlantica-agricola` el 2026-06-13:
+  - Jira consultado con JQL `project = ID AND created >= "2026-01-01" AND created < "2027-01-01"`.
+  - 240 issues revisados, agrupados por `ProyectoID` (`customfield_10658`).
+  - 53 expedientes F10-01 creados desde Jira con `source_type = jira_backfill`.
+  - 10 issues omitidos porque no tenian `ProyectoID`; quedan para revision manual porque no hay agrupador ISO fiable.
+  - Estado F10-01: 50 `in_progress` y 3 `finished`.
+  - Expedientes `finished`: `ARCHER OSMOCARE MARRUECOS`, `KELKAT KBNI ACIDO`, `MICROCAT K NEUTRO AA`.
+  - Totales remotos tras backfill: 107 proyectos ISO, de los cuales 53 son de 2026.
 - UI ISO ampliada: seccion `Importacion historica` con selector de formato, fichero, hoja, preview y apply.
 - Script administrativo implementado: `scripts/configure_iso_tenant.py` activa ISO/Jira por tenant de forma idempotente.
+- Script administrativo implementado: `scripts/backfill_iso_f1001_from_jira.py` permite preview/apply de F10-01 anual desde Jira, agrupando por `ProyectoID` y conservando trazabilidad de issues en comentarios.
 
 Pendiente para convertirlo en flujo auditor completo:
 
