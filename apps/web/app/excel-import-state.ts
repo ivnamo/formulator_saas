@@ -3,7 +3,7 @@ import {
   withResolvedImportRow,
   type ExcelImportPreview,
   type ExcelImportSheets,
-} from "./workspace-model";
+} from "./excel-import-model";
 
 export function useExcelImportState() {
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);

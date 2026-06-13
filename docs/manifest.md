@@ -127,6 +127,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_114_workspace_base_model.md`](00-meta/meta_114_workspace_base_model.md)
 - [`00-meta/meta_115_formula_builder_domain_imports.md`](00-meta/meta_115_formula_builder_domain_imports.md)
 - [`00-meta/meta_116_formula_library_domain_imports.md`](00-meta/meta_116_formula_library_domain_imports.md)
+- [`00-meta/meta_117_excel_import_domain_imports.md`](00-meta/meta_117_excel_import_domain_imports.md)
 
 ## Producto
 

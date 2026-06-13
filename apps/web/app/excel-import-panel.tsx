@@ -3,8 +3,8 @@ import {
   aliasFromImportRow,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
-  type RawMaterial,
-} from "./workspace-model";
+} from "./excel-import-model";
+import type { RawMaterial } from "./raw-material-model";
 
 type ExcelImportPanelProps = {
   active: boolean;
