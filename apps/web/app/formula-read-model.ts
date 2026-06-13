@@ -1,9 +1,9 @@
 import {
   emptyWorkspace,
-  makeLocalId,
-  type FormulaRead,
   type WorkspaceState,
-} from "./workspace-model";
+} from "./workspace-state-model";
+import type { FormulaRead } from "./formula-model";
+import { makeLocalId } from "./workspace-utils";
 
 export type EditableFormulaMetadata = Pick<
   WorkspaceState,

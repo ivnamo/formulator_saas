@@ -1,4 +1,4 @@
-import type { RawMaterial } from "./workspace-model";
+import type { RawMaterial } from "./raw-material-model";
 
 export const PARAMETER_FAMILIES: Record<string, string[]> = {
   Macronutriente: ["Ntotal", "Norg", "Nnitr", "Nure", "Namo", "K2O", "P2O5"],

@@ -1,9 +1,6 @@
 import { useState } from "react";
-import {
-  emptyWorkspace,
-  type TenantInvitationRead,
-  type WorkspaceState,
-} from "./workspace-model";
+import type { TenantInvitationRead } from "./workspace-base-model";
+import { emptyWorkspace, type WorkspaceState } from "./workspace-state-model";
 import {
   defaultInvitationForm,
   defaultParameterForm,

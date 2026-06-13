@@ -1,60 +1,15 @@
-import type { RawMaterial } from "./raw-material-model";
+export type {
+  FormulaLine,
+  Parameter,
+  ParameterRead,
+  Status,
+  Tenant,
+  TenantInvitationRead,
+  TenantRead,
+} from "./workspace-base-model";
 
-export type Tenant = {
-  id: string;
-  name: string;
-  slug: string;
-  role?: string | null;
-};
-
-export type Parameter = {
-  id: string;
-  code: string;
-  name: string;
-  unit: string;
-};
-
-export type FormulaLine = {
-  localId: string;
-  rawMaterialId: string;
-  percentage: number;
-};
-
-export type WorkspaceState = {
-  tenant: Tenant | null;
-  parameter: Parameter | null;
-  parameters: Parameter[];
-  rawMaterials: RawMaterial[];
-  formulaId: string | null;
-  formulaName: string;
-  formulaJiraProjectId: string;
-  formulaJiraIssueType: string;
-  formulaJiraProductType: string;
-  formulaLines: FormulaLine[];
-};
-
-export type TenantRead = Tenant & {
-  status: string;
-};
-
-export type TenantInvitationRead = {
-  id: string;
-  tenant_id: string;
-  email: string;
-  role: string;
-  status: string;
-  invited_by: string | null;
-  accepted_by: string | null;
-  expires_at: string | null;
-  created_at: string;
-  accepted_at: string | null;
-  email_delivery_status?: string | null;
-};
-
-export type ParameterRead = Parameter & {
-  tenant_id: string;
-  is_active: boolean;
-};
+export { emptyWorkspace } from "./workspace-state-model";
+export type { WorkspaceState } from "./workspace-state-model";
 
 export {
   mergeRawMaterials,
@@ -117,21 +72,6 @@ export type {
   RequirementConstraint,
   RequirementParse,
 } from "./ai-workflow-model";
-
-export type Status = "idle" | "working" | "error";
-
-export const emptyWorkspace: WorkspaceState = {
-  tenant: null,
-  parameter: null,
-  parameters: [],
-  rawMaterials: [],
-  formulaId: null,
-  formulaName: "Manual Formula",
-  formulaJiraProjectId: "",
-  formulaJiraIssueType: "Calidad",
-  formulaJiraProductType: "Nuevo",
-  formulaLines: [],
-};
 
 export {
   formatDateTime,

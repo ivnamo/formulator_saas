@@ -1,9 +1,9 @@
 import {
   normalizeCode,
   slugify,
-  type ParameterRead,
-  type WorkspaceState,
-} from "./workspace-model";
+} from "./workspace-utils";
+import type { ParameterRead } from "./workspace-base-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 export type InvitationForm = {
   email: string;

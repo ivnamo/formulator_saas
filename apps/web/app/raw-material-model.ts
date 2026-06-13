@@ -1,6 +1,4 @@
-import type {
-  Parameter,
-} from "./workspace-model";
+import type { Parameter } from "./workspace-base-model";
 
 export type RawMaterial = {
   id: string;
