@@ -32,6 +32,7 @@ import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
 import { useJiraConnectionState } from "./jira-connection-state";
 import { WorkspaceAuthGate } from "./workspace-auth-gate";
+import { buildWorkspaceCompatibilityPanelProps } from "./workspace-compatibility-panel-props";
 import { WorkspaceHomeView, type WorkspaceHomePanels } from "./workspace-home-view";
 import { useWorkspaceShellState } from "./workspace-shell-state";
 import { buildWorkspaceRawMaterialsPanelProps } from "./workspace-raw-materials-panel-props";
@@ -570,16 +571,16 @@ export function WorkspaceHome() {
       addFormulaLine,
       createAlias,
     }),
-    compatibility: {
+    compatibility: buildWorkspaceCompatibilityPanelProps({
       rules: compatibilityRules,
       rawMaterials: workspace.rawMaterials,
       rawMaterialsById,
       form: compatibilityRuleForm,
       canEditTenantData,
       canCreateRule: canCreateCompatibilityRule,
-      onFormChange: setCompatibilityRuleForm,
-      onCreateRule: createCompatibilityRule,
-    },
+      setCompatibilityRuleForm,
+      createCompatibilityRule,
+    }),
     library: {
       formulas,
       calculationHistory,
