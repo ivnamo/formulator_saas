@@ -1,7 +1,6 @@
 "use client";
 
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
-import { buildFormulaBuilderPanelProps } from "./formula-builder-panel-props";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
 import { useFormulaBuilderUiState } from "./formula-builder-ui-state";
@@ -32,14 +31,9 @@ import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
 import { useJiraConnectionState } from "./jira-connection-state";
 import { WorkspaceAuthGate } from "./workspace-auth-gate";
-import { buildWorkspaceAiAssistantPanelProps } from "./workspace-ai-assistant-panel-props";
-import { buildWorkspaceCompatibilityPanelProps } from "./workspace-compatibility-panel-props";
-import { buildWorkspaceExcelImportPanelProps } from "./workspace-excel-import-panel-props";
-import { WorkspaceHomeView, type WorkspaceHomePanels } from "./workspace-home-view";
-import { buildWorkspaceLibraryPanelProps } from "./workspace-library-panel-props";
+import { WorkspaceHomeView } from "./workspace-home-view";
+import { buildWorkspaceHomePanels } from "./workspace-home-panels";
 import { useWorkspaceShellState } from "./workspace-shell-state";
-import { buildWorkspaceRawMaterialsPanelProps } from "./workspace-raw-materials-panel-props";
-import { buildWorkspaceSettingsPanelProps } from "./workspace-settings-panel-props";
 
 export function WorkspaceHome() {
   const {
@@ -526,8 +520,8 @@ export function WorkspaceHome() {
     return <WorkspaceAuthGate />;
   }
 
-  const panels = {
-    settings: buildWorkspaceSettingsPanelProps({
+  const panels = buildWorkspaceHomePanels({
+    settings: {
       workspace,
       workspaceName,
       sessionEmail: session.user.email,
@@ -560,8 +554,8 @@ export function WorkspaceHome() {
       authorizeJiraOAuth,
       setJiraMappingKey,
       mapJiraField,
-    }),
-    rawMaterials: buildWorkspaceRawMaterialsPanelProps({
+    },
+    rawMaterials: {
       rawMaterials: workspace.rawMaterials,
       parameter: workspace.parameter,
       materialForm,
@@ -573,8 +567,8 @@ export function WorkspaceHome() {
       createMaterial,
       addFormulaLine,
       createAlias,
-    }),
-    compatibility: buildWorkspaceCompatibilityPanelProps({
+    },
+    compatibility: {
       rules: compatibilityRules,
       rawMaterials: workspace.rawMaterials,
       rawMaterialsById,
@@ -583,8 +577,8 @@ export function WorkspaceHome() {
       canCreateRule: canCreateCompatibilityRule,
       setCompatibilityRuleForm,
       createCompatibilityRule,
-    }),
-    library: buildWorkspaceLibraryPanelProps({
+    },
+    library: {
       formulas,
       calculationHistory,
       formulaCompareSelection,
@@ -605,8 +599,8 @@ export function WorkspaceHome() {
       openFormula,
       updateComparisonConstraint,
       setShowOnlyConstraintIssues,
-    }),
-    excelImport: buildWorkspaceExcelImportPanelProps({
+    },
+    excelImport: {
       importPreview,
       importFileName,
       availableImportSheets,
@@ -623,8 +617,8 @@ export function WorkspaceHome() {
       createMaterialFromImportRow,
       acceptImportSuggestion,
       createAliasFromImportRow,
-    }),
-    aiAssistant: buildWorkspaceAiAssistantPanelProps({
+    },
+    aiAssistant: {
       requirementText,
       requirementParse,
       agentPlan,
@@ -639,8 +633,8 @@ export function WorkspaceHome() {
       refreshAiRuns,
       reuseInfeasibilityAction,
       applyOptimizerDraft,
-    }),
-    formulaBuilder: buildFormulaBuilderPanelProps({
+    },
+    formulaBuilder: {
       workspace,
       builderSections,
       totalPercentage,
@@ -723,9 +717,9 @@ export function WorkspaceHome() {
       duplicateFormulaLine,
       removeFormulaLine,
       saveFormula,
-    }),
+    },
     results: { result },
-  } satisfies WorkspaceHomePanels;
+  });
 
   return (
     <WorkspaceHomeView
