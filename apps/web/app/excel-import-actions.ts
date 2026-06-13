@@ -1,20 +1,23 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { request } from "./workspace-api";
+import {
+  createImportRawMaterial,
+  createImportRawMaterialAlias,
+  fetchExcelImportPreview,
+  fetchExcelImportSheets,
+  saveExcelImportedFormula,
+} from "./excel-import-api";
 import { toEditableFormulaState } from "./formula-read-model";
-import { buildImportedFormulaSavePayload } from "./formula-save-model";
 import {
   aliasFromImportRow,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
   type ExcelImportSheets,
 } from "./excel-import-model";
-import type { CalculationResult, FormulaRead } from "./formula-model";
+import type { CalculationResult } from "./formula-model";
 import {
   mergeRawMaterials,
   toWorkspaceRawMaterial,
   withRawMaterialAlias,
-  type RawMaterialAliasRead,
-  type RawMaterialRead,
 } from "./raw-material-model";
 import type { DraftReviewState, SavedFormulaComparison } from "./workspace-comparison";
 import type { WorkspaceState } from "./workspace-state-model";
@@ -65,31 +68,14 @@ export function useExcelImportActions({
   setMessage,
 }: ExcelImportActionsOptions) {
   const listExcelImportSheets = useCallback(
-    async (file: File): Promise<ExcelImportSheets> => {
-      const formData = new FormData();
-      formData.append("file", file);
-      return request<ExcelImportSheets>("/api/v1/imports/formulas/excel/sheets", {
-        method: "POST",
-        headers: uploadHeaders,
-        body: formData,
-      });
-    },
+    async (file: File): Promise<ExcelImportSheets> =>
+      fetchExcelImportSheets(uploadHeaders, file),
     [uploadHeaders],
   );
 
   const requestExcelImportPreview = useCallback(
-    async (file: File, sheetName: string): Promise<ExcelImportPreview> => {
-      const formData = new FormData();
-      formData.append("file", file);
-      if (sheetName) {
-        formData.append("sheet_name", sheetName);
-      }
-      return request<ExcelImportPreview>("/api/v1/imports/formulas/excel/preview", {
-        method: "POST",
-        headers: uploadHeaders,
-        body: formData,
-      });
-    },
+    async (file: File, sheetName: string): Promise<ExcelImportPreview> =>
+      fetchExcelImportPreview(uploadHeaders, file, sheetName),
     [uploadHeaders],
   );
 
@@ -162,13 +148,12 @@ export function useExcelImportActions({
     }
 
     await runAction("Saving imported formula", async () => {
-      const formula = await request<FormulaRead>("/api/v1/imports/formulas/excel/save", {
-        method: "POST",
+      const formula = await saveExcelImportedFormula(
         headers,
-        body: JSON.stringify(
-          buildImportedFormulaSavePayload(workspace.tenant?.name, workspace, importPreview.rows),
-        ),
-      });
+        workspace.tenant?.name,
+        workspace,
+        importPreview.rows,
+      );
       setWorkspace((current) => ({
         ...current,
         ...toEditableFormulaState(formula),
@@ -234,14 +219,7 @@ export function useExcelImportActions({
       }
 
       await runAction("Creating material from import row", async () => {
-        const material = await request<RawMaterialRead>("/api/v1/raw-materials", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            code: materialCode || null,
-            name,
-          }),
-        });
+        const material = await createImportRawMaterial(headers, materialCode, name);
         setWorkspace((current) => ({
           ...current,
           rawMaterials: mergeRawMaterials(current.rawMaterials, [
@@ -285,14 +263,7 @@ export function useExcelImportActions({
       }
 
       await runAction("Creating import alias", async () => {
-        const created = await request<RawMaterialAliasRead>(
-          `/api/v1/raw-materials/${rawMaterialId}/aliases`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ alias, source: "excel_import" }),
-          },
-        );
+        const created = await createImportRawMaterialAlias(headers, rawMaterialId, alias);
         setWorkspace((current) => ({
           ...current,
           rawMaterials: withRawMaterialAlias(
