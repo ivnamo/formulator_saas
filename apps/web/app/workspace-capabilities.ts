@@ -3,14 +3,13 @@ import type { CompatibilityRuleForm } from "./compatibility-state";
 import type { DraftReviewState } from "./workspace-comparison";
 import { isTenantAdminRole } from "./tenant-roles";
 import type { FormulaCompareSelection } from "./saved-formula-comparison-state";
+import type { ExcelImportPreview } from "./excel-import-model";
+import type { CalculationResult } from "./formula-model";
+import type { JiraConnection, JiraConnectionForm } from "./jira-connection-model";
+import type { Status } from "./workspace-base-model";
 import type {
-  CalculationResult,
-  ExcelImportPreview,
-  JiraConnection,
-  JiraConnectionForm,
-  Status,
   WorkspaceState,
-} from "./workspace-model";
+} from "./workspace-state-model";
 
 type WorkspaceCapabilitiesOptions = {
   workspace: WorkspaceState;

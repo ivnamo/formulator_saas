@@ -2,15 +2,14 @@ import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { request } from "./workspace-api";
 import { getSupabaseBrowserClient } from "./supabase-client";
 import { isTenantAdminRole } from "./tenant-roles";
-import {
-  emptyWorkspace,
-  type CalculationResult,
-  type ParameterRead,
-  type Status,
-  type TenantInvitationRead,
-  type TenantRead,
-  type WorkspaceState,
-} from "./workspace-model";
+import type { CalculationResult } from "./formula-model";
+import type {
+  ParameterRead,
+  Status,
+  TenantInvitationRead,
+  TenantRead,
+} from "./workspace-base-model";
+import { emptyWorkspace, type WorkspaceState } from "./workspace-state-model";
 import type { ComparisonConstraintField } from "./saved-formula-comparison-state";
 import {
   buildParameterCreatePayload,

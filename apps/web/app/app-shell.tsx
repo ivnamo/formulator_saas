@@ -13,7 +13,8 @@ import {
   UserCircle,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import type { Status, WorkspaceState } from "./workspace-model";
+import type { Status } from "./workspace-base-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 export type WorkspaceView =
   | "formula"

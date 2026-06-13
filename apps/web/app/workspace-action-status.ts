@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { Status } from "./workspace-model";
+import type { Status } from "./workspace-base-model";
 
 export function useWorkspaceActionStatus() {
   const [status, setStatus] = useState<Status>("idle");

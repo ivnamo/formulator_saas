@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "./supabase-client";
-import type { WorkspaceState } from "./workspace-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 type AuthenticatedWorkspaceLoadOptions = {
   session: Session | null;

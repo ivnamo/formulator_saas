@@ -8,10 +8,10 @@ import type {
   JiraConnectionForm,
   JiraFieldMetadata,
   JiraMetadataState,
-  TenantInvitationRead,
-  WorkspaceState,
-} from "./workspace-model";
+} from "./jira-connection-model";
+import type { TenantInvitationRead } from "./workspace-base-model";
 import type { InvitationForm, ParameterForm } from "./workspace-core-state";
+import type { WorkspaceState } from "./workspace-state-model";
 import { JiraIntegrationPanel } from "./jira-integration-panel";
 
 type SettingsPanelProps = {

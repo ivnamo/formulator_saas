@@ -1,7 +1,8 @@
 import { AppShell, type WorkspaceView } from "./app-shell";
 import type { WorkspacePanelsProps } from "./workspace-panels";
 import { WorkspacePanels } from "./workspace-panels";
-import type { Status, WorkspaceState } from "./workspace-model";
+import type { Status } from "./workspace-base-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 export type WorkspaceHomePanels = Omit<WorkspacePanelsProps, "activeView">;
 
