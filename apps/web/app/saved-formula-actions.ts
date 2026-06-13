@@ -13,6 +13,10 @@ import {
   listSavedFormulas,
   persistSavedFormula,
 } from "./saved-formula-api";
+import {
+  getFormulaSaveBlocker,
+  resolveSavedFormulaComparisonPair,
+} from "./saved-formula-action-guards";
 import type { FormulaCompareSelection } from "./saved-formula-comparison-state";
 import {
   buildSavedFormulaComparison,
@@ -133,25 +137,16 @@ export function useSavedFormulaActions({
       setError("Create a workspace first");
       return;
     }
-    if (
-      !formulaCompareSelection.baselineId ||
-      !formulaCompareSelection.candidateId ||
-      formulaCompareSelection.baselineId === formulaCompareSelection.candidateId
-    ) {
-      setError("Select two different saved formulas");
-      return;
-    }
 
-    const baseline = formulas.find(
-      (formula) => formula.id === formulaCompareSelection.baselineId,
-    );
-    const candidate = formulas.find(
-      (formula) => formula.id === formulaCompareSelection.candidateId,
-    );
-    if (!baseline || !candidate) {
-      setError("Refresh the formula library before comparing");
+    const pair = resolveSavedFormulaComparisonPair({
+      formulas,
+      selection: formulaCompareSelection,
+    });
+    if (!pair.ok) {
+      setError(pair.error);
       return;
     }
+    const { baseline, candidate } = pair;
 
     await runAction("Comparing saved formulas", async () => {
       const [baselineResult, candidateResult] = await Promise.all([
@@ -185,25 +180,20 @@ export function useSavedFormulaActions({
   ]);
 
   const saveFormula = useCallback(async () => {
-    if (!workspace.tenant) {
-      setError("Create a workspace first");
-      return;
-    }
-    if (!workspace.formulaLines.length) {
-      setError("Add at least one formula line");
-      return;
-    }
-    if (!isFormulaBalanced) {
-      setError("La formula debe sumar exactamente 100% para poder guardarse.");
-      setBuilderSections((current) => ({
-        ...current,
-        formula: true,
-        calculation: true,
-      }));
-      return;
-    }
-    if (hasPendingDraftReview) {
-      setError("Confirm draft review before saving");
+    const blocker = getFormulaSaveBlocker({
+      workspace,
+      isFormulaBalanced,
+      hasPendingDraftReview,
+    });
+    if (blocker) {
+      setError(blocker.message);
+      if (blocker.reason === "unbalanced_formula") {
+        setBuilderSections((current) => ({
+          ...current,
+          formula: true,
+          calculation: true,
+        }));
+      }
       return;
     }
 
