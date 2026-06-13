@@ -1,24 +1,26 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { request } from "./workspace-api";
 import { getSupabaseBrowserClient } from "./supabase-client";
 import { isTenantAdminRole } from "./tenant-roles";
 import type { CalculationResult } from "./formula-model";
 import type {
-  ParameterRead,
   Status,
   TenantInvitationRead,
-  TenantRead,
 } from "./workspace-base-model";
 import { emptyWorkspace, type WorkspaceState } from "./workspace-state-model";
 import type { ComparisonConstraintField } from "./saved-formula-comparison-state";
 import {
-  buildParameterCreatePayload,
-  buildTenantInvitationPayload,
-  buildWorkspaceCreatePayload,
   mergeParameters,
   type InvitationForm,
   type ParameterForm,
 } from "./workspace-settings-model";
+import {
+  createTenantInvitationLink,
+  createTenantWorkspace,
+  createWorkspaceParameter,
+  listTenantInvitations,
+  listTenantWorkspaces,
+  listWorkspaceParameters,
+} from "./workspace-settings-api";
 
 type WorkspaceSettingsActionsOptions = {
   workspace: WorkspaceState;
@@ -83,11 +85,7 @@ export function useWorkspaceSettingsActions({
   const createWorkspace = useCallback(async () => {
     await runAction("Creating workspace", async () => {
       const name = workspaceName.trim() || "Workspace Lab";
-      const tenant = await request<TenantRead>("/api/v1/tenants", {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify(buildWorkspaceCreatePayload(name)),
-      });
+      const tenant = await createTenantWorkspace(authHeaders, name);
       setWorkspace({
         ...emptyWorkspace,
         tenant,
@@ -130,10 +128,7 @@ export function useWorkspaceSettingsActions({
         Authorization: `Bearer ${accessToken}`,
       };
       try {
-        const tenants = await request<TenantRead[]>("/api/v1/tenants", {
-          method: "GET",
-          headers: baseHeaders,
-        });
+        const tenants = await listTenantWorkspaces(baseHeaders);
         const tenant =
           tenants.find((candidate) => candidate.slug === "atlantica-agricola") ?? tenants[0];
         if (!tenant) {
@@ -143,15 +138,9 @@ export function useWorkspaceSettingsActions({
         }
         const tenantHeaders = { ...baseHeaders, "X-Tenant-Id": tenant.id };
         const [parameters, invitations] = await Promise.all([
-          request<ParameterRead[]>("/api/v1/parameters", {
-            method: "GET",
-            headers: tenantHeaders,
-          }),
+          listWorkspaceParameters(tenantHeaders),
           isTenantAdminRole(tenant.role)
-            ? request<TenantInvitationRead[]>("/api/v1/tenant-invitations", {
-                method: "GET",
-                headers: tenantHeaders,
-              })
+            ? listTenantInvitations(tenantHeaders)
             : Promise.resolve([]),
         ]);
 
@@ -214,11 +203,7 @@ export function useWorkspaceSettingsActions({
     }
 
     await runAction("Sending invitation link", async () => {
-      const invitation = await request<TenantInvitationRead>("/api/v1/tenant-invitations", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(buildTenantInvitationPayload(invitationForm)),
-      });
+      const invitation = await createTenantInvitationLink(headers, invitationForm);
       setTenantInvitations((current) => {
         const rest = current.filter((item) => item.id !== invitation.id);
         return [invitation, ...rest];
@@ -249,11 +234,7 @@ export function useWorkspaceSettingsActions({
     }
 
     await runAction("Creating parameter", async () => {
-      const parameter = await request<ParameterRead>("/api/v1/parameters", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(buildParameterCreatePayload(parameterForm)),
-      });
+      const parameter = await createWorkspaceParameter(headers, parameterForm);
       setWorkspace((current) => ({
         ...current,
         parameter,
