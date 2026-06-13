@@ -2,8 +2,8 @@
 
 import { Check, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { completeJiraOAuthCallback } from "../jira-connection-api";
 import type { JiraOAuthCallbackResult } from "../jira-connection-model";
-import { request } from "../workspace-api";
 
 type CallbackState =
   | { status: "working"; message: string }
@@ -38,11 +38,7 @@ export default function JiraOAuthCallbackPage() {
       return;
     }
 
-    request<JiraOAuthCallbackResult>("/api/v1/integrations/jira/oauth/callback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, state }),
-    })
+    completeJiraOAuthCallback(code, state)
       .then((result) => {
         setCallbackState({ status: "connected", result });
       })

@@ -5,6 +5,7 @@ import {
   type JiraConnectionTest,
   type JiraMetadataState,
   type JiraOAuthAuthorize,
+  type JiraOAuthCallbackResult,
 } from "./jira-connection-model";
 import { request } from "./workspace-api";
 
@@ -81,5 +82,16 @@ export function fetchJiraOAuthAuthorizeUrl(
   return request<JiraOAuthAuthorize>("/api/v1/integrations/jira/oauth/authorize-url", {
     method: "GET",
     headers,
+  });
+}
+
+export function completeJiraOAuthCallback(
+  code: string,
+  state: string,
+): Promise<JiraOAuthCallbackResult> {
+  return request<JiraOAuthCallbackResult>("/api/v1/integrations/jira/oauth/callback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, state }),
   });
 }

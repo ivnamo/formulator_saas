@@ -148,6 +148,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_135_compatibility_api_client.md`](00-meta/meta_135_compatibility_api_client.md)
 - [`00-meta/meta_136_ai_workflow_api_client.md`](00-meta/meta_136_ai_workflow_api_client.md)
 - [`00-meta/meta_137_formula_calculation_api_client.md`](00-meta/meta_137_formula_calculation_api_client.md)
+- [`00-meta/meta_138_jira_oauth_callback_api_client.md`](00-meta/meta_138_jira_oauth_callback_api_client.md)
 
 ## Producto
 
