@@ -7,12 +7,11 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { request } from "./workspace-api";
+import { fetchRawMaterialCatalog } from "./raw-material-api";
 import {
   mergeRawMaterials,
   toWorkspaceRawMaterialCatalogItem,
   type RawMaterial,
-  type RawMaterialCatalogRead,
 } from "./raw-material-model";
 import type { WorkspaceState } from "./workspace-state-model";
 import type {
@@ -150,39 +149,16 @@ export function useRawMaterialCatalog({
     }
 
     let cancelled = false;
-    const searchParams = new URLSearchParams({
-      limit: String(materialResultLimit),
-      offset: "0",
-      price_filter: priceFilter,
-      only_positive: String(showOnlyPositiveParameters),
-    });
-    const trimmedQuery = query.trim();
-    if (trimmedQuery) {
-      searchParams.set("q", trimmedQuery);
-    }
-    if (familyFilter !== "all") {
-      searchParams.set("family", familyFilter);
-    }
-    if (priceMin.trim()) {
-      searchParams.set("price_min", priceMin.trim());
-    }
-    if (priceMax.trim()) {
-      searchParams.set("price_max", priceMax.trim());
-    }
-    for (const condition of parameterConditions) {
-      if (!condition.code) {
-        continue;
-      }
-      searchParams.append(
-        "parameter_range",
-        `${condition.code}|${condition.min.trim()}|${condition.max.trim()}`,
-      );
-    }
-
     setCatalogLoading(true);
-    request<RawMaterialCatalogRead>(`/api/v1/raw-materials/catalog?${searchParams}`, {
-      method: "GET",
-      headers,
+    fetchRawMaterialCatalog(headers, {
+      limit: materialResultLimit,
+      query,
+      family: familyFilter,
+      priceFilter,
+      priceMin,
+      priceMax,
+      parameterRanges: parameterConditions,
+      onlyPositive: showOnlyPositiveParameters,
     })
       .then((catalog) => {
         if (cancelled) {
