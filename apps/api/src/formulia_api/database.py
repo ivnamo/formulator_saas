@@ -74,6 +74,8 @@ def _ensure_compatible_schema(engine: Engine) -> None:
             ["tenant_id", "email"],
             schema=schema,
         )
+    if "iso_design_projects" in table_names:
+        _ensure_iso_design_projects_unique_constraint(engine, schema=schema)
 
 
 def _ensure_columns(
@@ -139,6 +141,127 @@ def _ensure_unique_constraint(
                 f"ADD CONSTRAINT {_quote_identifier(constraint_name)} UNIQUE ({quoted_columns})"
             )
         )
+
+
+def _ensure_iso_design_projects_unique_constraint(
+    engine: Engine,
+    *,
+    schema: str | None = None,
+) -> None:
+    target_columns = ["tenant_id", "year", "iso_request_number", "project_code"]
+    if engine.dialect.name == "sqlite":
+        _ensure_sqlite_iso_design_projects_unique_constraint(engine)
+        return
+    if engine.dialect.name != "postgresql":
+        return
+
+    inspected_schema = schema or "public"
+    with engine.begin() as connection:
+        old_constraints = connection.execute(
+            text(
+                """
+                select c.conname
+                from pg_constraint c
+                join pg_class t on t.oid = c.conrelid
+                join pg_namespace n on n.oid = t.relnamespace
+                where t.relname = 'iso_design_projects'
+                and n.nspname = :schema_name
+                and c.contype = 'u'
+                and (
+                    select array_agg(a.attname::text order by k.ordinality)
+                    from unnest(c.conkey) with ordinality as k(attnum, ordinality)
+                    join pg_attribute a on a.attrelid = t.oid and a.attnum = k.attnum
+                ) = array['tenant_id', 'year', 'iso_request_number']
+                """
+            ),
+            {"schema_name": inspected_schema},
+        ).all()
+        qualified_table = _qualified_table_name(engine, "iso_design_projects", schema)
+        for (constraint_name,) in old_constraints:
+            connection.execute(
+                text(
+                    f"ALTER TABLE {qualified_table} "
+                    f"DROP CONSTRAINT {_quote_identifier(constraint_name)}"
+                )
+            )
+    _ensure_unique_constraint(
+        engine,
+        "iso_design_projects",
+        "uq_iso_design_projects_request_code",
+        target_columns,
+        schema=schema,
+    )
+
+
+def _ensure_sqlite_iso_design_projects_unique_constraint(engine: Engine) -> None:
+    with engine.begin() as connection:
+        old_unique_exists = connection.execute(
+            text(
+                """
+                select 1
+                from pragma_index_list('iso_design_projects') indexes
+                where indexes.[unique] = 1
+                and indexes.origin = 'u'
+                and (
+                    select group_concat(info.name, ',')
+                    from pragma_index_info(indexes.name) info
+                    order by info.seqno
+                ) = 'tenant_id,year,iso_request_number'
+                limit 1
+                """
+            )
+        ).first()
+        if old_unique_exists is None:
+            return
+        create_sql = connection.execute(
+            text(
+                """
+                select sql
+                from sqlite_master
+                where type = 'table'
+                and name = 'iso_design_projects'
+                """
+            )
+        ).scalar_one()
+        index_sql = connection.execute(
+            text(
+                """
+                select sql
+                from sqlite_master
+                where type = 'index'
+                and tbl_name = 'iso_design_projects'
+                and sql is not null
+                """
+            )
+        ).scalars().all()
+        next_create_sql = create_sql.replace(
+            "CREATE TABLE iso_design_projects",
+            "CREATE TABLE iso_design_projects_new",
+            1,
+        ).replace(
+            "CONSTRAINT uq_iso_design_projects_request UNIQUE (tenant_id, year, iso_request_number)",
+            "CONSTRAINT uq_iso_design_projects_request_code UNIQUE (tenant_id, year, iso_request_number, project_code)",
+        )
+        columns = [
+            row[1]
+            for row in connection.execute(text("PRAGMA table_info('iso_design_projects')")).all()
+        ]
+        quoted_columns = ", ".join(_quote_identifier(column) for column in columns)
+        connection.execute(text("PRAGMA foreign_keys=OFF"))
+        connection.execute(text(next_create_sql))
+        connection.execute(
+            text(
+                f"INSERT INTO iso_design_projects_new ({quoted_columns}) "
+                f"SELECT {quoted_columns} FROM iso_design_projects"
+            )
+        )
+        connection.execute(text("DROP TABLE iso_design_projects"))
+        connection.execute(
+            text("ALTER TABLE iso_design_projects_new RENAME TO iso_design_projects")
+        )
+        for statement in index_sql:
+            connection.execute(text(statement))
+        connection.execute(text("PRAGMA foreign_keys=ON"))
 
 
 def _string_column_sql(

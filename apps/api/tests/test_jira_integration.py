@@ -15,7 +15,7 @@ from formulia_api.jira_client import (
 )
 from formulia_api.jira_oauth import JiraOAuthCallbackResult
 from formulia_api.main import create_app
-from formulia_api.models import IntegrationEvent, TenantMember
+from formulia_api.models import IntegrationEvent, IsoDesignTrial, TenantMember
 
 
 USER_A = "10000000-0000-0000-0000-000000000001"
@@ -28,9 +28,11 @@ class FakeJiraClient:
         *,
         fail_attachment: bool = False,
         issue_status: str = "Cambios solicitados",
+        technical_result: str | None = None,
     ) -> None:
         self.fail_attachment = fail_attachment
         self.issue_status = issue_status
+        self.technical_result = technical_result
         self.created_payloads: list[dict] = []
         self.attachments: list[dict] = []
 
@@ -65,14 +67,77 @@ class FakeJiraClient:
                     "description": "Prototype review",
                     "subtask": False,
                 },
+                {
+                    "id": "10003",
+                    "name": "Calidad",
+                    "description": "Quality review",
+                    "subtask": False,
+                },
+                {
+                    "id": "10004",
+                    "name": "PoC",
+                    "description": "Proof of concept",
+                    "subtask": False,
+                },
             ],
         }
 
     def get_create_issue_fields(self, project_key: str, issue_type_id: str) -> dict:
         assert project_key == "LAB"
-        assert issue_type_id == "10001"
+        assert issue_type_id in {"10001", "10003", "10004"}
+        if issue_type_id == "10004":
+            return {
+                "fields": [
+                    {
+                        "fieldId": "project",
+                        "name": "Project",
+                        "required": True,
+                        "schema": {"type": "project"},
+                        "allowedValues": [{"id": "10000", "key": "LAB", "name": "Formula Lab"}],
+                    },
+                    {
+                        "fieldId": "issuetype",
+                        "name": "Issue type",
+                        "required": True,
+                        "schema": {"type": "issuetype"},
+                        "allowedValues": [{"id": "10004", "name": "PoC"}],
+                    },
+                    {
+                        "fieldId": "summary",
+                        "name": "Summary",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    },
+                    {
+                        "fieldId": "description",
+                        "name": "Description",
+                        "required": False,
+                        "schema": {"type": "string"},
+                    },
+                    {
+                        "fieldId": "labels",
+                        "name": "Labels",
+                        "required": False,
+                        "schema": {"type": "array"},
+                    },
+                ]
+            }
         return {
             "fields": [
+                {
+                    "fieldId": "project",
+                    "name": "Project",
+                    "required": True,
+                    "schema": {"type": "project"},
+                    "allowedValues": [{"id": "10000", "key": "LAB", "name": "Formula Lab"}],
+                },
+                {
+                    "fieldId": "issuetype",
+                    "name": "Issue type",
+                    "required": True,
+                    "schema": {"type": "issuetype"},
+                    "allowedValues": [{"id": issue_type_id, "name": "Review" if issue_type_id == "10001" else "Calidad"}],
+                },
                 {
                     "fieldId": "summary",
                     "name": "Summary",
@@ -80,15 +145,33 @@ class FakeJiraClient:
                     "schema": {"type": "string"},
                 },
                 {
-                    "fieldId": "customfield_20011",
+                    "fieldId": "description",
+                    "name": "Description",
+                    "required": False,
+                    "schema": {"type": "string"},
+                },
+                {
+                    "fieldId": "labels",
+                    "name": "Labels",
+                    "required": False,
+                    "schema": {"type": "array"},
+                },
+                {
+                    "fieldId": "customfield_10010",
+                    "name": "Formula name",
+                    "required": False,
+                    "schema": {"type": "string", "custom": "text"},
+                },
+                {
+                    "fieldId": "customfield_20010",
                     "name": "Functional project",
                     "required": True,
                     "schema": {"type": "string", "custom": "text"},
                 },
                 {
-                    "fieldId": "customfield_20012",
+                    "fieldId": "customfield_20011",
                     "name": "Product type",
-                    "required": False,
+                    "required": True,
                     "schema": {"type": "option", "custom": "select"},
                     "allowedValues": [
                         {"id": "1", "value": "Nuevo"},
@@ -105,14 +188,17 @@ class FakeJiraClient:
             url="https://example.atlassian.net/browse/LAB-321",
         )
 
-    def get_issue(self, issue_key: str) -> dict:
+    def get_issue(self, issue_key: str, fields: str | None = None) -> dict:
         assert issue_key == "LAB-321"
+        issue_fields = {
+            "summary": "Review Formula",
+            "status": {"name": self.issue_status},
+        }
+        if fields and "customfield_11024" in fields and self.technical_result:
+            issue_fields["customfield_11024"] = {"value": self.technical_result}
         return {
             "key": issue_key,
-            "fields": {
-                "summary": "Review Formula",
-                "status": {"name": self.issue_status},
-            },
+            "fields": issue_fields,
         }
 
     def get_issue_transitions(self, issue_key: str) -> dict:
@@ -216,6 +302,7 @@ def create_oauth_jira_connection(
                 "formula_name": "customfield_10010",
                 "jira_project_id": "customfield_20010",
                 "jira_product_type_option": "customfield_20011",
+                "technical_result": "customfield_11024",
             },
         },
     )
@@ -223,7 +310,14 @@ def create_oauth_jira_connection(
     return response.json()
 
 
-def create_formula(client: TestClient, tenant_id: str, user_id: str = USER_A) -> dict:
+def create_formula(
+    client: TestClient,
+    tenant_id: str,
+    user_id: str = USER_A,
+    *,
+    jira_issue_type: str = "Calidad",
+    jira_product_type: str = "Nuevo",
+) -> dict:
     request_headers = headers(user_id, tenant_id)
     material = client.post(
         "/api/v1/raw-materials",
@@ -236,13 +330,38 @@ def create_formula(client: TestClient, tenant_id: str, user_id: str = USER_A) ->
         json={
             "name": "Review Formula",
             "jira_project_id": "FLOWER",
-            "jira_issue_type": "Calidad",
-            "jira_product_type": "Nuevo",
+            "jira_issue_type": jira_issue_type,
+            "jira_product_type": jira_product_type,
             "items": [{"raw_material_id": material["id"], "percentage": 100}],
         },
     )
     assert formula_response.status_code == 201
     return formula_response.json()
+
+
+def enable_iso(client: TestClient, tenant_id: str, user_id: str = USER_A) -> None:
+    response = client.patch(
+        "/api/v1/iso/settings",
+        headers=headers(user_id, tenant_id),
+        json={"enabled": True},
+    )
+    assert response.status_code == 200
+
+
+def create_iso_project(client: TestClient, tenant_id: str, user_id: str = USER_A) -> dict:
+    response = client.post(
+        "/api/v1/iso/design-projects",
+        headers=headers(user_id, tenant_id),
+        json={
+            "iso_request_number": "1/2026",
+            "project_code": "FLOWER",
+            "product_name": "Flower Power",
+            "accepted_status": "accepted",
+            "lifecycle_status": "design",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
 
 
 def test_owner_configures_and_tests_jira_connection(monkeypatch) -> None:
@@ -335,15 +454,16 @@ def test_owner_loads_jira_connector_metadata(monkeypatch) -> None:
         "subtask": False,
     }
     assert fields.status_code == 200
-    assert fields.json()[1] == {
-        "field_id": "customfield_20011",
+    fields_by_id = {field["field_id"]: field for field in fields.json()}
+    assert fields_by_id["customfield_20010"] == {
+        "field_id": "customfield_20010",
         "name": "Functional project",
         "required": True,
         "schema_type": "string",
         "custom": "text",
         "allowed_values": [],
     }
-    assert fields.json()[2]["allowed_values"] == [
+    assert fields_by_id["customfield_20011"]["allowed_values"] == [
         {"id": "1", "key": None, "name": None, "value": "Nuevo"},
         {"id": "2", "key": None, "name": None, "value": "Mod A"},
     ]
@@ -527,6 +647,72 @@ def test_formula_jira_review_request_captures_snapshot() -> None:
     assert [item["id"] for item in listed.json()] == [review["id"]]
 
 
+def test_formula_jira_review_can_link_iso_trial_and_sync_result(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient(issue_status="FINALIZADO", technical_result="Liberado")
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    enable_iso(client, tenant_id)
+    project = create_iso_project(client, tenant_id)
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    request_headers = headers(USER_A, tenant_id)
+
+    review_response = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=request_headers,
+        json={
+            "design_project_id": project["id"],
+            "iso_trial_number": 2,
+            "iso_reason_comment": "Ensayo desde revision Jira",
+        },
+    )
+    assert review_response.status_code == 201
+    review = review_response.json()
+    initial_trials = client.get(
+        f"/api/v1/iso/design-projects/{project['id']}/trials",
+        headers=request_headers,
+    )
+
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=request_headers,
+    )
+    synced = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/sync",
+        headers=request_headers,
+    )
+    final_trials = client.get(
+        f"/api/v1/iso/design-projects/{project['id']}/trials",
+        headers=request_headers,
+    )
+
+    assert review["snapshot"]["iso"] == {
+        "design_project_id": project["id"],
+        "trial_number": 2,
+        "reason_comment": "Ensayo desde revision Jira",
+        "trial_intent": "f10_02_trial",
+    }
+    assert initial_trials.status_code == 200
+    assert len(initial_trials.json()) == 1
+    assert initial_trials.json()[0]["review_request_id"] == review["id"]
+    assert initial_trials.json()[0]["technical_result"] == "pending_result"
+    assert initial_trials.json()[0]["trial_number"] == 2
+    assert sent.status_code == 200
+    assert synced.status_code == 200
+    final_trial = final_trials.json()[0]
+    assert final_trial["id"] == initial_trials.json()[0]["id"]
+    assert final_trial["jira_issue_key"] == "LAB-321"
+    assert final_trial["technical_result"] == "LIBERADO"
+    assert final_trial["raw_result_label"] == "Liberado"
+    assert final_trial["raw_status_label"] == "FINALIZADO"
+    with Session(client.app.state.engine) as session:
+        trials = session.exec(
+            select(IsoDesignTrial).where(IsoDesignTrial.tenant_id == uuid.UUID(tenant_id))
+        ).all()
+    assert len(trials) == 1
+
+
 def test_formula_jira_review_excel_artifact_is_generated_and_downloadable() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
@@ -659,6 +845,85 @@ def test_formula_jira_review_can_be_sent_to_jira_with_excel_attachment(monkeypat
     assert len(listed_artifacts.json()) == 1
 
 
+def test_formula_jira_review_filters_fields_not_available_for_issue_type(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient()
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id, jira_issue_type="PoC")
+    request_headers = headers(USER_A, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=request_headers,
+        json={},
+    ).json()
+
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=request_headers,
+    )
+
+    assert sent.status_code == 200
+    fields = fake_jira.created_payloads[0]["fields"]
+    assert fields["issuetype"] == {"name": "PoC"}
+    assert fields["summary"] == review["snapshot"]["jira"]["issue_summary"]
+    assert fields["description"]["type"] == "doc"
+    assert fields["labels"] == ["formulia", "formula-review"]
+    assert "customfield_10010" not in fields
+    assert "customfield_20010" not in fields
+    assert "customfield_20011" not in fields
+
+
+def test_formula_jira_review_send_requires_issue_type_fields(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient()
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id, jira_issue_type="Calidad", jira_product_type="")
+    request_headers = headers(USER_A, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=request_headers,
+        json={},
+    ).json()
+
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=request_headers,
+    )
+
+    assert sent.status_code == 400
+    assert "Product type" in sent.json()["detail"]
+    assert fake_jira.created_payloads == []
+
+
+def test_formula_jira_review_send_rejects_invalid_issue_type_option(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient()
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id, jira_issue_type="Calidad", jira_product_type="Mod C")
+    request_headers = headers(USER_A, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=request_headers,
+        json={},
+    ).json()
+
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=request_headers,
+    )
+
+    assert sent.status_code == 400
+    assert "Product type" in sent.json()["detail"]
+    assert "Mod C" in sent.json()["detail"]
+    assert fake_jira.created_payloads == []
+
+
 def test_formula_jira_review_send_avoids_duplicate_issue(monkeypatch) -> None:
     client = make_client()
     fake_jira = FakeJiraClient()
@@ -783,6 +1048,43 @@ def test_formula_jira_review_sync_updates_status_from_jira(monkeypatch) -> None:
     sync_event = [event for event in events if event.event_type == "jira_status_sync"][0]
     assert sync_event.status == "success"
     assert sync_event.payload_summary["available_transitions"] == ["OK", "NOK"]
+
+
+def test_formula_jira_review_sync_records_technical_result_from_jira(monkeypatch) -> None:
+    client = make_client()
+    fake_jira = FakeJiraClient(issue_status="FINALIZADO", technical_result="Liberado")
+    use_fake_jira_client(monkeypatch, fake_jira)
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_oauth_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={},
+    ).json()
+    sent = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/jira/send",
+        headers=headers(USER_A, tenant_id),
+    )
+    assert sent.status_code == 200
+
+    synced = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/sync",
+        headers=headers(USER_A, tenant_id),
+    )
+
+    assert synced.status_code == 200
+    synced_review = synced.json()
+    assert synced_review["jira_status"] == "FINALIZADO"
+    assert synced_review["snapshot"]["jira"]["technical_result_raw"] == "Liberado"
+    assert synced_review["snapshot"]["jira"]["technical_result"] == "LIBERADO"
+    with Session(client.app.state.engine) as session:
+        events = session.exec(
+            select(IntegrationEvent).where(IntegrationEvent.tenant_id == uuid.UUID(tenant_id))
+        ).all()
+    sync_event = [event for event in events if event.event_type == "jira_status_sync"][0]
+    assert sync_event.payload_summary["jira_technical_result"] == "Liberado"
+    assert sync_event.payload_summary["technical_result"] == "LIBERADO"
 
 
 def test_formula_jira_review_sync_keeps_internal_status_when_unmapped(monkeypatch) -> None:

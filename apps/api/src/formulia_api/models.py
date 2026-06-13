@@ -296,6 +296,152 @@ class IntegrationEvent(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class IsoTenantSettings(SQLModel, table=True):
+    __tablename__ = "iso_tenant_settings"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", name="uq_iso_tenant_settings_tenant"),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    enabled: bool = Field(default=False, index=True)
+    config_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    updated_by: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class IsoDesignProject(SQLModel, table=True):
+    __tablename__ = "iso_design_projects"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "year",
+            "iso_request_number",
+            "project_code",
+            name="uq_iso_design_projects_request_code",
+        ),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    iso_request_number: str = Field(index=True)
+    year: int = Field(index=True)
+    project_code: str | None = Field(default=None, index=True)
+    requester: str | None = None
+    responsible_user_id: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    product_name: str
+    commercial_name: str | None = None
+    need: str | None = None
+    product_type: str | None = None
+    destination_country: str | None = None
+    packaging: str | None = None
+    accepted_status: str = Field(default="pending", index=True)
+    lifecycle_status: str = Field(default="intake", index=True)
+    rejection_reason: str | None = None
+    estimated_days: int | None = None
+    planned_finish_at: date | None = None
+    finished_at: date | None = None
+    rd_hours: float | None = None
+    quality_hours: float | None = None
+    problems: str | None = None
+    comments: str | None = None
+    source_type: str = Field(default="manual", index=True)
+    source_ref: str | None = None
+    created_by: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class IsoDesignTrial(SQLModel, table=True):
+    __tablename__ = "iso_design_trials"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "review_request_id",
+            name="uq_iso_design_trials_review",
+        ),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    design_project_id: uuid.UUID = Field(index=True, foreign_key="iso_design_projects.id")
+    formula_id: uuid.UUID | None = Field(default=None, index=True, foreign_key="formulas.id")
+    formula_version: int | None = None
+    review_request_id: uuid.UUID | None = Field(
+        default=None,
+        index=True,
+        foreign_key="formula_review_requests.id",
+    )
+    jira_issue_key: str | None = Field(default=None, index=True)
+    jira_issue_url: str | None = None
+    trial_code: str | None = Field(default=None, index=True)
+    trial_name: str | None = None
+    trial_number: int | None = None
+    trial_at: datetime | None = None
+    technical_result: str = Field(default="pending_result", index=True)
+    raw_result_label: str | None = None
+    raw_status_label: str | None = None
+    result_source: str = Field(default="manual", index=True)
+    reason_comment: str | None = None
+    snapshot_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    snapshot_checksum: str | None = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class IsoProductValidation(SQLModel, table=True):
+    __tablename__ = "iso_product_validations"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "design_project_id",
+            name="uq_iso_product_validations_project",
+        ),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    design_project_id: uuid.UUID = Field(index=True, foreign_key="iso_design_projects.id")
+    released_trial_id: uuid.UUID = Field(index=True, foreign_key="iso_design_trials.id")
+    formula_id: uuid.UUID | None = Field(default=None, index=True, foreign_key="formulas.id")
+    formula_version: int | None = None
+    product_name: str
+    formula_ok: str | None = None
+    specification_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    validation_checks_json: list[dict[str, Any]] = Field(
+        default_factory=list,
+        sa_column=Column(JSON),
+    )
+    status: str = Field(default="draft", index=True)
+    validation_at: datetime | None = None
+    published_at: datetime | None = None
+    comments: str | None = None
+    created_by: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class IsoRecordArtifact(SQLModel, table=True):
+    __tablename__ = "iso_record_artifacts"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    design_project_id: uuid.UUID | None = Field(
+        default=None,
+        index=True,
+        foreign_key="iso_design_projects.id",
+    )
+    artifact_type: str = Field(index=True)
+    file_name: str
+    content_type: str
+    checksum_sha256: str
+    size_bytes: int
+    content: bytes = Field(sa_column=Column(LargeBinary))
+    created_by: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class AiRun(SQLModel, table=True):
     __tablename__ = "ai_runs"
 

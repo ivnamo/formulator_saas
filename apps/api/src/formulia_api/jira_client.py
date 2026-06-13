@@ -61,7 +61,7 @@ class JiraClient(Protocol):
     def get_create_issue_fields(self, project_key: str, issue_type_id: str) -> dict[str, Any]:
         ...
 
-    def get_issue(self, issue_key: str) -> dict[str, Any]:
+    def get_issue(self, issue_key: str, fields: str | None = None) -> dict[str, Any]:
         ...
 
     def get_issue_transitions(self, issue_key: str) -> dict[str, Any]:
@@ -124,9 +124,9 @@ class AtlassianJiraClient:
             f"/rest/api/3/issue/createmeta/{safe_project_key}/issuetypes/{safe_issue_type_id}?{query}"
         )
 
-    def get_issue(self, issue_key: str) -> dict[str, Any]:
+    def get_issue(self, issue_key: str, fields: str | None = None) -> dict[str, Any]:
         safe_issue_key = quote(issue_key, safe="")
-        query = urlencode({"fields": "status,summary"})
+        query = urlencode({"fields": fields or "status,summary"})
         return self._json_get(f"/rest/api/3/issue/{safe_issue_key}?{query}")
 
     def get_issue_transitions(self, issue_key: str) -> dict[str, Any]:

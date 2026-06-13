@@ -366,6 +366,9 @@ class JiraOAuthCallbackRead(BaseModel):
 
 class FormulaJiraReviewCreate(BaseModel):
     notes: str | None = None
+    design_project_id: uuid.UUID | None = None
+    iso_trial_number: int | None = None
+    iso_reason_comment: str | None = None
 
 
 class FormulaReviewRequestRead(BaseModel):
@@ -383,6 +386,245 @@ class FormulaReviewRequestRead(BaseModel):
     last_sync_at: datetime | None
     snapshot: dict[str, Any]
     created_at: datetime
+
+
+class IsoTenantSettingsUpdate(BaseModel):
+    enabled: bool | None = None
+    config: dict[str, Any] | None = None
+    config_patch: dict[str, Any] | None = None
+
+
+class IsoTenantSettingsRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    enabled: bool
+    config: dict[str, Any]
+    updated_by: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class IsoDesignProjectCreate(BaseModel):
+    iso_request_number: str = Field(min_length=1)
+    year: int | None = None
+    project_code: str | None = None
+    requester: str | None = None
+    responsible_user_id: uuid.UUID | None = None
+    product_name: str = Field(min_length=1)
+    commercial_name: str | None = None
+    need: str | None = None
+    product_type: str | None = None
+    destination_country: str | None = None
+    packaging: str | None = None
+    accepted_status: str = "pending"
+    lifecycle_status: str = "intake"
+    rejection_reason: str | None = None
+    estimated_days: int | None = None
+    planned_finish_at: date | None = None
+    finished_at: date | None = None
+    rd_hours: float | None = None
+    quality_hours: float | None = None
+    problems: str | None = None
+    comments: str | None = None
+    source_type: str = "manual"
+    source_ref: str | None = None
+
+
+class IsoDesignProjectUpdate(BaseModel):
+    iso_request_number: str | None = None
+    year: int | None = None
+    project_code: str | None = None
+    requester: str | None = None
+    responsible_user_id: uuid.UUID | None = None
+    product_name: str | None = None
+    commercial_name: str | None = None
+    need: str | None = None
+    product_type: str | None = None
+    destination_country: str | None = None
+    packaging: str | None = None
+    accepted_status: str | None = None
+    lifecycle_status: str | None = None
+    rejection_reason: str | None = None
+    estimated_days: int | None = None
+    planned_finish_at: date | None = None
+    finished_at: date | None = None
+    rd_hours: float | None = None
+    quality_hours: float | None = None
+    problems: str | None = None
+    comments: str | None = None
+    source_type: str | None = None
+    source_ref: str | None = None
+
+
+class IsoDesignProjectRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    iso_request_number: str
+    year: int
+    project_code: str | None
+    requester: str | None
+    responsible_user_id: uuid.UUID | None
+    product_name: str
+    commercial_name: str | None
+    need: str | None
+    product_type: str | None
+    destination_country: str | None
+    packaging: str | None
+    accepted_status: str
+    lifecycle_status: str
+    rejection_reason: str | None
+    estimated_days: int | None
+    planned_finish_at: date | None
+    finished_at: date | None
+    rd_hours: float | None
+    quality_hours: float | None
+    problems: str | None
+    comments: str | None
+    source_type: str
+    source_ref: str | None
+    created_by: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+    trial_count: int = 0
+
+
+class IsoDesignTrialCreate(BaseModel):
+    formula_id: uuid.UUID | None = None
+    formula_version: int | None = None
+    review_request_id: uuid.UUID | None = None
+    jira_issue_key: str | None = None
+    jira_issue_url: str | None = None
+    trial_code: str | None = None
+    trial_name: str | None = None
+    trial_number: int | None = None
+    trial_at: datetime | None = None
+    technical_result: str = "pending_result"
+    raw_result_label: str | None = None
+    raw_status_label: str | None = None
+    result_source: str = "manual"
+    reason_comment: str | None = None
+    snapshot: dict[str, Any] = Field(default_factory=dict)
+
+
+class IsoDesignTrialFromReviewCreate(BaseModel):
+    review_id: uuid.UUID
+    trial_number: int | None = None
+    reason_comment: str | None = None
+
+
+class IsoDesignTrialRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    design_project_id: uuid.UUID
+    formula_id: uuid.UUID | None
+    formula_version: int | None
+    review_request_id: uuid.UUID | None
+    jira_issue_key: str | None
+    jira_issue_url: str | None
+    trial_code: str | None
+    trial_name: str | None
+    trial_number: int | None
+    trial_at: datetime | None
+    technical_result: str
+    raw_result_label: str | None
+    raw_status_label: str | None
+    result_source: str
+    reason_comment: str | None
+    snapshot: dict[str, Any]
+    snapshot_checksum: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class IsoProductValidationCreate(BaseModel):
+    released_trial_id: uuid.UUID
+    product_name: str | None = None
+    formula_ok: str | None = None
+    specification: dict[str, Any] = Field(default_factory=dict)
+    comments: str | None = None
+
+
+class IsoProductValidationUpdate(BaseModel):
+    product_name: str | None = None
+    formula_ok: str | None = None
+    specification: dict[str, Any] | None = None
+    comments: str | None = None
+    validation_at: datetime | None = None
+
+
+class IsoValidationCheckUpdate(BaseModel):
+    area: str
+    aspect: str
+    required: bool = True
+    result: str = "pending"
+    comments: str | None = None
+
+
+class IsoValidationChecksUpdate(BaseModel):
+    checks: list[IsoValidationCheckUpdate]
+
+
+class IsoProductValidationRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    design_project_id: uuid.UUID
+    released_trial_id: uuid.UUID
+    formula_id: uuid.UUID | None
+    formula_version: int | None
+    product_name: str
+    formula_ok: str | None
+    specification: dict[str, Any]
+    validation_checks: list[dict[str, Any]]
+    status: str
+    validation_at: datetime | None
+    published_at: datetime | None
+    comments: str | None
+    created_by: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class IsoRecordArtifactRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    design_project_id: uuid.UUID | None
+    artifact_type: str
+    file_name: str
+    content_type: str
+    checksum_sha256: str
+    size_bytes: int
+    created_by: uuid.UUID | None
+    created_at: datetime
+
+
+class IsoLegacyImportRowRead(BaseModel):
+    format_key: str
+    sheet_name: str
+    row_number: int
+    record_key: str | None
+    action: str
+    status: str
+    message: str | None
+    payload: dict[str, Any]
+
+
+class IsoLegacyImportPreviewRead(BaseModel):
+    format_key: str
+    available_sheets: list[str]
+    total_rows: int
+    ready_rows: int
+    ambiguous_rows: int
+    rows: list[IsoLegacyImportRowRead]
+
+
+class IsoLegacyImportApplyRead(IsoLegacyImportPreviewRead):
+    created_projects: int
+    updated_projects: int
+    created_trials: int
+    updated_trials: int
+    created_validations: int
+    updated_validations: int
+    skipped_rows: int
 
 
 class FormulaReviewArtifactRead(BaseModel):
