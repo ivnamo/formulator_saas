@@ -3,7 +3,7 @@ import type {
   BuilderSectionKey,
   ParameterViewPresetKey,
 } from "../formula-builder-model";
-import type { CalculationResult } from "../workspace-model";
+import type { CalculationResult } from "../formula-model";
 import { BuilderStep } from "./builder-step";
 import { FormulaCalculationPanel } from "./formula-calculation-panel";
 

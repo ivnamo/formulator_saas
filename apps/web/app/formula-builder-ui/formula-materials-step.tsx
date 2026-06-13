@@ -4,7 +4,8 @@ import type {
   CatalogParameterCondition,
   ParameterViewPresetKey,
 } from "../formula-builder-model";
-import type { FormulaLine, RawMaterial } from "../workspace-model";
+import type { RawMaterial } from "../raw-material-model";
+import type { FormulaLine } from "../workspace-base-model";
 import { BuilderStep } from "./builder-step";
 import { MaterialCatalogControls } from "./material-catalog-controls";
 import { MaterialCatalogWorkspace } from "./material-catalog-workspace";

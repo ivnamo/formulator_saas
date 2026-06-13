@@ -1,6 +1,6 @@
 import type { BuilderSectionKey } from "./formula-builder-model";
 import type { WorkspaceHomePanels } from "./workspace-home-view";
-import type { WorkspaceState } from "./workspace-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 type FormulaBuilderPanelProps = WorkspaceHomePanels["formulaBuilder"];
 type FormulaBuilderBasicsProps = FormulaBuilderPanelProps["basics"];

@@ -5,12 +5,9 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
-import {
-  formatDateTime,
-  type FormulaReviewArtifact,
-  type FormulaReviewRequest,
-  type JiraConnection,
-} from "../workspace-model";
+import type { FormulaReviewArtifact, FormulaReviewRequest } from "../formula-model";
+import type { JiraConnection } from "../jira-connection-model";
+import { formatDateTime } from "../workspace-utils";
 
 type JiraReviewPanelProps = {
   activeJiraConnection: JiraConnection | null;

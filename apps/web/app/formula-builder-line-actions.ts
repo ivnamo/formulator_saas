@@ -1,11 +1,9 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { BuilderSectionKey } from "./formula-builder-model";
-import {
-  makeLocalId,
-  type CalculationResult,
-  type RawMaterial,
-  type WorkspaceState,
-} from "./workspace-model";
+import type { CalculationResult } from "./formula-model";
+import type { RawMaterial } from "./raw-material-model";
+import type { WorkspaceState } from "./workspace-state-model";
+import { makeLocalId } from "./workspace-utils";
 
 type FormulaLineActionsOptions = {
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;

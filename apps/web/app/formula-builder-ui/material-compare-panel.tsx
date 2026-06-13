@@ -3,7 +3,7 @@ import {
   formatParameterValue,
   materialParametersForView,
 } from "../formula-builder-model";
-import type { RawMaterial } from "../workspace-model";
+import type { RawMaterial } from "../raw-material-model";
 
 type MaterialComparePanelProps = {
   comparisonMaterials: RawMaterial[];

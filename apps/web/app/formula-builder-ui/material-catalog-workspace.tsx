@@ -1,4 +1,5 @@
-import type { FormulaLine, RawMaterial } from "../workspace-model";
+import type { RawMaterial } from "../raw-material-model";
+import type { FormulaLine } from "../workspace-base-model";
 import { MaterialCatalogList } from "./material-catalog-list";
 import { MaterialComparePanel } from "./material-compare-panel";
 import { MaterialInspectorPanel } from "./material-inspector-panel";

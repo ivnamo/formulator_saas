@@ -6,7 +6,8 @@ import {
   parameterDisplayCode,
   parameterFamilyForCode,
 } from "../formula-builder-model";
-import type { FormulaLine, RawMaterial } from "../workspace-model";
+import type { RawMaterial } from "../raw-material-model";
+import type { FormulaLine } from "../workspace-base-model";
 
 type MaterialCatalogListProps = {
   catalogLoading: boolean;

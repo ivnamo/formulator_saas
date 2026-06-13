@@ -1,5 +1,5 @@
 import type { BuilderSectionKey } from "../formula-builder-model";
-import type { WorkspaceState } from "../workspace-model";
+import type { WorkspaceState } from "../workspace-state-model";
 import { BuilderStep } from "./builder-step";
 
 export type FormulaBasicsValue = Pick<

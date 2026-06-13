@@ -1,7 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { ParameterViewPresetKey } from "./formula-builder-model";
 import type { FormulaBasicsValue } from "./formula-builder-ui/formula-basics-step";
-import type { WorkspaceState } from "./workspace-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 type FormulaBuilderLocalActionsOptions = {
   catalogTotal: number;

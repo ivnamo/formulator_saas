@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
+import type { CalculationResult } from "../formula-model";
 import type { DraftComparison, DraftReviewState } from "../workspace-comparison";
-import type { CalculationResult } from "../workspace-model";
 
 type DraftReviewPanelProps = {
   draftReview: DraftReviewState | null;

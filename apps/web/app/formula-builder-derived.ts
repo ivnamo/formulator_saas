@@ -23,7 +23,8 @@ import {
   isFormulaPercentageBalanced,
 } from "./formula-builder-preview";
 import { buildDraftComparison, type DraftReviewState } from "./workspace-comparison";
-import type { CalculationResult, WorkspaceState } from "./workspace-model";
+import type { CalculationResult } from "./formula-model";
+import type { WorkspaceState } from "./workspace-state-model";
 
 export type { CalculationParameterRow, LocalFormulaPreview } from "./formula-builder-preview";
 export type {

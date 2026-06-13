@@ -5,7 +5,7 @@ import {
   type ParameterViewPresetKey,
 } from "../formula-builder-model";
 import { normalizeWarningSeverity } from "../formula-formatters";
-import type { CalculationResult } from "../workspace-model";
+import type { CalculationResult } from "../formula-model";
 import { ParameterPresetPicker } from "./parameter-preset-picker";
 
 type FormulaCalculationPanelProps = {

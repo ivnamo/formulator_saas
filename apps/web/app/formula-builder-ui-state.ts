@@ -5,7 +5,7 @@ import {
   type CatalogParameterCondition,
   type ParameterViewPresetKey,
 } from "./formula-builder-model";
-import { makeLocalId } from "./workspace-model";
+import { makeLocalId } from "./workspace-utils";
 
 type CatalogPriceFilter = "all" | "with_price" | "missing_price";
 

@@ -13,8 +13,8 @@ import {
   toWorkspaceRawMaterialCatalogItem,
   type RawMaterial,
   type RawMaterialCatalogRead,
-  type WorkspaceState,
-} from "./workspace-model";
+} from "./raw-material-model";
+import type { WorkspaceState } from "./workspace-state-model";
 import type {
   CatalogParameterCondition,
   ParameterViewPresetKey,

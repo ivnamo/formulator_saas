@@ -5,7 +5,8 @@ import {
   type ParameterViewPresetKey,
 } from "./formula-builder-model";
 import { compareParameterRows } from "./formula-builder-preview";
-import type { FormulaLine, Parameter, RawMaterial } from "./workspace-model";
+import type { RawMaterial } from "./raw-material-model";
+import type { FormulaLine, Parameter } from "./workspace-base-model";
 
 export type FormulaLineDetail = FormulaLine & {
   index: number;

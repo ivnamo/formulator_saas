@@ -1,12 +1,12 @@
 import type { FormulaLineDetail } from "../formula-builder-derived";
 import type { BuilderSectionKey } from "../formula-builder-model";
-import type { DraftComparison, DraftReviewState } from "../workspace-comparison";
 import type {
   CalculationResult,
   FormulaReviewArtifact,
   FormulaReviewRequest,
-  JiraConnection,
-} from "../workspace-model";
+} from "../formula-model";
+import type { JiraConnection } from "../jira-connection-model";
+import type { DraftComparison, DraftReviewState } from "../workspace-comparison";
 import { BuilderStep } from "./builder-step";
 import { DraftReviewPanel } from "./draft-review-panel";
 import { FormulaLineTable } from "./formula-line-table";
