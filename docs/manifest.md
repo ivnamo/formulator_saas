@@ -133,6 +133,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_120_ai_draft_domain_imports.md`](00-meta/meta_120_ai_draft_domain_imports.md)
 - [`00-meta/meta_121_jira_domain_imports.md`](00-meta/meta_121_jira_domain_imports.md)
 - [`00-meta/meta_122_workspace_model_barrel_removal.md`](00-meta/meta_122_workspace_model_barrel_removal.md)
+- [`00-meta/meta_123_settings_panel_sections.md`](00-meta/meta_123_settings_panel_sections.md)
 
 ## Producto
 
