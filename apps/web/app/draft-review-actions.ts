@@ -1,6 +1,6 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { BuilderSectionKey } from "./formula-builder-model";
-import { request } from "./workspace-api";
+import { calculateAdHocFormula } from "./formula-calculation-api";
 import type { AgentFormulaCandidate, AgentPlan } from "./ai-workflow-model";
 import type { CalculationResult, FormulaCalculationHistory } from "./formula-model";
 import type { FormulaLine } from "./workspace-base-model";
@@ -61,24 +61,9 @@ export function useDraftReviewActions({
     [setDraftReview],
   );
 
-  const calculateAdHocFormula = useCallback(
-    async (
-      lines: FormulaLine[],
-      requiredParameterCodes: string[] = [],
-    ): Promise<CalculationResult> => {
-      return request<CalculationResult>("/api/v1/formulas/calculate", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          items: lines.map((line, index) => ({
-            raw_material_id: line.rawMaterialId,
-            percentage: line.percentage,
-            order_index: index,
-          })),
-          required_parameter_codes: requiredParameterCodes,
-        }),
-      });
-    },
+  const calculateDraftFormula = useCallback(
+    (lines: FormulaLine[], requiredParameterCodes: string[] = []) =>
+      calculateAdHocFormula(headers, lines, requiredParameterCodes),
     [headers],
   );
 
@@ -93,7 +78,7 @@ export function useDraftReviewActions({
     }
 
     await runAction("Confirming draft review", async () => {
-      const reviewedResult = await calculateAdHocFormula(
+      const reviewedResult = await calculateDraftFormula(
         workspace.formulaLines,
         draftReview.requiredParameterCodes,
       );
@@ -111,7 +96,7 @@ export function useDraftReviewActions({
       setMessage("Draft review confirmed");
     });
   }, [
-    calculateAdHocFormula,
+    calculateDraftFormula,
     draftReview,
     runAction,
     setDraftReview,
@@ -146,7 +131,7 @@ export function useDraftReviewActions({
       const requiredParameterCodes = candidate.parameters.map((parameter) => parameter.code);
 
       await runAction("Applying optimizer draft", async () => {
-        const calculation = await calculateAdHocFormula(formulaLines, requiredParameterCodes);
+        const calculation = await calculateDraftFormula(formulaLines, requiredParameterCodes);
         setWorkspace((current) => {
           const existingMaterialIds = new Set(
             current.rawMaterials.map((material) => material.id),
@@ -223,7 +208,7 @@ export function useDraftReviewActions({
     },
     [
       agentPlan?.candidate_research?.candidates,
-      calculateAdHocFormula,
+      calculateDraftFormula,
       runAction,
       setBuilderSections,
       setCalculationHistory,
