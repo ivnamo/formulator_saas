@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
@@ -10,6 +11,7 @@ import {
 import { useSavedFormulaActions } from "./saved-formula-actions";
 import { useJiraReviewActions } from "./jira-review-actions";
 import { useExcelImportActions } from "./excel-import-actions";
+import { useIsoDesignActions } from "./iso-design-actions";
 import { useJiraConnectionActions } from "./jira-connection-actions";
 import { useAiAssistantActions } from "./ai-assistant-actions";
 import { useCompatibilityActions } from "./compatibility-actions";
@@ -27,6 +29,7 @@ import { useRawMaterialWorkspaceState } from "./raw-material-state";
 import { useFormulaWorkspaceState } from "./formula-workspace-state";
 import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
+import { useIsoDesignState } from "./iso-design-state";
 import { useJiraConnectionState } from "./jira-connection-state";
 import type { WorkspaceHomeViewProps } from "./workspace-home-view";
 import { buildWorkspaceHomePanels } from "./workspace-home-panels";
@@ -132,6 +135,29 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     resetJiraConnectionState,
   } = useJiraConnectionState();
   const {
+    isoSettings,
+    setIsoSettings,
+    isoDesignProjects,
+    setIsoDesignProjects,
+    isoDesignTrialsByProjectId,
+    setIsoDesignTrialsByProjectId,
+    isoProductValidationsByProjectId,
+    setIsoProductValidationsByProjectId,
+    selectedIsoDesignProjectId,
+    setSelectedIsoDesignProjectId,
+    isoProjectForm,
+    setIsoProjectForm,
+    isoLegacyImportFormat,
+    setIsoLegacyImportFormat,
+    isoLegacyImportFile,
+    setIsoLegacyImportFile,
+    selectedIsoLegacyImportSheet,
+    setSelectedIsoLegacyImportSheet,
+    isoLegacyImportPreview,
+    setIsoLegacyImportPreview,
+    resetIsoDesignState,
+  } = useIsoDesignState();
+  const {
     requirementText,
     setRequirementText,
     requirementParse,
@@ -217,6 +243,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     resetFormulaWorkspaceState,
     resetCompatibilityState,
     resetJiraConnectionState,
+    resetIsoDesignState,
     resetAiWorkflowState,
     resetSavedFormulaComparisonState,
     resetImportState,
@@ -413,6 +440,51 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setMessage,
   });
   const {
+    loadIsoModule,
+    enableIsoModule,
+    createIsoDesignProject,
+    selectIsoLegacyImportFormat,
+    selectIsoLegacyImportFile,
+    previewSelectedIsoLegacyImportSheet,
+    applySelectedIsoLegacyImport,
+    createIsoProductValidation,
+    updateIsoProductValidationChecks,
+    publishIsoProductValidation,
+    exportIsoF1001,
+    exportIsoF1002,
+    exportIsoF1003,
+    exportIsoDossier,
+  } = useIsoDesignActions({
+    workspace,
+    headers,
+    uploadHeaders,
+    isoProjectForm,
+    isoLegacyImportFormat,
+    isoLegacyImportFile,
+    selectedIsoLegacyImportSheet,
+    selectedIsoDesignProjectId,
+    setIsoSettings,
+    setIsoDesignProjects,
+    setIsoDesignTrialsByProjectId,
+    setIsoProductValidationsByProjectId,
+    setSelectedIsoDesignProjectId,
+    setIsoProjectForm,
+    setIsoLegacyImportFormat,
+    setIsoLegacyImportFile,
+    setSelectedIsoLegacyImportSheet,
+    setIsoLegacyImportPreview,
+    runAction,
+    setError,
+    setMessage,
+  });
+
+  useEffect(() => {
+    if (!workspace.tenant || !session?.access_token) {
+      return;
+    }
+    void loadIsoModule({ silent: true });
+  }, [loadIsoModule, session?.access_token, workspace.tenant]);
+  const {
     parseRequirements,
     planRequirements,
     refreshAiRuns,
@@ -482,11 +554,13 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     activeJiraConnection,
     result,
     formulaReviewRequests,
+    selectedIsoDesignProjectId,
     headers,
     uploadHeaders,
     setFormulaReviewRequests,
     setFormulaReviewArtifacts,
     loadFormulaReviewRequests,
+    onIsoModuleRefresh: () => loadIsoModule({ silent: true }),
     runAction,
     setError,
     setMessage,
@@ -560,6 +634,37 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       authorizeJiraOAuth,
       setJiraMappingKey,
       mapJiraField,
+    },
+    isoDesign: {
+      settings: isoSettings,
+      projects: isoDesignProjects,
+      trialsByProjectId: isoDesignTrialsByProjectId,
+      validationsByProjectId: isoProductValidationsByProjectId,
+      selectedProjectId: selectedIsoDesignProjectId,
+      projectForm: isoProjectForm,
+      legacyImportFormat: isoLegacyImportFormat,
+      legacyImportPreview: isoLegacyImportPreview,
+      legacyImportFileName: isoLegacyImportFile?.name ?? "",
+      selectedLegacyImportSheet: selectedIsoLegacyImportSheet,
+      isBusy,
+      canEditTenantData,
+      canManageIsoSettings: showInvitationAdminPanel,
+      setSelectedProjectId: setSelectedIsoDesignProjectId,
+      setIsoProjectForm,
+      loadIsoModule,
+      enableIsoModule,
+      createIsoDesignProject,
+      selectIsoLegacyImportFormat,
+      selectIsoLegacyImportFile,
+      previewSelectedIsoLegacyImportSheet,
+      applySelectedIsoLegacyImport,
+      createIsoProductValidation,
+      updateIsoProductValidationChecks,
+      publishIsoProductValidation,
+      exportIsoF1001,
+      exportIsoF1002,
+      exportIsoF1003,
+      exportIsoDossier,
     },
     rawMaterials: {
       rawMaterials: workspace.rawMaterials,
@@ -683,6 +788,8 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       canConfirmDraftReview,
       formulaReviewRequests,
       formulaReviewArtifacts,
+      isoDesignProjects,
+      selectedIsoDesignProjectId,
       canPrepareJiraReview,
       formulaLineDetails,
       parameterRows,
@@ -712,6 +819,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       clearComparisonMaterials,
       updateDraftReviewNotes,
       confirmDraftReview,
+      setSelectedIsoDesignProjectId,
       sendCurrentFormulaToJira,
       generateJiraReviewExcel,
       downloadJiraReviewArtifact,

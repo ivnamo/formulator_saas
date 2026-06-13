@@ -54,6 +54,8 @@ type BuildFormulaBuilderPanelPropsArgs = {
   canConfirmDraftReview: FormulaBuilderCompositionProps["canConfirmDraftReview"];
   formulaReviewRequests: FormulaBuilderCompositionProps["formulaReviewRequests"];
   formulaReviewArtifacts: FormulaBuilderCompositionProps["formulaReviewArtifacts"];
+  isoDesignProjects: FormulaBuilderCompositionProps["isoDesignProjects"];
+  selectedIsoDesignProjectId: FormulaBuilderCompositionProps["selectedIsoDesignProjectId"];
   canPrepareJiraReview: FormulaBuilderCompositionProps["canPrepareJiraReview"];
   formulaLineDetails: FormulaBuilderCompositionProps["formulaLineDetails"];
   parameterRows: FormulaBuilderCalculationProps["parameterRows"];
@@ -83,6 +85,7 @@ type BuildFormulaBuilderPanelPropsArgs = {
   clearComparisonMaterials: FormulaBuilderMaterialsProps["onClearComparison"];
   updateDraftReviewNotes: FormulaBuilderCompositionProps["onNotesChange"];
   confirmDraftReview: FormulaBuilderCompositionProps["onConfirmDraftReview"];
+  setSelectedIsoDesignProjectId: FormulaBuilderCompositionProps["onSelectedIsoDesignProjectChange"];
   sendCurrentFormulaToJira: FormulaBuilderCompositionProps["onSendCurrentFormulaToJira"];
   generateJiraReviewExcel: FormulaBuilderCompositionProps["onGenerateReviewExcel"];
   downloadJiraReviewArtifact: FormulaBuilderCompositionProps["onDownloadArtifact"];
@@ -185,6 +188,8 @@ function buildFormulaBuilderCompositionProps(
     activeJiraConnection: args.activeJiraConnection,
     formulaReviewRequests: args.formulaReviewRequests,
     formulaReviewArtifacts: args.formulaReviewArtifacts,
+    isoDesignProjects: args.isoDesignProjects,
+    selectedIsoDesignProjectId: args.selectedIsoDesignProjectId,
     canPrepareJiraReview: args.canPrepareJiraReview,
     formulaLineDetails: args.formulaLineDetails,
     visibleParameterCodes: args.visibleParameterCodes,
@@ -192,6 +197,7 @@ function buildFormulaBuilderCompositionProps(
     onToggle: args.toggleBuilderSection,
     onNotesChange: args.updateDraftReviewNotes,
     onConfirmDraftReview: args.confirmDraftReview,
+    onSelectedIsoDesignProjectChange: args.setSelectedIsoDesignProjectId,
     onSendCurrentFormulaToJira: args.sendCurrentFormulaToJira,
     onGenerateReviewExcel: args.generateJiraReviewExcel,
     onDownloadArtifact: args.downloadJiraReviewArtifact,

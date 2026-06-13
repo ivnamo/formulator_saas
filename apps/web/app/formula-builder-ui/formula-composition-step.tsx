@@ -5,6 +5,7 @@ import type {
   FormulaReviewArtifact,
   FormulaReviewRequest,
 } from "../formula-model";
+import type { IsoDesignProject } from "../iso-design-model";
 import type { JiraConnection } from "../jira-connection-model";
 import type { DraftComparison, DraftReviewState } from "../workspace-comparison";
 import { BuilderStep } from "./builder-step";
@@ -27,6 +28,8 @@ export type FormulaCompositionStepProps = {
   activeJiraConnection: JiraConnection | null;
   formulaReviewRequests: FormulaReviewRequest[];
   formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
+  isoDesignProjects: IsoDesignProject[];
+  selectedIsoDesignProjectId: string;
   canPrepareJiraReview: boolean;
   formulaLineDetails: FormulaLineDetail[];
   visibleParameterCodes: string[];
@@ -37,6 +40,7 @@ export type FormulaCompositionStepProps = {
   onToggle: (section: BuilderSectionKey) => void;
   onNotesChange: (notes: string) => void;
   onConfirmDraftReview: () => void | Promise<void>;
+  onSelectedIsoDesignProjectChange: (projectId: string) => void;
   onSendCurrentFormulaToJira: () => void | Promise<void>;
   onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
   onDownloadArtifact: (artifact: FormulaReviewArtifact) => void | Promise<void>;
@@ -63,6 +67,8 @@ export function FormulaCompositionStep({
   activeJiraConnection,
   formulaReviewRequests,
   formulaReviewArtifacts,
+  isoDesignProjects,
+  selectedIsoDesignProjectId,
   canPrepareJiraReview,
   formulaLineDetails,
   visibleParameterCodes,
@@ -73,6 +79,7 @@ export function FormulaCompositionStep({
   onToggle,
   onNotesChange,
   onConfirmDraftReview,
+  onSelectedIsoDesignProjectChange,
   onSendCurrentFormulaToJira,
   onGenerateReviewExcel,
   onDownloadArtifact,
@@ -113,8 +120,11 @@ export function FormulaCompositionStep({
         activeJiraConnection={activeJiraConnection}
         formulaReviewRequests={formulaReviewRequests}
         formulaReviewArtifacts={formulaReviewArtifacts}
+        isoDesignProjects={isoDesignProjects}
+        selectedIsoDesignProjectId={selectedIsoDesignProjectId}
         canPrepareJiraReview={canPrepareJiraReview}
         isBusy={isBusy}
+        onSelectedIsoDesignProjectChange={onSelectedIsoDesignProjectChange}
         onSendCurrentFormulaToJira={onSendCurrentFormulaToJira}
         onGenerateReviewExcel={onGenerateReviewExcel}
         onDownloadArtifact={onDownloadArtifact}

@@ -46,7 +46,7 @@ export function FormulaBasicsStep({
       {hasActiveJiraConnection ? (
         <div className="formulaMetaGrid">
           <label>
-            <span>ProyectoID Jira opcional</span>
+            <span>ProyectoID</span>
             <input
               placeholder="FLOWER"
               value={values.formulaJiraProjectId}
@@ -55,7 +55,7 @@ export function FormulaBasicsStep({
             />
           </label>
           <label>
-            <span>Jira activity</span>
+            <span>Issue type Jira</span>
             <input
               list="jira-activity-options"
               value={values.formulaJiraIssueType}
@@ -76,6 +76,7 @@ export function FormulaBasicsStep({
             <option value="Calidad" />
             <option value="Prototipo" />
             <option value="PoC" />
+            <option value="Muestra" />
           </datalist>
           <datalist id="jira-product-type-options">
             <option value="Nuevo" />

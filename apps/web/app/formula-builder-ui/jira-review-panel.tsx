@@ -6,6 +6,7 @@ import {
   Send,
 } from "lucide-react";
 import type { FormulaReviewArtifact, FormulaReviewRequest } from "../formula-model";
+import type { IsoDesignProject } from "../iso-design-model";
 import type { JiraConnection } from "../jira-connection-model";
 import { formatDateTime } from "../workspace-utils";
 
@@ -13,8 +14,11 @@ type JiraReviewPanelProps = {
   activeJiraConnection: JiraConnection | null;
   formulaReviewRequests: FormulaReviewRequest[];
   formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
+  isoDesignProjects: IsoDesignProject[];
+  selectedIsoDesignProjectId: string;
   canPrepareJiraReview: boolean;
   isBusy: boolean;
+  onSelectedIsoDesignProjectChange: (projectId: string) => void;
   onSendCurrentFormulaToJira: () => void | Promise<void>;
   onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
   onDownloadArtifact: (artifact: FormulaReviewArtifact) => void | Promise<void>;
@@ -27,8 +31,11 @@ export function JiraReviewPanel({
   activeJiraConnection,
   formulaReviewRequests,
   formulaReviewArtifacts,
+  isoDesignProjects,
+  selectedIsoDesignProjectId,
   canPrepareJiraReview,
   isBusy,
+  onSelectedIsoDesignProjectChange,
   onSendCurrentFormulaToJira,
   onGenerateReviewExcel,
   onDownloadArtifact,
@@ -47,6 +54,23 @@ export function JiraReviewPanel({
           <span>Jira review</span>
           <strong>{activeJiraConnection ? "Configured" : "Not configured"}</strong>
         </div>
+        {isoDesignProjects.length ? (
+          <label className="jiraIsoSelector">
+            <span>Expediente ISO</span>
+            <select
+              value={selectedIsoDesignProjectId}
+              onChange={(event) => onSelectedIsoDesignProjectChange(event.target.value)}
+              disabled={isBusy}
+            >
+              <option value="">Sin expediente ISO</option>
+              {isoDesignProjects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.iso_request_number} - {project.product_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <button
           className="secondaryButton"
           type="button"
@@ -79,6 +103,17 @@ export function JiraReviewPanel({
                       ? `${review.jira_issue_key} - ${excelArtifact?.file_name ?? "Excel pending"}`
                       : (excelArtifact?.file_name ?? "Excel pending")}
                   </small>
+                  {review.snapshot.jira?.technical_result_raw ? (
+                    <small>
+                      Resultado I+D: {review.snapshot.jira.technical_result_raw}
+                      {review.snapshot.jira.technical_result
+                        ? ` (${review.snapshot.jira.technical_result})`
+                        : ""}
+                    </small>
+                  ) : null}
+                  {review.snapshot.iso?.design_project_id ? (
+                    <small>ISO: {review.snapshot.iso.design_project_id}</small>
+                  ) : null}
                 </span>
                 <div className="jiraReviewActions">
                   <button

@@ -40,6 +40,7 @@ type WorkspaceSettingsActionsOptions = {
   resetFormulaWorkspaceState: () => void;
   resetCompatibilityState: () => void;
   resetJiraConnectionState: () => void;
+  resetIsoDesignState: () => void;
   resetAiWorkflowState: () => void;
   resetSavedFormulaComparisonState: () => void;
   resetImportState: () => void;
@@ -68,6 +69,7 @@ export function useWorkspaceSettingsActions({
   resetFormulaWorkspaceState,
   resetCompatibilityState,
   resetJiraConnectionState,
+  resetIsoDesignState,
   resetAiWorkflowState,
   resetSavedFormulaComparisonState,
   resetImportState,
@@ -96,6 +98,7 @@ export function useWorkspaceSettingsActions({
       resetFormulaWorkspaceState();
       resetCompatibilityState();
       resetJiraConnectionState();
+      resetIsoDesignState();
       setTenantInvitations([]);
       resetAiWorkflowState();
       resetSavedFormulaComparisonState();
@@ -109,6 +112,7 @@ export function useWorkspaceSettingsActions({
     resetFormulaBuilderSelection,
     resetFormulaWorkspaceState,
     resetImportState,
+    resetIsoDesignState,
     resetJiraConnectionState,
     resetRawMaterialWorkspaceState,
     resetSavedFormulaComparisonState,
@@ -159,6 +163,7 @@ export function useWorkspaceSettingsActions({
         resetFormulaWorkspaceState();
         resetCompatibilityState();
         resetJiraConnectionState();
+        resetIsoDesignState();
         setTenantInvitations(invitations);
         resetAiWorkflowState();
         resetSavedFormulaComparisonState();
@@ -175,6 +180,7 @@ export function useWorkspaceSettingsActions({
       resetFormulaBuilderSelection,
       resetFormulaWorkspaceState,
       resetImportState,
+      resetIsoDesignState,
       resetJiraConnectionState,
       resetRawMaterialWorkspaceState,
       resetSavedFormulaComparisonState,

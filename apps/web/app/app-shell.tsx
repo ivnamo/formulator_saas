@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   BrainCircuit,
   ChevronDown,
+  ClipboardCheck,
   Database,
   FlaskConical,
   FolderOpen,
@@ -18,6 +19,7 @@ import type { WorkspaceState } from "./workspace-state-model";
 
 export type WorkspaceView =
   | "formula"
+  | "iso"
   | "materials"
   | "import"
   | "results"
@@ -28,6 +30,7 @@ export type WorkspaceView =
 
 const VIEW_TITLES: Record<WorkspaceView, string> = {
   formula: "Formula Builder",
+  iso: "ISO 9001",
   materials: "Materias primas",
   import: "Importar Excel",
   results: "Resultados",
@@ -39,6 +42,7 @@ const VIEW_TITLES: Record<WorkspaceView, string> = {
 
 const VIEW_DESCRIPTIONS: Record<WorkspaceView, string> = {
   formula: "Mesa unica para formular, calcular, guardar y enviar a revision.",
+  iso: "Registros F10-01, F10-02 y F10-03 por tenant.",
   materials: "Consulta y crea materias primas para formular.",
   import: "Sube formulas historicas y resuelve coincidencias.",
   results: "Vista legacy de resultados calculados.",
@@ -68,6 +72,7 @@ type NavigationItem = {
 
 const primaryNavigation: NavigationItem[] = [
   { view: "formula", label: "Formula actual", icon: <FlaskConical size={18} /> },
+  { view: "iso", label: "ISO 9001", icon: <ClipboardCheck size={18} /> },
   { view: "materials", label: "Materias primas", icon: <Database size={18} /> },
   { view: "import", label: "Importar Excel", icon: <Upload size={18} /> },
   { view: "settings", label: "Configuracion", icon: <Settings2 size={18} /> },
