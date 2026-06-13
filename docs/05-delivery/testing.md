@@ -11,6 +11,7 @@
 - Despues de tests/checks verdes debe hacerse un quality/refactor gate.
 - Si el gate produce cambios de codigo, se reejecutan los tests/checks afectados antes de push.
 - La paridad real contra `ivnamo/formulator` se ejecuta manualmente con `npm run check:legacy` cuando se toquen calculo, importacion legacy, precios o parametros tecnicos.
+- El frontend mantiene las llamadas HTTP en `workspace-api.ts` o clientes `*-api.ts`; `npm run check:web-api-boundaries` bloquea rutas API directas en hooks/componentes.
 
 ## Quality/refactor gate
 

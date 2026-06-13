@@ -150,6 +150,7 @@ Inventario de documentación ordenado por área.
 - [`00-meta/meta_137_formula_calculation_api_client.md`](00-meta/meta_137_formula_calculation_api_client.md)
 - [`00-meta/meta_138_jira_oauth_callback_api_client.md`](00-meta/meta_138_jira_oauth_callback_api_client.md)
 - [`00-meta/meta_139_raw_material_catalog_api_client.md`](00-meta/meta_139_raw_material_catalog_api_client.md)
+- [`00-meta/meta_140_frontend_api_boundary_check.md`](00-meta/meta_140_frontend_api_boundary_check.md)
 
 ## Producto
 
