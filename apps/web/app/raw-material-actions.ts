@@ -317,6 +317,59 @@ export function useRawMaterialActions({
     ],
   );
 
+  const updateMaterialParameterValue = useCallback(
+    async (
+      rawMaterialId: string,
+      parameter: WorkspaceState["parameters"][number],
+      value: number,
+    ) => {
+      if (!workspace.tenant) {
+        setError("Create a workspace first");
+        return null;
+      }
+
+      let updatedMaterial: RawMaterial | null = null;
+      await runAction("Updating raw material composition", async () => {
+        await createRawMaterialParameterValue(headers, rawMaterialId, parameter, value);
+        const material = await fetchRawMaterialDetail(headers, rawMaterialId);
+        updatedMaterial = toWorkspaceRawMaterial(
+          material,
+          {
+            parameterValue: workspace.parameter
+              ? (material.parameters.find((item) => item.code === workspace.parameter?.code)
+                  ?.value ?? null)
+              : null,
+          },
+          workspace.parameters,
+        );
+        setWorkspace((current) => ({
+          ...current,
+          rawMaterials: mergeRawMaterials(current.rawMaterials, [updatedMaterial as RawMaterial]),
+        }));
+        setDetailedMaterialIds((current) =>
+          current.includes(rawMaterialId) ? current : [...current, rawMaterialId],
+        );
+        refreshCatalog();
+        resetImportState();
+        setMessage("Raw material composition updated");
+      });
+      return updatedMaterial;
+    },
+    [
+      headers,
+      refreshCatalog,
+      resetImportState,
+      runAction,
+      setDetailedMaterialIds,
+      setError,
+      setMessage,
+      setWorkspace,
+      workspace.parameter,
+      workspace.parameters,
+      workspace.tenant,
+    ],
+  );
+
   const loadMaterialPriceHistory = useCallback(
     async (rawMaterialId: string): Promise<RawMaterialPriceRead[]> => {
       if (!workspace.tenant) {
@@ -439,6 +492,7 @@ export function useRawMaterialActions({
     createMaterial,
     createAlias,
     updateMaterial,
+    updateMaterialParameterValue,
     loadMaterialPriceHistory,
     addMaterialPrice,
     previewSapImport,

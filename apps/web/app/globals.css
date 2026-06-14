@@ -991,13 +991,13 @@ label span {
 .materialMasterHead,
 .materialMasterRow {
   grid-template-columns:
-    minmax(64px, 0.48fr) minmax(70px, 0.52fr) minmax(160px, 1.2fr) minmax(110px, 0.7fr)
-    minmax(112px, 0.7fr) minmax(80px, 0.48fr) 76px;
+    minmax(250px, 1.45fr) minmax(92px, 0.45fr) minmax(150px, 0.8fr)
+    minmax(110px, 0.55fr) minmax(78px, 0.4fr) 84px;
 }
 
 .materialMasterRow {
-  min-height: 48px;
-  padding: 0 4px;
+  min-height: 58px;
+  padding: 6px 4px;
 }
 
 .materialMasterRow[data-selected="true"] {
@@ -1008,6 +1008,71 @@ label span {
 .materialMasterRow span {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.materialIdentity {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.materialIdentity strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.materialIdentityMeta {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.materialIdentityMeta code {
+  display: inline-block;
+  max-width: min(180px, 48%);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: #fbfcfb;
+  color: var(--teal-dark);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.materialParameterSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.materialParameterSummary code,
+.materialParameterSummary em {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 22px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 7px;
+  background: var(--surface-muted);
+  color: var(--teal-dark);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.materialParameterSummary.empty em {
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .rowActions {
@@ -1113,11 +1178,67 @@ label span {
 }
 
 .priceHistoryPanel,
+.materialParametersPanel,
 .sapImportPanel {
   display: grid;
   gap: 12px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
+}
+
+.materialParameterEditor {
+  display: grid;
+  gap: 0;
+}
+
+.materialParameterRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(96px, 0.58fr) minmax(64px, 0.35fr) 34px;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.materialParameterRow > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.materialParameterRow > div strong,
+.materialParameterRow > div span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.materialParameterRow > div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.materialParameterRow label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.materialParameterRow label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialParameterRow code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--blue);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sectionTitle {
@@ -3127,6 +3248,15 @@ label span {
   .importPanel {
     grid-column: auto;
     grid-template-columns: 1fr;
+  }
+
+  .materialTable {
+    overflow-x: auto;
+  }
+
+  .materialMasterHead,
+  .materialMasterRow {
+    min-width: 760px;
   }
 }
 

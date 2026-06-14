@@ -1,4 +1,5 @@
 import {
+  Atom,
   CheckCircle2,
   Eye,
   FileSpreadsheet,
@@ -25,6 +26,7 @@ type RawMaterialsPanelProps = {
   active: boolean;
   rawMaterials: RawMaterial[];
   parameter: Parameter | null;
+  parameters: Parameter[];
   materialForm: MaterialForm;
   aliasInputs: Record<string, string>;
   canEditTenantData: boolean;
@@ -32,11 +34,17 @@ type RawMaterialsPanelProps = {
   onMaterialFormChange: Dispatch<SetStateAction<MaterialForm>>;
   onAliasInputsChange: Dispatch<SetStateAction<Record<string, string>>>;
   onCreateMaterial: () => void | Promise<void>;
+  onInspectMaterial: (rawMaterialId: string) => void | Promise<void>;
   onAddFormulaLine: (rawMaterialId: string) => void | Promise<void>;
   onCreateAlias: (rawMaterialId: string) => void | Promise<void>;
   onUpdateMaterial: (
     rawMaterialId: string,
     form: RawMaterialUpdateForm,
+  ) => RawMaterial | null | Promise<RawMaterial | null>;
+  onUpdateMaterialParameterValue: (
+    rawMaterialId: string,
+    parameter: Parameter,
+    value: number,
   ) => RawMaterial | null | Promise<RawMaterial | null>;
   onLoadMaterialPriceHistory: (rawMaterialId: string) => Promise<RawMaterialPriceRead[]>;
   onAddMaterialPrice: (
@@ -75,6 +83,7 @@ export function RawMaterialsPanel({
   active,
   rawMaterials,
   parameter,
+  parameters,
   materialForm,
   aliasInputs,
   canEditTenantData,
@@ -82,9 +91,11 @@ export function RawMaterialsPanel({
   onMaterialFormChange,
   onAliasInputsChange,
   onCreateMaterial,
+  onInspectMaterial,
   onAddFormulaLine,
   onCreateAlias,
   onUpdateMaterial,
+  onUpdateMaterialParameterValue,
   onLoadMaterialPriceHistory,
   onAddMaterialPrice,
   onPreviewSapImport,
@@ -96,6 +107,7 @@ export function RawMaterialsPanel({
   const [sapFilter, setSapFilter] = useState<MaterialSapFilter>("all");
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<RawMaterialUpdateForm | null>(null);
+  const [parameterDrafts, setParameterDrafts] = useState<Record<string, string>>({});
   const [priceForm, setPriceForm] = useState<RawMaterialPriceForm>(emptyPriceForm);
   const [priceHistory, setPriceHistory] = useState<RawMaterialPriceRead[]>([]);
   const [priceLoading, setPriceLoading] = useState(false);
@@ -156,13 +168,25 @@ export function RawMaterialsPanel({
     if (selectedMaterialId && rawMaterials.some((material) => material.id === selectedMaterialId)) {
       return;
     }
-    setSelectedMaterialId(rawMaterials[0]?.id ?? null);
-  }, [rawMaterials, selectedMaterialId]);
+    const nextMaterialId = rawMaterials[0]?.id ?? null;
+    setSelectedMaterialId(nextMaterialId);
+    if (nextMaterialId) {
+      void onInspectMaterial(nextMaterialId);
+    }
+  }, [onInspectMaterial, rawMaterials, selectedMaterialId]);
+
+  useEffect(() => {
+    if (!selectedMaterial || selectedMaterial.detailLoaded) {
+      return;
+    }
+    void onInspectMaterial(selectedMaterial.id);
+  }, [onInspectMaterial, selectedMaterial]);
 
   useEffect(() => {
     setEditForm(selectedMaterial ? buildRawMaterialUpdateForm(selectedMaterial) : null);
+    setParameterDrafts(selectedMaterial ? buildParameterDrafts(selectedMaterial, parameters) : {});
     setPriceForm(emptyPriceForm);
-  }, [selectedMaterial]);
+  }, [parameters, selectedMaterial]);
 
   useEffect(() => {
     if (!selectedMaterial) {
@@ -197,6 +221,29 @@ export function RawMaterialsPanel({
     const updated = await onUpdateMaterial(selectedMaterial.id, editForm);
     if (updated) {
       setEditForm(buildRawMaterialUpdateForm(updated));
+    }
+  }
+
+  async function selectMaterial(rawMaterialId: string) {
+    setSelectedMaterialId(rawMaterialId);
+    await onInspectMaterial(rawMaterialId);
+  }
+
+  async function saveSelectedParameterValue(parameterToUpdate: Parameter) {
+    if (!selectedMaterial) {
+      return;
+    }
+    const value = parseDraftNumber(parameterDrafts[parameterToUpdate.id] ?? "");
+    if (value === null) {
+      return;
+    }
+    const updated = await onUpdateMaterialParameterValue(
+      selectedMaterial.id,
+      parameterToUpdate,
+      value,
+    );
+    if (updated) {
+      setParameterDrafts(buildParameterDrafts(updated, parameters));
     }
   }
 
@@ -356,10 +403,9 @@ export function RawMaterialsPanel({
       <div className="materialMasterGrid">
         <div className="materialTable">
           <div className="materialHead materialMasterHead">
-            <span>Code</span>
-            <span>SAP</span>
-            <span>Name</span>
+            <span>Material</span>
             <span>Family</span>
+            <span>Composition</span>
             <span>Price</span>
             <span>Status</span>
             <span>Actions</span>
@@ -373,10 +419,12 @@ export function RawMaterialsPanel({
                 data-selected={selectedMaterialId === material.id}
                 key={material.id}
               >
-                <code>{material.code || "-"}</code>
-                <code>{material.externalCode || "-"}</code>
-                <strong>{material.name}</strong>
+                <div className="materialIdentity">
+                  <strong>{material.name}</strong>
+                  <MaterialIdentityCodes material={material} />
+                </div>
                 <span>{material.family || "-"}</span>
+                <MaterialParameterSummary material={material} />
                 <span>{formatPrice(material)}</span>
                 <span>
                   <StatusPill material={material} />
@@ -385,7 +433,7 @@ export function RawMaterialsPanel({
                   <button
                     className="iconButton"
                     type="button"
-                    onClick={() => setSelectedMaterialId(material.id)}
+                    onClick={() => void selectMaterial(material.id)}
                     title="Open material"
                     aria-label={`Open ${material.name}`}
                     data-selected={selectedMaterialId === material.id}
@@ -593,6 +641,59 @@ export function RawMaterialsPanel({
                   <Save size={16} />
                   Save master
                 </button>
+              </div>
+
+              <div className="materialParametersPanel">
+                <div className="sectionTitle">
+                  <Atom size={16} />
+                  <strong>Chemical composition</strong>
+                  <span>
+                    {selectedMaterial.positiveParameterCount}/{parameters.length}
+                  </span>
+                </div>
+                <div className="materialParameterEditor">
+                  {parameters.length ? (
+                    parameters.map((candidate) => {
+                      const currentValue = selectedMaterial.parameters[candidate.code];
+                      return (
+                        <div className="materialParameterRow" key={candidate.id}>
+                          <div>
+                            <strong>{candidate.code}</strong>
+                            <span>{candidate.name}</span>
+                          </div>
+                          <label>
+                            <input
+                              aria-label={`${candidate.name} value`}
+                              inputMode="decimal"
+                              value={parameterDrafts[candidate.id] ?? ""}
+                              onChange={(event) =>
+                                setParameterDrafts((current) => ({
+                                  ...current,
+                                  [candidate.id]: event.target.value,
+                                }))
+                              }
+                              disabled={!canEditTenantData}
+                            />
+                            <span>{candidate.unit ?? ""}</span>
+                          </label>
+                          <code>{currentValue?.source ?? "-"}</code>
+                          <button
+                            className="iconButton"
+                            type="button"
+                            onClick={() => void saveSelectedParameterValue(candidate)}
+                            disabled={!canEditTenantData || isBusy}
+                            title="Save value"
+                            aria-label={`Save ${candidate.name} value`}
+                          >
+                            <Save size={16} />
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="empty">No active parameters.</div>
+                  )}
+                </div>
               </div>
 
               <div className="aliasEditor materialDetailAliases">
@@ -824,6 +925,63 @@ function StatusPill({ material }: { material: RawMaterial }) {
   return <code className="statusPill">{label}</code>;
 }
 
+function MaterialIdentityCodes({ material }: { material: RawMaterial }) {
+  const values = [
+    material.code ? { label: "Code", value: material.code } : null,
+    material.externalCode ? { label: "SAP", value: material.externalCode } : null,
+  ].filter((item): item is { label: string; value: string } => Boolean(item));
+  const uniqueValues = values.filter(
+    (item, index) =>
+      values.findIndex(
+        (candidate) => candidate.value.trim().toLowerCase() === item.value.trim().toLowerCase(),
+      ) === index,
+  );
+
+  if (uniqueValues.length === 0) {
+    return <span className="materialIdentityMeta">No code</span>;
+  }
+
+  return (
+    <span className="materialIdentityMeta">
+      {uniqueValues.map((item) => (
+        <code key={`${item.label}-${item.value}`} title={`${item.label}: ${item.value}`}>
+          {item.label}: {item.value}
+        </code>
+      ))}
+    </span>
+  );
+}
+
+function MaterialParameterSummary({ material }: { material: RawMaterial }) {
+  const positiveValues = Object.values(material.parameters)
+    .filter((parameter) => Math.abs(parameter.value) > 0.0001)
+    .slice(0, 3);
+
+  if (positiveValues.length > 0) {
+    return (
+      <span className="materialParameterSummary">
+        {positiveValues.map((parameter) => (
+          <code key={parameter.code}>{formatParameterValue(parameter)}</code>
+        ))}
+      </span>
+    );
+  }
+
+  if (material.parameterCount > 0) {
+    return (
+      <span className="materialParameterSummary empty">
+        <em>{material.positiveParameterCount}/{material.parameterCount} values</em>
+      </span>
+    );
+  }
+
+  return (
+    <span className="materialParameterSummary empty">
+      <em>-</em>
+    </span>
+  );
+}
+
 function SapImportPreview({ preview }: { preview: RawMaterialImportRead }) {
   const summaryEntries = [
     ["New", preview.summary_json.new_material],
@@ -898,6 +1056,10 @@ function formatPrice(material: RawMaterial) {
   }`;
 }
 
+function formatParameterValue(parameter: RawMaterial["parameters"][string]) {
+  return `${parameter.code}: ${parameter.value.toFixed(4)}${parameter.unit ? ` ${parameter.unit}` : ""}`;
+}
+
 function formatDate(value: string) {
   const calendarDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   const date = calendarDate
@@ -910,4 +1072,22 @@ function formatDate(value: string) {
 
 function formatImportAction(action: string) {
   return action.replace(/_/g, " ");
+}
+
+function buildParameterDrafts(material: RawMaterial, parameters: Parameter[]) {
+  return Object.fromEntries(
+    parameters.map((candidate) => [
+      candidate.id,
+      String(material.parameters[candidate.code]?.value ?? 0),
+    ]),
+  );
+}
+
+function parseDraftNumber(value: string) {
+  const normalized = value.trim().replace(",", ".");
+  if (!normalized) {
+    return 0;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
 }

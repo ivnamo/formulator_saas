@@ -44,6 +44,11 @@ async function main() {
   await page.getByRole("button", { name: "Save master" }).click();
   await assertVisible(page.getByText("SAP-2002").first(), "saved SAP code");
 
+  logStep("edit chemical composition");
+  await page.getByRole("textbox", { name: "Lysine value" }).fill("3.1");
+  await page.getByRole("button", { name: "Save Lysine value" }).click();
+  await assertVisible(page.getByText("LYS: 3.1000 %").first(), "saved lysine value");
+
   logStep("add price");
   const priceForm = page.locator(".priceForm");
   await priceForm.getByLabel("Price").fill("0.95");

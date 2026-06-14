@@ -18,6 +18,15 @@ const parameter: Parameter = {
   unit: "%",
 };
 
+const lysineParameter: Parameter = {
+  id: "11111111-1111-4111-8111-111111111112",
+  code: "LYS",
+  name: "Lysine",
+  unit: "%",
+};
+
+const parameters = [parameter, lysineParameter];
+
 const initialMaterials: RawMaterial[] = [
   {
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -145,6 +154,7 @@ export function RawMaterialsE2EHarness() {
         active
         rawMaterials={rawMaterials}
         parameter={parameter}
+        parameters={parameters}
         materialForm={materialForm}
         aliasInputs={aliasInputs}
         canEditTenantData
@@ -166,6 +176,7 @@ export function RawMaterialsE2EHarness() {
           ]);
           setMaterialForm({ code: "", name: "", price: "", parameterValue: "" });
         }}
+        onInspectMaterial={() => undefined}
         onAddFormulaLine={() => undefined}
         onCreateAlias={(rawMaterialId) => {
           const alias = aliasInputs[rawMaterialId]?.trim();
@@ -189,6 +200,38 @@ export function RawMaterialsE2EHarness() {
                 return material;
               }
               updated = applyUpdateForm(material, form);
+              return updated;
+            }),
+          );
+          return updated;
+        }}
+        onUpdateMaterialParameterValue={(rawMaterialId, parameterToUpdate, value) => {
+          let updated: RawMaterial | null = null;
+          setRawMaterials((current) =>
+            current.map((material) => {
+              if (material.id !== rawMaterialId) {
+                return material;
+              }
+              const parametersByCode = {
+                ...material.parameters,
+                [parameterToUpdate.code]: {
+                  parameterId: parameterToUpdate.id,
+                  code: parameterToUpdate.code,
+                  name: parameterToUpdate.name,
+                  value,
+                  unit: parameterToUpdate.unit,
+                  source: "manual",
+                  confidence: null,
+                },
+              };
+              updated = {
+                ...material,
+                parameters: parametersByCode,
+                parameterCount: Object.keys(parametersByCode).length,
+                positiveParameterCount: Object.values(parametersByCode).filter(
+                  (item) => Math.abs(item.value) > 0.0001,
+                ).length,
+              };
               return updated;
             }),
           );
