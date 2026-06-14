@@ -21,6 +21,8 @@ import {
   listTenantWorkspaces,
   listWorkspaceParameters,
 } from "./workspace-settings-api";
+import { listRawMaterials } from "./raw-material-api";
+import { toWorkspaceRawMaterial } from "./raw-material-model";
 
 type WorkspaceSettingsActionsOptions = {
   workspace: WorkspaceState;
@@ -137,8 +139,9 @@ export function useWorkspaceSettingsActions({
           return;
         }
         const tenantHeaders = { ...baseHeaders, "X-Tenant-Id": tenant.id };
-        const [parameters, invitations] = await Promise.all([
+        const [parameters, rawMaterials, invitations] = await Promise.all([
           listWorkspaceParameters(tenantHeaders),
+          listRawMaterials(tenantHeaders),
           isTenantAdminRole(tenant.role)
             ? listTenantInvitations(tenantHeaders)
             : Promise.resolve([]),
@@ -150,7 +153,9 @@ export function useWorkspaceSettingsActions({
           tenant,
           parameter: activeParameter,
           parameters,
-          rawMaterials: [],
+          rawMaterials: rawMaterials.map((material) =>
+            toWorkspaceRawMaterial(material, {}, parameters),
+          ),
           formulaName: `${tenant.name} Formula`,
         });
         resetFormulaBuilderSelection();

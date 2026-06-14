@@ -288,7 +288,9 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> Response:
         materials = session.exec(
-            select(RawMaterial).where(RawMaterial.tenant_id == tenant.tenant_id)
+            select(RawMaterial)
+            .where(RawMaterial.tenant_id == tenant.tenant_id)
+            .order_by(RawMaterial.name)
         ).all()
         payload = _raw_materials_read(session, tenant.tenant_id, materials)
         return Response(
@@ -312,7 +314,9 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         materials = session.exec(
-            select(RawMaterial).where(RawMaterial.tenant_id == tenant.tenant_id)
+            select(RawMaterial)
+            .where(RawMaterial.tenant_id == tenant.tenant_id)
+            .order_by(RawMaterial.name)
         ).all()
         return _raw_material_catalog_read(
             session,

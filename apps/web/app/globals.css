@@ -815,6 +815,79 @@ label span {
   margin-bottom: 16px;
 }
 
+.materialDisclosure {
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.materialDisclosure > summary {
+  min-height: 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  padding: 0 11px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.materialDisclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.materialDisclosure > summary > span {
+  min-width: 0;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.materialDisclosure > summary code {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialDisclosure > summary svg:last-child {
+  color: var(--muted);
+  transition: transform 0.16s ease;
+}
+
+.materialDisclosure[open] > summary svg:last-child {
+  transform: rotate(180deg);
+}
+
+.materialDisclosure .materialForm,
+.materialDisclosure .materialSummary,
+.materialDisclosure .materialDetailForm,
+.materialDisclosure .materialSwitches,
+.materialDisclosure .materialCompositionToolbar,
+.materialDisclosure .compositionFamilyChips,
+.materialDisclosure .materialParameterEditor,
+.materialDisclosure .aliasEditor,
+.materialDisclosure .priceForm,
+.materialDisclosure .priceHistoryList,
+.materialDisclosure .sapImportControls,
+.materialDisclosure .inlineNotice,
+.materialDisclosure .sapImportPreview {
+  margin: 0 11px 11px;
+}
+
+.materialCreateDisclosure {
+  margin-bottom: 12px;
+}
+
+.materialSummaryDisclosure {
+  margin-bottom: 12px;
+}
+
 .compatibilityForm {
   display: grid;
   grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) 110px;
@@ -1088,6 +1161,101 @@ label span {
   font-size: 11px;
 }
 
+.multiSelectCombobox {
+  position: relative;
+  min-width: 0;
+}
+
+.multiSelectCombobox summary {
+  min-height: 34px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: white;
+  padding: 0 9px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.multiSelectCombobox summary::-webkit-details-marker {
+  display: none;
+}
+
+.multiSelectCombobox summary span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiSelectCombobox summary svg {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.multiSelectMenu {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(320px, 92vw);
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  padding: 6px;
+  box-shadow: var(--shadow);
+}
+
+.multiSelectMenu label {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  border-radius: 6px;
+  padding: 0 7px;
+}
+
+.multiSelectMenu label:hover {
+  background: var(--surface-muted);
+}
+
+.multiSelectMenu input {
+  width: 16px;
+  height: 16px;
+}
+
+.multiSelectMenu span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.multiSelectMenu code {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.multiSelectMenu button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--teal-dark);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .technicalFilterBuilder {
   grid-template-columns: minmax(0, 1fr) 34px;
 }
@@ -1143,6 +1311,52 @@ label span {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+
+.materialListPane {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.materialListToolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(82px, 110px) auto;
+  gap: 10px;
+  align-items: end;
+  min-width: 0;
+  padding-bottom: 2px;
+}
+
+.materialListToolbar > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.materialListToolbar strong {
+  font-size: 13px;
+}
+
+.materialListToolbar span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.paginationButtons {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.paginationButtons code {
+  min-width: 48px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
 }
 
 .materialListItem {
@@ -1364,8 +1578,6 @@ label span {
 
 .materialDetailAliases {
   grid-template-columns: 58px minmax(120px, 1fr) minmax(140px, 220px) 34px;
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
 }
 
 .priceHistoryPanel,
@@ -1373,8 +1585,6 @@ label span {
 .sapImportPanel {
   display: grid;
   gap: 12px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
 }
 
 .materialCompositionToolbar {
@@ -3473,6 +3683,7 @@ label span {
   .materialFilterPrimary,
   .materialAdvancedFilterGrid,
   .materialMasterGrid,
+  .materialListToolbar,
   .materialListItem,
   .materialCompositionToolbar,
   .sapImportSummary,
@@ -3515,6 +3726,13 @@ label span {
 
   .materialSummary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .multiSelectMenu {
+    position: static;
+    width: 100%;
+    margin-top: 6px;
+    box-shadow: none;
   }
 }
 

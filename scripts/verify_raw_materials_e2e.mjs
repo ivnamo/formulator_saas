@@ -29,9 +29,12 @@ async function main() {
     timeout: 30_000,
   });
   await assertVisible(page.getByRole("heading", { name: "Raw material master" }), "master heading");
+  await page.getByText("Status summary").click();
   const materialSummary = page.locator(".materialSummary");
   await assertVisible(materialSummary.getByText("Missing price"), "summary missing price");
   await assertVisible(materialSummary.getByText("Missing SAP"), "summary missing SAP");
+  await page.getByLabel("Show").selectOption("all");
+  await assertVisible(page.getByText("Showing 1-3 of 3"), "material show-all counter");
 
   logStep("filter and open material");
   await page.getByPlaceholder("Code, SAP, name, family, alias").fill("experimental");
@@ -45,20 +48,24 @@ async function main() {
   await assertVisible(page.getByText("SAP-2002").first(), "saved SAP code");
 
   logStep("edit chemical composition");
+  await page.getByText("Chemical composition").click();
   await page.getByLabel("Jump to parameter").selectOption({ label: "LYS | Lysine" });
   await page.getByRole("textbox", { name: "Lysine value" }).fill("3.1");
   await page.getByRole("button", { name: "Save Lysine value" }).click();
   await assertVisible(page.getByText("LYS: 3.1000 %").first(), "saved lysine value");
+  await page.getByText("Advanced filters").click();
   await page
     .locator(".materialFamilyFilters")
-    .getByRole("button", { name: /Aminograma/ })
+    .locator(".multiSelectCombobox summary")
     .click();
+  await page.locator(".materialFamilyFilters").getByLabel("Aminograma").check();
   await assertVisible(
     page.locator(".materialList").getByText("Extracto vegetal experimental"),
     "family-filtered material",
   );
 
   logStep("add price");
+  await page.locator(".priceHistoryPanel > summary").click();
   const priceForm = page.locator(".priceForm");
   await priceForm.getByLabel("Price").fill("0.95");
   await priceForm.getByLabel("Supplier").fill("SAP Supplier");
@@ -68,6 +75,7 @@ async function main() {
   await assertVisible(page.getByText("0.9500").first(), "new price");
 
   logStep("preview SAP import");
+  await page.locator(".sapImportPanel > summary").click();
   const sapImportPanel = page.locator(".sapImportPanel");
   await sapImportPanel.getByLabel("Excel or CSV").setInputFiles({
     name: "sap_fixture.csv",

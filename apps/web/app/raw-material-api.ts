@@ -44,6 +44,13 @@ export function fetchRawMaterialDetail(
   });
 }
 
+export function listRawMaterials(headers: HeadersInit): Promise<RawMaterialRead[]> {
+  return request<RawMaterialRead[]>("/api/v1/raw-materials", {
+    method: "GET",
+    headers,
+  });
+}
+
 export function fetchRawMaterialCatalog(
   headers: HeadersInit,
   query: RawMaterialCatalogQuery,

@@ -1,6 +1,9 @@
 import {
   Atom,
   CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   FileSpreadsheet,
   History,
@@ -63,6 +66,7 @@ type RawMaterialsPanelProps = {
 type MaterialStatusFilter = "all" | "active" | "obsolete";
 type MaterialPriceFilter = "all" | "with_price" | "missing_price";
 type MaterialSapFilter = "all" | "with_sap" | "missing_sap";
+type MaterialPageSize = 50 | 100 | 250 | "all";
 type TechnicalParameterFilter = {
   id: string;
   parameterId: string;
@@ -127,6 +131,8 @@ const emptyPriceForm: RawMaterialPriceForm = {
   validFrom: "",
 };
 
+const materialPageSizeOptions: MaterialPageSize[] = [50, 100, 250, "all"];
+
 function createDefaultSapForm(): SapRawMaterialImportForm {
   return {
     source: "sap",
@@ -171,6 +177,8 @@ export function RawMaterialsPanel({
   const [compositionQuery, setCompositionQuery] = useState("");
   const [compositionFamilyFilter, setCompositionFamilyFilter] = useState("all");
   const [showAllComposition, setShowAllComposition] = useState(false);
+  const [materialPageSize, setMaterialPageSize] = useState<MaterialPageSize>(50);
+  const [materialPage, setMaterialPage] = useState(1);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<RawMaterialUpdateForm | null>(null);
   const [parameterDrafts, setParameterDrafts] = useState<Record<string, string>>({});
@@ -271,6 +279,23 @@ export function RawMaterialsPanel({
     technicalParameterFilters,
   ]);
 
+  const materialPageSizeNumber =
+    materialPageSize === "all" ? filteredMaterials.length || 1 : materialPageSize;
+  const materialPageCount =
+    materialPageSize === "all"
+      ? 1
+      : Math.max(1, Math.ceil(filteredMaterials.length / materialPageSizeNumber));
+  const visibleMaterialStart =
+    filteredMaterials.length === 0 ? 0 : (materialPage - 1) * materialPageSizeNumber + 1;
+  const visibleMaterialEnd =
+    materialPageSize === "all"
+      ? filteredMaterials.length
+      : Math.min(filteredMaterials.length, materialPage * materialPageSizeNumber);
+  const visibleMaterials =
+    materialPageSize === "all"
+      ? filteredMaterials
+      : filteredMaterials.slice(visibleMaterialStart - 1, visibleMaterialEnd);
+
   const selectedMaterial = useMemo(() => {
     if (!selectedMaterialId) {
       return null;
@@ -301,6 +326,24 @@ export function RawMaterialsPanel({
     setParameterDrafts(selectedMaterial ? buildParameterDrafts(selectedMaterial, parameters) : {});
     setPriceForm(emptyPriceForm);
   }, [parameters, selectedMaterial]);
+
+  useEffect(() => {
+    setMaterialPage(1);
+  }, [
+    materialPageSize,
+    parameterFamilyFilters,
+    priceFilter,
+    priceMaxFilter,
+    priceMinFilter,
+    query,
+    sapFilter,
+    statusFilter,
+    technicalParameterFilters,
+  ]);
+
+  useEffect(() => {
+    setMaterialPage((current) => Math.min(Math.max(current, 1), materialPageCount));
+  }, [materialPageCount]);
 
   const visibleCompositionParameters = useMemo(() => {
     if (!selectedMaterial) {
@@ -497,6 +540,12 @@ export function RawMaterialsPanel({
     Number(Boolean(priceMinFilter || priceMaxFilter)) +
     parameterFamilyFilters.length +
     technicalParameterFilters.length;
+  const selectedParameterFamilyLabel =
+    parameterFamilyFilters.length === 0
+      ? "All parameter families"
+      : parameterFamilyFilters.length === 1
+        ? parameterFamilyFilters[0]
+        : `${parameterFamilyFilters.length} families selected`;
   const selectedCompositionLabel =
     compositionFamilyFilter === "all" ? "All families" : compositionFamilyFilter;
 
@@ -507,70 +556,86 @@ export function RawMaterialsPanel({
         <span>{rawMaterials.length} rows</span>
       </div>
 
-      <div className="materialSummary">
-        <SummaryMetric label="Total" value={summary.total} />
-        <SummaryMetric label="Active" value={summary.active} />
-        <SummaryMetric label="Missing price" value={summary.missingPrice} />
-        <SummaryMetric label="Missing SAP" value={summary.missingSap} />
-        <SummaryMetric label="Obsolete" value={summary.obsolete} />
-      </div>
+      <details className="materialDisclosure materialSummaryDisclosure">
+        <summary>
+          <span>Status summary</span>
+          <code>{summary.total} total</code>
+          <ChevronDown size={16} />
+        </summary>
+        <div className="materialSummary">
+          <SummaryMetric label="Total" value={summary.total} />
+          <SummaryMetric label="Active" value={summary.active} />
+          <SummaryMetric label="Missing price" value={summary.missingPrice} />
+          <SummaryMetric label="Missing SAP" value={summary.missingSap} />
+          <SummaryMetric label="Obsolete" value={summary.obsolete} />
+        </div>
+      </details>
 
-      <div className="materialForm">
-        <label>
-          <span>Code</span>
-          <input
-            value={materialForm.code}
-            onChange={(event) =>
-              onMaterialFormChange((current) => ({ ...current, code: event.target.value }))
-            }
+      <details className="materialDisclosure materialCreateDisclosure">
+        <summary>
+          <span>
+            <Plus size={16} />
+            Add raw material
+          </span>
+          <ChevronDown size={16} />
+        </summary>
+        <div className="materialForm">
+          <label>
+            <span>Code</span>
+            <input
+              value={materialForm.code}
+              onChange={(event) =>
+                onMaterialFormChange((current) => ({ ...current, code: event.target.value }))
+              }
+              disabled={!canEditTenantData}
+            />
+          </label>
+          <label>
+            <span>Name</span>
+            <input
+              value={materialForm.name}
+              onChange={(event) =>
+                onMaterialFormChange((current) => ({ ...current, name: event.target.value }))
+              }
+              disabled={!canEditTenantData}
+            />
+          </label>
+          <label>
+            <span>Price EUR/kg</span>
+            <input
+              inputMode="decimal"
+              value={materialForm.price}
+              onChange={(event) =>
+                onMaterialFormChange((current) => ({ ...current, price: event.target.value }))
+              }
+              disabled={!canEditTenantData}
+            />
+          </label>
+          <label>
+            <span>{parameter ? parameter.name : "Value"}</span>
+            <input
+              inputMode="decimal"
+              value={materialForm.parameterValue}
+              onChange={(event) =>
+                onMaterialFormChange((current) => ({
+                  ...current,
+                  parameterValue: event.target.value,
+                }))
+              }
+              disabled={!canEditTenantData || !parameter}
+            />
+          </label>
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={() => void onCreateMaterial()}
             disabled={!canEditTenantData}
-          />
-        </label>
-        <label>
-          <span>Name</span>
-          <input
-            value={materialForm.name}
-            onChange={(event) =>
-              onMaterialFormChange((current) => ({ ...current, name: event.target.value }))
-            }
-            disabled={!canEditTenantData}
-          />
-        </label>
-        <label>
-          <span>Price EUR/kg</span>
-          <input
-            inputMode="decimal"
-            value={materialForm.price}
-            onChange={(event) =>
-              onMaterialFormChange((current) => ({ ...current, price: event.target.value }))
-            }
-            disabled={!canEditTenantData}
-          />
-        </label>
-        <label>
-          <span>{parameter ? parameter.name : "Value"}</span>
-          <input
-            inputMode="decimal"
-            value={materialForm.parameterValue}
-            onChange={(event) =>
-              onMaterialFormChange((current) => ({
-                ...current,
-                parameterValue: event.target.value,
-              }))
-            }
-            disabled={!canEditTenantData || !parameter}
-          />
-        </label>
-        <button
-          className="secondaryButton"
-          type="button"
-          onClick={() => void onCreateMaterial()}
-          disabled={!canEditTenantData}
-        >
-          <Plus size={17} />
-          Add material
-        </button>
-      </div>
+          >
+            <Plus size={17} />
+            Add material
+          </button>
+        </div>
+      </details>
 
       <div className="rawMaterialFilterPanel">
         <div className="materialFilterPrimary">
@@ -624,7 +689,7 @@ export function RawMaterialsPanel({
           </button>
         </div>
 
-        <details className="materialAdvancedFilters" open>
+        <details className="materialAdvancedFilters">
           <summary>
             <span>
               <SlidersHorizontal size={16} />
@@ -662,20 +727,30 @@ export function RawMaterialsPanel({
 
             <fieldset className="materialFamilyFilters">
               <legend>Parameter families</legend>
-              <div className="filterChipGroup">
-                {parameterFamilyOptions.map((family) => (
-                  <button
-                    key={family.name}
-                    type="button"
-                    className="filterChip"
-                    data-selected={parameterFamilyFilters.includes(family.name)}
-                    onClick={() => toggleParameterFamilyFilter(family.name)}
-                  >
-                    {family.name}
-                    <span>{family.parameters.length}</span>
-                  </button>
-                ))}
-              </div>
+              <details className="multiSelectCombobox">
+                <summary aria-label="Parameter families filter">
+                  <span>{selectedParameterFamilyLabel}</span>
+                  <ChevronDown size={16} />
+                </summary>
+                <div className="multiSelectMenu">
+                  {parameterFamilyOptions.map((family) => (
+                    <label key={family.name}>
+                      <input
+                        type="checkbox"
+                        checked={parameterFamilyFilters.includes(family.name)}
+                        onChange={() => toggleParameterFamilyFilter(family.name)}
+                      />
+                      <span>{family.name}</span>
+                      <code>{family.parameters.length}</code>
+                    </label>
+                  ))}
+                  {parameterFamilyFilters.length ? (
+                    <button type="button" onClick={() => setParameterFamilyFilters([])}>
+                      Clear families
+                    </button>
+                  ) : null}
+                </div>
+              </details>
             </fieldset>
 
             <fieldset className="technicalFilters">
@@ -755,60 +830,112 @@ export function RawMaterialsPanel({
       </div>
 
       <div className="materialMasterGrid">
-        <div className="materialList" role="list">
-          {filteredMaterials.length === 0 ? (
-            <div className="empty">No raw materials match these filters.</div>
-          ) : (
-            filteredMaterials.map((material) => (
-              <article
-                className="materialListItem"
-                data-selected={selectedMaterialId === material.id}
-                key={material.id}
-                role="listitem"
+        <div className="materialListPane">
+          <div className="materialListToolbar">
+            <div>
+              <strong>Materials</strong>
+              <span>
+                Showing {visibleMaterialStart}-{visibleMaterialEnd} of {filteredMaterials.length}
+              </span>
+            </div>
+            <label>
+              <span>Show</span>
+              <select
+                value={String(materialPageSize)}
+                onChange={(event) => {
+                  setMaterialPageSize(parseMaterialPageSize(event.target.value));
+                }}
               >
-                <button
-                  className="materialSelectButton"
-                  type="button"
-                  onClick={() => void selectMaterial(material.id)}
+                {materialPageSizeOptions.map((option) => (
+                  <option key={option} value={String(option)}>
+                    {option === "all" ? "All" : option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="paginationButtons" aria-label="Material pages">
+              <button
+                className="iconButton"
+                type="button"
+                onClick={() => setMaterialPage((current) => Math.max(1, current - 1))}
+                disabled={materialPage <= 1 || materialPageSize === "all"}
+                title="Previous page"
+                aria-label="Previous material page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <code>
+                {materialPageSize === "all" ? "All" : `${materialPage}/${materialPageCount}`}
+              </code>
+              <button
+                className="iconButton"
+                type="button"
+                onClick={() =>
+                  setMaterialPage((current) => Math.min(materialPageCount, current + 1))
+                }
+                disabled={materialPage >= materialPageCount || materialPageSize === "all"}
+                title="Next page"
+                aria-label="Next material page"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+          <div className="materialList" role="list">
+            {filteredMaterials.length === 0 ? (
+              <div className="empty">No raw materials match these filters.</div>
+            ) : (
+              visibleMaterials.map((material) => (
+                <article
+                  className="materialListItem"
+                  data-selected={selectedMaterialId === material.id}
+                  key={material.id}
+                  role="listitem"
                 >
-                  <span className="materialIdentity">
-                    <strong>{material.name}</strong>
-                    <MaterialIdentityCodes material={material} />
-                  </span>
-                </button>
-                <div className="materialListMeta">
-                  <span>{material.family || "-"}</span>
-                  <MaterialParameterSummary material={material} />
-                </div>
-                <div className="materialListAside">
-                  <strong>{formatPrice(material)}</strong>
-                  <StatusPill material={material} />
-                </div>
-                <div className="rowActions">
                   <button
-                    className="iconButton"
+                    className="materialSelectButton"
                     type="button"
                     onClick={() => void selectMaterial(material.id)}
-                    title="Open material"
-                    aria-label={`Open ${material.name}`}
-                    data-selected={selectedMaterialId === material.id}
                   >
-                    <Eye size={16} />
+                    <span className="materialIdentity">
+                      <strong>{material.name}</strong>
+                      <MaterialIdentityCodes material={material} />
+                    </span>
                   </button>
-                  <button
-                    className="iconButton"
-                    type="button"
-                    onClick={() => void onAddFormulaLine(material.id)}
-                    disabled={isBusy}
-                    title="Add to formula"
-                    aria-label={`Add ${material.name} to formula`}
-                  >
-                    <Plus size={16} />
-                  </button>
-                </div>
-              </article>
-            ))
-          )}
+                  <div className="materialListMeta">
+                    <span>{material.family || "-"}</span>
+                    <MaterialParameterSummary material={material} />
+                  </div>
+                  <div className="materialListAside">
+                    <strong>{formatPrice(material)}</strong>
+                    <StatusPill material={material} />
+                  </div>
+                  <div className="rowActions">
+                    <button
+                      className="iconButton"
+                      type="button"
+                      onClick={() => void selectMaterial(material.id)}
+                      title="Open material"
+                      aria-label={`Open ${material.name}`}
+                      data-selected={selectedMaterialId === material.id}
+                    >
+                      <Eye size={16} />
+                    </button>
+                    <button
+                      className="iconButton"
+                      type="button"
+                      onClick={() => void onAddFormulaLine(material.id)}
+                      disabled={isBusy}
+                      title="Add to formula"
+                      aria-label={`Add ${material.name} to formula`}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
         </div>
 
         <aside className="materialDetail">
@@ -822,190 +949,199 @@ export function RawMaterialsPanel({
                 <StatusPill material={selectedMaterial} />
               </div>
 
-              <div className="materialDetailForm">
-                <label>
-                  <span>Code</span>
-                  <input
-                    value={editForm.code}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, code: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label>
-                  <span>SAP code</span>
-                  <input
-                    value={editForm.externalCode}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, externalCode: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label className="wide">
-                  <span>Name</span>
-                  <input
-                    value={editForm.name}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, name: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label>
-                  <span>Family</span>
-                  <input
-                    value={editForm.family}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, family: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label>
-                  <span>Subfamily</span>
-                  <input
-                    value={editForm.subfamily}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, subfamily: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label>
-                  <span>Physical state</span>
-                  <input
-                    value={editForm.physicalState}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, physicalState: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label>
-                  <span>Density</span>
-                  <input
-                    inputMode="decimal"
-                    value={editForm.density}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, density: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label>
-                  <span>pH min</span>
-                  <input
-                    inputMode="decimal"
-                    value={editForm.phMin}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, phMin: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label>
-                  <span>pH max</span>
-                  <input
-                    inputMode="decimal"
-                    value={editForm.phMax}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, phMax: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label className="wide">
-                  <span>Solubility</span>
-                  <input
-                    value={editForm.solubility}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, solubility: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-                <label className="wide">
-                  <span>Notes</span>
-                  <textarea
-                    value={editForm.notes}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, notes: event.target.value } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                </label>
-              </div>
-
-              <div className="materialSwitches">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={editForm.isActive}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, isActive: event.target.checked } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                  <span>Active</span>
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={editForm.isObsolete}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, isObsolete: event.target.checked } : current,
-                      )
-                    }
-                    disabled={!canEditTenantData}
-                  />
-                  <span>Obsolete</span>
-                </label>
-                <button
-                  className="secondaryButton"
-                  type="button"
-                  onClick={() => void saveSelectedMaterial()}
-                  disabled={!canEditTenantData || isBusy}
-                >
-                  <Save size={16} />
-                  Save master
-                </button>
-              </div>
-
-              <div className="materialParametersPanel">
-                <div className="sectionTitle">
-                  <Atom size={16} />
-                  <strong>Chemical composition</strong>
-                  <span>
-                    {selectedMaterial.positiveParameterCount}/{parameters.length}
-                  </span>
+              <details className="materialDisclosure materialDetailSection" open>
+                <summary>
+                  <span>Master data</span>
+                  <ChevronDown size={16} />
+                </summary>
+                <div className="materialDetailForm">
+                  <label>
+                    <span>Code</span>
+                    <input
+                      value={editForm.code}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, code: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label>
+                    <span>SAP code</span>
+                    <input
+                      value={editForm.externalCode}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, externalCode: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label className="wide">
+                    <span>Name</span>
+                    <input
+                      value={editForm.name}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, name: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label>
+                    <span>Family</span>
+                    <input
+                      value={editForm.family}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, family: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label>
+                    <span>Subfamily</span>
+                    <input
+                      value={editForm.subfamily}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, subfamily: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label>
+                    <span>Physical state</span>
+                    <input
+                      value={editForm.physicalState}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, physicalState: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label>
+                    <span>Density</span>
+                    <input
+                      inputMode="decimal"
+                      value={editForm.density}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, density: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label>
+                    <span>pH min</span>
+                    <input
+                      inputMode="decimal"
+                      value={editForm.phMin}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, phMin: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label>
+                    <span>pH max</span>
+                    <input
+                      inputMode="decimal"
+                      value={editForm.phMax}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, phMax: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label className="wide">
+                    <span>Solubility</span>
+                    <input
+                      value={editForm.solubility}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, solubility: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
+                  <label className="wide">
+                    <span>Notes</span>
+                    <textarea
+                      value={editForm.notes}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, notes: event.target.value } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                  </label>
                 </div>
+
+                <div className="materialSwitches">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={editForm.isActive}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, isActive: event.target.checked } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                    <span>Active</span>
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={editForm.isObsolete}
+                      onChange={(event) =>
+                        setEditForm((current) =>
+                          current ? { ...current, isObsolete: event.target.checked } : current,
+                        )
+                      }
+                      disabled={!canEditTenantData}
+                    />
+                    <span>Obsolete</span>
+                  </label>
+                  <button
+                    className="secondaryButton"
+                    type="button"
+                    onClick={() => void saveSelectedMaterial()}
+                    disabled={!canEditTenantData || isBusy}
+                  >
+                    <Save size={16} />
+                    Save master
+                  </button>
+                </div>
+              </details>
+
+              <details className="materialDisclosure materialParametersPanel">
+                <summary>
+                  <span>
+                    <Atom size={16} />
+                    Chemical composition
+                  </span>
+                  <code>
+                    {selectedMaterial.positiveParameterCount}/{parameters.length}
+                  </code>
+                  <ChevronDown size={16} />
+                </summary>
                 <div className="materialCompositionToolbar">
                   <label className="compositionSearch">
                     <span>Find parameter</span>
@@ -1143,47 +1279,58 @@ export function RawMaterialsPanel({
                     <div className="empty">No active parameters.</div>
                   )}
                 </div>
-              </div>
+              </details>
 
-              <div className="aliasEditor materialDetailAliases">
-                <span>Aliases</span>
-                <div className="aliasTags">
-                  {selectedMaterial.aliases.length ? (
-                    selectedMaterial.aliases.map((alias, index) => (
-                      <code key={`${selectedMaterial.id}-${alias}-${index}`}>{alias}</code>
-                    ))
-                  ) : (
-                    <em>None</em>
-                  )}
+              <details className="materialDisclosure materialDetailAliasesDisclosure">
+                <summary>
+                  <span>Aliases</span>
+                  <code>{selectedMaterial.aliases.length}</code>
+                  <ChevronDown size={16} />
+                </summary>
+                <div className="aliasEditor materialDetailAliases">
+                  <span>Aliases</span>
+                  <div className="aliasTags">
+                    {selectedMaterial.aliases.length ? (
+                      selectedMaterial.aliases.map((alias, index) => (
+                        <code key={`${selectedMaterial.id}-${alias}-${index}`}>{alias}</code>
+                      ))
+                    ) : (
+                      <em>None</em>
+                    )}
+                  </div>
+                  <input
+                    aria-label={`${selectedMaterial.name} alias`}
+                    value={aliasInputs[selectedMaterial.id] ?? ""}
+                    onChange={(event) =>
+                      onAliasInputsChange((current) => ({
+                        ...current,
+                        [selectedMaterial.id]: event.target.value,
+                      }))
+                    }
+                    disabled={isBusy || !canEditTenantData}
+                  />
+                  <button
+                    className="iconButton"
+                    type="button"
+                    onClick={() => void onCreateAlias(selectedMaterial.id)}
+                    disabled={isBusy || !canEditTenantData}
+                    title="Add alias"
+                    aria-label={`Add alias for ${selectedMaterial.name}`}
+                  >
+                    <Save size={16} />
+                  </button>
                 </div>
-                <input
-                  aria-label={`${selectedMaterial.name} alias`}
-                  value={aliasInputs[selectedMaterial.id] ?? ""}
-                  onChange={(event) =>
-                    onAliasInputsChange((current) => ({
-                      ...current,
-                      [selectedMaterial.id]: event.target.value,
-                    }))
-                  }
-                  disabled={isBusy || !canEditTenantData}
-                />
-                <button
-                  className="iconButton"
-                  type="button"
-                  onClick={() => void onCreateAlias(selectedMaterial.id)}
-                  disabled={isBusy || !canEditTenantData}
-                  title="Add alias"
-                  aria-label={`Add alias for ${selectedMaterial.name}`}
-                >
-                  <Save size={16} />
-                </button>
-              </div>
+              </details>
 
-              <div className="priceHistoryPanel">
-                <div className="sectionTitle">
-                  <History size={16} />
-                  <strong>Price history</strong>
-                </div>
+              <details className="materialDisclosure priceHistoryPanel">
+                <summary>
+                  <span>
+                    <History size={16} />
+                    Price history
+                  </span>
+                  <code>{priceHistory.length}</code>
+                  <ChevronDown size={16} />
+                </summary>
                 <div className="priceForm">
                   <label>
                     <span>Price</span>
@@ -1275,7 +1422,7 @@ export function RawMaterialsPanel({
                     ))
                   )}
                 </div>
-              </div>
+              </details>
             </>
           ) : (
             <div className="empty">Select a raw material to edit its master record.</div>
@@ -1283,12 +1430,15 @@ export function RawMaterialsPanel({
         </aside>
       </div>
 
-      <div className="sapImportPanel">
-        <div className="sectionTitle">
-          <FileSpreadsheet size={16} />
-          <strong>SAP raw material upload</strong>
-          {sapPreview ? <span>{sapPreview.status}</span> : null}
-        </div>
+      <details className="materialDisclosure sapImportPanel">
+        <summary>
+          <span>
+            <FileSpreadsheet size={16} />
+            SAP raw material upload
+          </span>
+          {sapPreview ? <code>{sapPreview.status}</code> : null}
+          <ChevronDown size={16} />
+        </summary>
         <div className="sapImportControls">
           <label>
             <span>Excel or CSV</span>
@@ -1355,7 +1505,7 @@ export function RawMaterialsPanel({
         </div>
         {sapNotice ? <p className="inlineNotice">{sapNotice}</p> : null}
         {sapPreview ? <SapImportPreview preview={sapPreview} /> : null}
-      </div>
+      </details>
     </section>
   );
 }
@@ -1616,6 +1766,19 @@ function parseOptionalNumber(value: string) {
   }
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseMaterialPageSize(value: string): MaterialPageSize {
+  if (value === "100") {
+    return 100;
+  }
+  if (value === "250") {
+    return 250;
+  }
+  if (value === "all") {
+    return "all";
+  }
+  return 50;
 }
 
 function parseDraftNumber(value: string) {
