@@ -415,6 +415,22 @@ label span {
   border-color: var(--border);
 }
 
+.iconTextButton {
+  min-height: 34px;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: white;
+  color: var(--text);
+  padding: 0 11px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .iconButton {
   width: 32px;
   height: 32px;
@@ -795,8 +811,81 @@ label span {
 }
 
 .materialForm {
-  grid-template-columns: 90px minmax(150px, 1fr) 112px 112px auto;
+  grid-template-columns: minmax(180px, 1fr) 140px auto;
   margin-bottom: 16px;
+}
+
+.materialDisclosure {
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.materialDisclosure > summary {
+  min-height: 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  padding: 0 11px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.materialDisclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.materialDisclosure > summary > span {
+  min-width: 0;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.materialDisclosure > summary code {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialDisclosure > summary svg:last-child {
+  color: var(--muted);
+  transition: transform 0.16s ease;
+}
+
+.materialDisclosure[open] > summary svg:last-child {
+  transform: rotate(180deg);
+}
+
+.materialDisclosure .materialForm,
+.materialDisclosure .materialSummary,
+.materialDisclosure .materialDetailForm,
+.materialDisclosure .materialSwitches,
+.materialDisclosure .materialCompositionToolbar,
+.materialDisclosure .compositionFamilyChips,
+.materialDisclosure .materialParameterEditor,
+.materialDisclosure .aliasEditor,
+.materialDisclosure .priceForm,
+.materialDisclosure .priceHistoryList,
+.materialDisclosure .sapImportControls,
+.materialDisclosure .inlineNotice,
+.materialDisclosure .sapImportPreview {
+  margin: 0 11px 11px;
+}
+
+.materialCreateDisclosure {
+  margin-bottom: 12px;
+}
+
+.materialSummaryDisclosure {
+  margin-bottom: 12px;
 }
 
 .compatibilityForm {
@@ -849,6 +938,7 @@ label span {
 .formulaLines,
 .importTable {
   display: grid;
+  min-width: 0;
 }
 
 .materialHead,
@@ -912,6 +1002,836 @@ label span {
 
 .aliasTags em {
   font-style: normal;
+  color: var(--muted);
+}
+
+.materialSummary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.materialSummary div,
+.sapImportSummary div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  min-height: 58px;
+  align-content: center;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fbfcfb;
+}
+
+.materialSummary span,
+.sapImportSummary span,
+.sectionTitle span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.materialSummary strong,
+.sapImportSummary strong {
+  font-size: 20px;
+}
+
+.rawMaterialFilterPanel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.materialFilterPrimary {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) repeat(3, minmax(128px, 0.34fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.materialAdvancedFilters {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.materialAdvancedFilters summary {
+  min-height: 40px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 11px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.materialAdvancedFilters summary::-webkit-details-marker {
+  display: none;
+}
+
+.materialAdvancedFilters summary span {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.materialAdvancedFilters summary code {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialAdvancedFilterGrid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(250px, 1.2fr) minmax(260px, 1fr);
+  gap: 12px;
+  align-items: end;
+  padding: 0 11px 11px;
+  border-top: 1px solid var(--border);
+}
+
+.materialAdvancedFilterGrid fieldset {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  align-content: end;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.materialAdvancedFilterGrid legend {
+  padding: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.materialRangeFilter > div,
+.technicalFilterBuilder,
+.technicalFilterRow {
+  display: grid;
+  gap: 8px;
+  align-items: end;
+}
+
+.materialRangeFilter > div {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.filterChipGroup,
+.compositionFamilyChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.filterChip {
+  min-height: 28px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: white;
+  color: var(--teal-dark);
+  padding: 0 9px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.filterChip[data-selected="true"] {
+  border-color: var(--teal);
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.filterChip span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.multiSelectCombobox {
+  position: relative;
+  min-width: 0;
+}
+
+.multiSelectCombobox summary {
+  min-height: 34px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: white;
+  padding: 0 9px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.multiSelectCombobox summary::-webkit-details-marker {
+  display: none;
+}
+
+.multiSelectCombobox summary span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiSelectCombobox summary svg {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.multiSelectMenu {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(320px, 92vw);
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  padding: 6px;
+  box-shadow: var(--shadow);
+}
+
+.multiSelectMenu label {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  border-radius: 6px;
+  padding: 0 7px;
+}
+
+.multiSelectMenu label:hover {
+  background: var(--surface-muted);
+}
+
+.multiSelectMenu input {
+  width: 16px;
+  height: 16px;
+}
+
+.multiSelectMenu span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.multiSelectMenu code {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.multiSelectMenu button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--teal-dark);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.technicalFilterBuilder {
+  grid-template-columns: minmax(0, 1fr) 34px;
+}
+
+.technicalFilterList {
+  display: grid;
+  gap: 7px;
+}
+
+.technicalFilterRow {
+  grid-template-columns: minmax(54px, 0.5fr) repeat(2, minmax(64px, 1fr)) 34px;
+  min-width: 0;
+}
+
+.technicalFilterRow strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--teal-dark);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inputWithIcon {
+  position: relative;
+}
+
+.inputWithIcon svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.inputWithIcon input {
+  padding-left: 32px;
+}
+
+.materialMasterGrid {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.95fr) minmax(380px, 1.05fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.materialMasterGrid > * {
+  min-width: 0;
+}
+
+.materialList {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.materialListPane {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.materialListToolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(82px, 110px) auto;
+  gap: 10px;
+  align-items: end;
+  min-width: 0;
+  padding-bottom: 2px;
+}
+
+.materialListToolbar > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.materialListToolbar strong {
+  font-size: 13px;
+}
+
+.materialListToolbar span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.paginationButtons {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.paginationButtons code {
+  min-width: 48px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.materialListItem {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.25fr) minmax(120px, 0.72fr) minmax(118px, 0.55fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  min-height: 74px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  padding: 9px;
+}
+
+.materialListItem[data-selected="true"] {
+  border-color: rgba(15, 118, 110, 0.42);
+  background: rgba(15, 118, 110, 0.07);
+}
+
+.materialSelectButton {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.materialListItem strong,
+.materialListItem span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.materialIdentity {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.materialIdentity strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.materialIdentityMeta {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.materialIdentityMeta code {
+  display: inline-block;
+  max-width: min(190px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: #fbfcfb;
+  color: var(--teal-dark);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.materialListMeta {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.materialParameterSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.materialParameterSummary code,
+.materialParameterSummary em {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 22px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 7px;
+  background: var(--surface-muted);
+  color: var(--teal-dark);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.materialParameterSummary.empty em {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.materialListAside {
+  display: grid;
+  gap: 7px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.materialListAside > strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rowActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  width: fit-content;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--teal-dark);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.materialDetail {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  padding-left: 18px;
+  border-left: 1px solid var(--border);
+}
+
+.materialDetailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.materialDetailHeader div {
+  min-width: 0;
+}
+
+.materialDetailHeader span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.materialDetailHeader h3 {
+  margin: 3px 0 0;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.materialDetailForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.materialDetailForm label,
+.priceForm label,
+.sapImportControls label {
+  min-width: 0;
+}
+
+.materialDetailForm .wide {
+  grid-column: 1 / -1;
+}
+
+.materialSwitches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.materialSwitches label {
+  display: inline-flex;
+  grid-template-columns: none;
+  gap: 7px;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.materialSwitches input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.materialSwitches span {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.materialDetailAliases {
+  grid-template-columns: 58px minmax(120px, 1fr) minmax(140px, 220px) 34px;
+}
+
+.priceHistoryPanel,
+.materialParametersPanel,
+.sapImportPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.materialCompositionToolbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.segmentedButtons {
+  display: inline-grid;
+  grid-template-columns: minmax(102px, 1fr) minmax(54px, 0.65fr);
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: white;
+}
+
+.segmentedButtons button {
+  min-height: 34px;
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  padding: 0 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.segmentedButtons button:last-child {
+  border-right: 0;
+}
+
+.segmentedButtons button[data-selected="true"] {
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--teal-dark);
+}
+
+.materialParameterEditor {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+}
+
+.materialParameterRow {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(116px, 0.48fr) 34px;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 7px 8px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.materialParameterRow:first-child {
+  border-top: 0;
+}
+
+.materialParameterRow[data-has-value="true"] {
+  background: #fbfcfb;
+}
+
+.materialParameterRow > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.materialParameterRow > div strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.materialParameterRow > div span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.materialParameterRow label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.materialParameterRow label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialParameterRow code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--blue);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.materialParameterRow > div code {
+  color: var(--teal-dark);
+}
+
+.sectionTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sectionTitle svg {
+  color: var(--teal-dark);
+}
+
+.priceForm,
+.sapImportControls {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+}
+
+.priceForm {
+  grid-template-columns:
+    minmax(90px, 0.5fr) minmax(78px, 0.38fr) minmax(70px, 0.35fr) minmax(120px, 0.7fr)
+    minmax(110px, 0.55fr) minmax(130px, 0.6fr) auto;
+}
+
+.materialDetail .priceForm {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.materialDetail .priceForm .secondaryButton {
+  width: fit-content;
+}
+
+.priceHistoryList {
+  display: grid;
+  gap: 0;
+}
+
+.priceHistoryList div {
+  display: grid;
+  grid-template-columns: minmax(80px, 0.6fr) minmax(70px, 0.45fr) minmax(90px, 0.5fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.priceHistoryList span,
+.priceHistoryList code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.priceHistoryList code {
+  color: var(--blue);
+}
+
+.sapImportPanel {
+  margin-top: 18px;
+}
+
+.sapImportControls {
+  grid-template-columns:
+    minmax(180px, 1fr) minmax(90px, 0.45fr) minmax(90px, 0.45fr) minmax(130px, 0.52fr)
+    auto auto;
+}
+
+.inlineNotice {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sapImportPreview {
+  display: grid;
+  gap: 12px;
+}
+
+.sapImportSummary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sapImportRows {
+  display: grid;
+  overflow-x: auto;
+}
+
+.sapImportHead,
+.sapImportRow {
+  display: grid;
+  grid-template-columns: 52px 110px 92px minmax(180px, 1fr) minmax(90px, 0.45fr) minmax(90px, 0.45fr) minmax(160px, 0.9fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 820px;
+}
+
+.sapImportHead {
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sapImportRow {
+  min-height: 42px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.sapImportRow[data-status="error"] code,
+.sapImportRow[data-status="needs_review"] code {
+  color: var(--amber);
+}
+
+.sapImportRow span,
+.sapImportRow small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sapImportRow small {
   color: var(--muted);
 }
 
@@ -2765,11 +3685,21 @@ label span {
   .grid,
   .formGrid.threeColumns,
   .materialForm,
+  .materialSummary,
+  .materialFilterPrimary,
+  .materialAdvancedFilterGrid,
+  .materialMasterGrid,
+  .materialListToolbar,
+  .materialListItem,
+  .materialCompositionToolbar,
+  .sapImportSummary,
   .compatibilityForm,
   .jiraForm,
   .jiraConnectionSummary,
   .jiraMetadataColumns,
   .formulaMetaGrid,
+  .priceForm,
+  .sapImportControls,
   .importActions,
   .libraryActions,
   .comparisonConstraintBar,
@@ -2777,11 +3707,38 @@ label span {
     grid-template-columns: 1fr;
   }
 
+  .materialDetail {
+    padding-left: 0;
+    padding-top: 14px;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
   .materialPanel,
   .libraryGrid,
   .importPanel {
     grid-column: auto;
     grid-template-columns: 1fr;
+  }
+
+  .materialListAside {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .materialListItem .rowActions {
+    justify-content: flex-start;
+  }
+
+  .materialSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .multiSelectMenu {
+    position: static;
+    width: 100%;
+    margin-top: 6px;
+    box-shadow: none;
   }
 }
 
@@ -2859,6 +3816,8 @@ label span {
 
   .formGrid,
   .aliasEditor,
+  .materialDetailAliases,
+  .materialDetailForm,
   .integrationActions,
   .agentCandidateRow,
   .comparisonHeader,
@@ -2883,6 +3842,9 @@ label span {
   .quickMaterial,
   .materialHead,
   .materialRow,
+  .sapImportHead,
+  .sapImportRow,
+  .priceHistoryList div,
   .compatibilityRow,
   .formulaLine,
   .importHead,
@@ -2943,11 +3905,13 @@ label span {
   .materialHead,
   .agentCandidateHead,
   .importHead,
+  .sapImportHead,
   .aiRunHead {
     display: none;
   }
 
   .materialRow,
+  .sapImportRow,
   .formulaLine,
   .agentCandidateRow,
   .importRow,

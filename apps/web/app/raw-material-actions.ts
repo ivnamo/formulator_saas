@@ -1,10 +1,14 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import {
+  applySapRawMaterialImport,
   createRawMaterial,
   createRawMaterialAlias,
   createRawMaterialParameterValue,
   createRawMaterialPrice,
+  fetchRawMaterialPrices,
+  previewSapRawMaterialImport,
   fetchRawMaterialDetail,
+  updateRawMaterial,
 } from "./raw-material-api";
 import {
   mergeRawMaterials,
@@ -13,6 +17,11 @@ import {
   withRawMaterialAlias,
   type MaterialForm,
   type RawMaterial,
+  type RawMaterialImportRead,
+  type RawMaterialPriceForm,
+  type RawMaterialPriceRead,
+  type RawMaterialUpdateForm,
+  type SapRawMaterialImportForm,
 } from "./raw-material-model";
 import type { CalculationResult } from "./formula-model";
 import type { WorkspaceState } from "./workspace-state-model";
@@ -25,6 +34,7 @@ type RawMaterialActionsOptions = {
   materialForm: MaterialForm;
   aliasInputs: Record<string, string>;
   headers: HeadersInit;
+  uploadHeaders: HeadersInit;
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
   setDetailedMaterialIds: Dispatch<SetStateAction<string[]>>;
   setSelectedMaterialId: Dispatch<SetStateAction<string | null>>;
@@ -47,6 +57,7 @@ export function useRawMaterialActions({
   materialForm,
   aliasInputs,
   headers,
+  uploadHeaders,
   setWorkspace,
   setDetailedMaterialIds,
   setSelectedMaterialId,
@@ -157,7 +168,14 @@ export function useRawMaterialActions({
       const parameterValue = parseOptionalNumber(materialForm.parameterValue);
 
       if (price !== null) {
-        await createRawMaterialPrice(headers, material.id, price);
+        await createRawMaterialPrice(headers, material.id, {
+          price: String(price),
+          currency: "EUR",
+          unit: "kg",
+          supplier: "",
+          source: "manual",
+          validFrom: "",
+        });
       }
       if (workspace.parameter && parameterValue !== null) {
         await createRawMaterialParameterValue(
@@ -248,6 +266,224 @@ export function useRawMaterialActions({
     ],
   );
 
+  const updateMaterial = useCallback(
+    async (rawMaterialId: string, materialUpdateForm: RawMaterialUpdateForm) => {
+      if (!workspace.tenant) {
+        setError("Create a workspace first");
+        return null;
+      }
+      if (!materialUpdateForm.name.trim()) {
+        setError("Raw material name is required");
+        return null;
+      }
+
+      let updatedMaterial: RawMaterial | null = null;
+      await runAction("Updating raw material", async () => {
+        const material = await updateRawMaterial(headers, rawMaterialId, materialUpdateForm);
+        updatedMaterial = toWorkspaceRawMaterial(
+          material,
+          {
+            parameterValue: workspace.parameter
+              ? (material.parameters.find((parameter) => parameter.code === workspace.parameter?.code)
+                  ?.value ?? null)
+              : null,
+          },
+          workspace.parameters,
+        );
+        setWorkspace((current) => ({
+          ...current,
+          rawMaterials: mergeRawMaterials(current.rawMaterials, [updatedMaterial as RawMaterial]),
+        }));
+        setDetailedMaterialIds((current) =>
+          current.includes(material.id) ? current : [...current, material.id],
+        );
+        refreshCatalog();
+        resetImportState();
+        setMessage("Raw material updated");
+      });
+      return updatedMaterial;
+    },
+    [
+      headers,
+      refreshCatalog,
+      resetImportState,
+      runAction,
+      setDetailedMaterialIds,
+      setError,
+      setMessage,
+      setWorkspace,
+      workspace.parameters,
+      workspace.tenant,
+    ],
+  );
+
+  const updateMaterialParameterValue = useCallback(
+    async (
+      rawMaterialId: string,
+      parameter: WorkspaceState["parameters"][number],
+      value: number,
+    ) => {
+      if (!workspace.tenant) {
+        setError("Create a workspace first");
+        return null;
+      }
+
+      let updatedMaterial: RawMaterial | null = null;
+      await runAction("Updating raw material composition", async () => {
+        await createRawMaterialParameterValue(headers, rawMaterialId, parameter, value);
+        const material = await fetchRawMaterialDetail(headers, rawMaterialId);
+        updatedMaterial = toWorkspaceRawMaterial(
+          material,
+          {
+            parameterValue: workspace.parameter
+              ? (material.parameters.find((item) => item.code === workspace.parameter?.code)
+                  ?.value ?? null)
+              : null,
+          },
+          workspace.parameters,
+        );
+        setWorkspace((current) => ({
+          ...current,
+          rawMaterials: mergeRawMaterials(current.rawMaterials, [updatedMaterial as RawMaterial]),
+        }));
+        setDetailedMaterialIds((current) =>
+          current.includes(rawMaterialId) ? current : [...current, rawMaterialId],
+        );
+        refreshCatalog();
+        resetImportState();
+        setMessage("Raw material composition updated");
+      });
+      return updatedMaterial;
+    },
+    [
+      headers,
+      refreshCatalog,
+      resetImportState,
+      runAction,
+      setDetailedMaterialIds,
+      setError,
+      setMessage,
+      setWorkspace,
+      workspace.parameter,
+      workspace.parameters,
+      workspace.tenant,
+    ],
+  );
+
+  const loadMaterialPriceHistory = useCallback(
+    async (rawMaterialId: string): Promise<RawMaterialPriceRead[]> => {
+      if (!workspace.tenant) {
+        return [];
+      }
+      try {
+        return await fetchRawMaterialPrices(headers, rawMaterialId);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Could not load price history");
+        return [];
+      }
+    },
+    [headers, setError, workspace.tenant],
+  );
+
+  const addMaterialPrice = useCallback(
+    async (
+      rawMaterialId: string,
+      priceForm: RawMaterialPriceForm,
+    ): Promise<RawMaterialPriceRead[]> => {
+      const parsedPrice = parseOptionalNumber(priceForm.price);
+      if (parsedPrice === null) {
+        setError("Price is required");
+        return [];
+      }
+      if (parsedPrice < 0) {
+        setError("Price cannot be negative");
+        return [];
+      }
+
+      let priceHistory: RawMaterialPriceRead[] = [];
+      await runAction("Updating raw material price", async () => {
+        const created = await createRawMaterialPrice(headers, rawMaterialId, priceForm);
+        setWorkspace((current) => ({
+          ...current,
+          rawMaterials: current.rawMaterials.map((material) =>
+            material.id === rawMaterialId
+              ? {
+                  ...material,
+                  price: created.price,
+                  priceCurrency: created.currency,
+                  priceUnit: created.unit,
+                  priceSupplier: created.supplier,
+                  priceSource: created.source,
+                  priceValidFrom: created.valid_from,
+                }
+              : material,
+          ),
+        }));
+        priceHistory = await fetchRawMaterialPrices(headers, rawMaterialId);
+        refreshCatalog();
+        resetImportState();
+        setMessage("Raw material price updated");
+      });
+      return priceHistory;
+    },
+    [
+      headers,
+      refreshCatalog,
+      resetImportState,
+      runAction,
+      setError,
+      setMessage,
+      setWorkspace,
+    ],
+  );
+
+  const previewSapImport = useCallback(
+    async (
+      file: File,
+      sapImportForm: SapRawMaterialImportForm,
+    ): Promise<RawMaterialImportRead | null> => {
+      if (!workspace.tenant) {
+        setError("Create a workspace first");
+        return null;
+      }
+
+      let preview: RawMaterialImportRead | null = null;
+      await runAction("Previewing SAP raw material import", async () => {
+        preview = await previewSapRawMaterialImport(uploadHeaders, file, sapImportForm);
+        setMessage("SAP preview ready");
+      });
+      return preview;
+    },
+    [runAction, setError, setMessage, uploadHeaders, workspace.tenant],
+  );
+
+  const applySapImport = useCallback(
+    async (importId: string): Promise<RawMaterialImportRead | null> => {
+      if (!workspace.tenant) {
+        setError("Create a workspace first");
+        return null;
+      }
+
+      let applied: RawMaterialImportRead | null = null;
+      await runAction("Applying SAP raw material import", async () => {
+        applied = await applySapRawMaterialImport(headers, importId);
+        refreshCatalog();
+        resetImportState();
+        setMessage("SAP raw material import applied");
+      });
+      return applied;
+    },
+    [
+      headers,
+      refreshCatalog,
+      resetImportState,
+      runAction,
+      setError,
+      setMessage,
+      workspace.tenant,
+    ],
+  );
+
   return {
     ensureRawMaterialDetail,
     inspectMaterial,
@@ -255,5 +491,11 @@ export function useRawMaterialActions({
     toggleExpandedMaterial,
     createMaterial,
     createAlias,
+    updateMaterial,
+    updateMaterialParameterValue,
+    loadMaterialPriceHistory,
+    addMaterialPrice,
+    previewSapImport,
+    applySapImport,
   };
 }

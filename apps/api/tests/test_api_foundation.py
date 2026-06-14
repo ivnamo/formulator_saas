@@ -255,6 +255,128 @@ def test_raw_material_catalog_is_light_and_filterable() -> None:
     assert zero_boron_payload["items"][0]["name"] == "Plain Water"
 
 
+def test_raw_material_master_blocks_duplicate_identity() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    created = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={
+            "name": "Urea Technical",
+            "code": "UREA",
+            "external_code": "SAP-001",
+        },
+    )
+    assert created.status_code == 201
+
+    duplicate_code = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Different Name", "code": "UREA"},
+    )
+    duplicate_sap_code = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Another Name", "external_code": "SAP-001"},
+    )
+    duplicate_name = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "  urea   technical  ", "code": "UREA-2"},
+    )
+
+    assert duplicate_code.status_code == 409
+    assert duplicate_code.json()["detail"] == "Raw material code already exists for this tenant."
+    assert duplicate_sap_code.status_code == 409
+    assert (
+        duplicate_sap_code.json()["detail"]
+        == "Raw material SAP code already exists for this tenant."
+    )
+    assert duplicate_name.status_code == 409
+    assert (
+        duplicate_name.json()["detail"]
+        == "Raw material name already exists for this tenant."
+    )
+
+
+def test_raw_material_update_blocks_duplicate_identity() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    first = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Material A", "code": "MAT-A", "external_code": "SAP-A"},
+    ).json()
+    second = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Material B", "code": "MAT-B", "external_code": "SAP-B"},
+    ).json()
+
+    duplicate_code = client.patch(
+        f"/api/v1/raw-materials/{second['id']}",
+        headers=headers,
+        json={"code": "MAT-A"},
+    )
+    duplicate_sap_code = client.patch(
+        f"/api/v1/raw-materials/{second['id']}",
+        headers=headers,
+        json={"external_code": "SAP-A"},
+    )
+    duplicate_name = client.patch(
+        f"/api/v1/raw-materials/{second['id']}",
+        headers=headers,
+        json={"name": " material   a "},
+    )
+
+    assert first["id"] != second["id"]
+    assert duplicate_code.status_code == 409
+    assert duplicate_sap_code.status_code == 409
+    assert duplicate_name.status_code == 409
+
+
+def test_raw_material_prices_are_validated_and_listed_as_history() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Urea Technical", "code": "UREA"},
+    ).json()
+
+    negative = client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers,
+        json={"price": -1, "currency": "EUR", "unit": "kg"},
+    )
+    older = client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers,
+        json={"price": 1.25, "currency": "EUR", "unit": "kg", "valid_from": "2026-01-01"},
+    )
+    newer = client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers,
+        json={"price": 1.45, "currency": "EUR", "unit": "kg", "valid_from": "2026-06-01"},
+    )
+    history = client.get(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers,
+    )
+    detail = client.get(f"/api/v1/raw-materials/{raw_material['id']}", headers=headers)
+
+    assert negative.status_code == 400
+    assert negative.json()["detail"] == "Raw material price cannot be negative."
+    assert older.status_code == 201
+    assert newer.status_code == 201
+    assert history.status_code == 200
+    assert [row["price"] for row in history.json()] == [1.45, 1.25]
+    assert detail.json()["current_price"]["price"] == 1.45
+
+
 def test_compatibility_rules_are_tenant_scoped() -> None:
     client = make_client()
     tenant_a = create_tenant(client, USER_A, "tenant-a")

@@ -57,6 +57,7 @@ from .models import (
     Parameter,
     RawMaterial,
     RawMaterialAlias,
+    RawMaterialImport,
     RawMaterialParameterValue,
     RawMaterialPrice,
     Tenant,
@@ -64,6 +65,20 @@ from .models import (
     TenantMember,
     User,
     utc_now,
+)
+from .raw_material_master import (
+    clean_raw_material_payload,
+    ensure_raw_material_identity_available,
+    ensure_valid_raw_material_price,
+    generate_raw_material_code,
+    list_raw_material_prices,
+    normalize_name as normalize_raw_material_name,
+)
+from .raw_material_import import (
+    apply_sap_import,
+    create_sap_import_preview,
+    import_read,
+    load_import_rows,
 )
 from .schemas import (
     CalculationRead,
@@ -83,8 +98,10 @@ from .schemas import (
     RawMaterialCatalogRead,
     RawMaterialAliasCreate,
     RawMaterialAliasRead,
+    RawMaterialImportRead,
     RawMaterialParameterValueCreate,
     RawMaterialPriceCreate,
+    RawMaterialPriceRead,
     RawMaterialRead,
     RawMaterialUpdate,
     AgentPlanRead,
@@ -272,7 +289,9 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> Response:
         materials = session.exec(
-            select(RawMaterial).where(RawMaterial.tenant_id == tenant.tenant_id)
+            select(RawMaterial)
+            .where(RawMaterial.tenant_id == tenant.tenant_id)
+            .order_by(RawMaterial.name)
         ).all()
         payload = _raw_materials_read(session, tenant.tenant_id, materials)
         return Response(
@@ -296,7 +315,9 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         materials = session.exec(
-            select(RawMaterial).where(RawMaterial.tenant_id == tenant.tenant_id)
+            select(RawMaterial)
+            .where(RawMaterial.tenant_id == tenant.tenant_id)
+            .order_by(RawMaterial.name)
         ).all()
         return _raw_material_catalog_read(
             session,
@@ -320,10 +341,21 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        values = clean_raw_material_payload(payload.model_dump())
+        if not values.get("code"):
+            values["code"] = generate_raw_material_code(session, tenant.tenant_id)
+        normalized_name = normalize_raw_material_name(values["name"])
+        ensure_raw_material_identity_available(
+            session,
+            tenant.tenant_id,
+            code=values.get("code"),
+            external_code=values.get("external_code"),
+            normalized_name=normalized_name,
+        )
         raw_material = RawMaterial(
             tenant_id=tenant.tenant_id,
-            normalized_name=_normalize(payload.name),
-            **payload.model_dump(),
+            normalized_name=normalized_name,
+            **values,
         )
         session.add(raw_material)
         session.commit()
@@ -351,9 +383,18 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         raw_material = _get_raw_material(session, tenant.tenant_id, raw_material_id)
-        updates = payload.model_dump(exclude_unset=True)
+        updates = clean_raw_material_payload(payload.model_dump(exclude_unset=True))
         if "name" in updates and updates["name"] is not None:
-            updates["normalized_name"] = _normalize(updates["name"])
+            updates["normalized_name"] = normalize_raw_material_name(updates["name"])
+        if updates.get("is_active", raw_material.is_active):
+            ensure_raw_material_identity_available(
+                session,
+                tenant.tenant_id,
+                code=updates.get("code", raw_material.code),
+                external_code=updates.get("external_code", raw_material.external_code),
+                normalized_name=updates.get("normalized_name", raw_material.normalized_name),
+                exclude_raw_material_id=raw_material.id,
+            )
         for key, value in updates.items():
             setattr(raw_material, key, value)
         raw_material.updated_at = utc_now()
@@ -406,6 +447,18 @@ def register_routes(app: FastAPI) -> None:
         session.refresh(raw_alias)
         return raw_alias
 
+    @app.get(
+        "/api/v1/raw-materials/{raw_material_id}/prices",
+        response_model=list[RawMaterialPriceRead],
+    )
+    def list_raw_material_price_history(
+        raw_material_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[RawMaterialPrice]:
+        _get_raw_material(session, tenant.tenant_id, raw_material_id)
+        return list_raw_material_prices(session, tenant.tenant_id, raw_material_id)
+
     @app.post("/api/v1/raw-materials/{raw_material_id}/prices", status_code=201)
     def add_raw_material_price(
         raw_material_id: uuid.UUID,
@@ -414,6 +467,7 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         _get_raw_material(session, tenant.tenant_id, raw_material_id)
+        ensure_valid_raw_material_price(payload.price)
         price = RawMaterialPrice(
             tenant_id=tenant.tenant_id,
             raw_material_id=raw_material_id,
@@ -456,6 +510,66 @@ def register_routes(app: FastAPI) -> None:
         session.commit()
         session.refresh(value)
         return _model_dict(value)
+
+    @app.post(
+        "/api/v1/raw-material-imports/sap/preview",
+        response_model=RawMaterialImportRead,
+        status_code=201,
+    )
+    async def preview_raw_material_sap_import(
+        file: UploadFile = File(...),
+        sheet_name: str | None = Form(default=None),
+        source: str | None = Form(default=None),
+        valid_from: date | None = Form(default=None),
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="Import file needs a filename.")
+        import_record = create_sap_import_preview(
+            session,
+            tenant.tenant_id,
+            file_name=file.filename,
+            content=await file.read(),
+            sheet_name=sheet_name,
+            source=source,
+            valid_from=valid_from or date.today(),
+        )
+        return import_read(
+            import_record,
+            load_import_rows(session, tenant.tenant_id, import_record.id),
+        )
+
+    @app.get(
+        "/api/v1/raw-material-imports/{import_id}",
+        response_model=RawMaterialImportRead,
+    )
+    def get_raw_material_import(
+        import_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        import_record = _get_raw_material_import(session, tenant.tenant_id, import_id)
+        return import_read(
+            import_record,
+            load_import_rows(session, tenant.tenant_id, import_id),
+        )
+
+    @app.post(
+        "/api/v1/raw-material-imports/{import_id}/apply",
+        response_model=RawMaterialImportRead,
+    )
+    def apply_raw_material_sap_import(
+        import_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        import_record = _get_raw_material_import(session, tenant.tenant_id, import_id)
+        import_record = apply_sap_import(session, tenant.tenant_id, import_record)
+        return import_read(
+            import_record,
+            load_import_rows(session, tenant.tenant_id, import_id),
+        )
 
     @app.get("/api/v1/compatibility-rules", response_model=list[CompatibilityRuleRead])
     def list_compatibility_rules(
@@ -876,6 +990,22 @@ def _get_raw_material(
     if raw_material is None:
         raise HTTPException(status_code=404, detail="Raw material not found.")
     return raw_material
+
+
+def _get_raw_material_import(
+    session: Session,
+    tenant_id: uuid.UUID,
+    import_id: uuid.UUID,
+) -> RawMaterialImport:
+    import_record = session.exec(
+        select(RawMaterialImport).where(
+            RawMaterialImport.id == import_id,
+            RawMaterialImport.tenant_id == tenant_id,
+        )
+    ).first()
+    if import_record is None:
+        raise HTTPException(status_code=404, detail="Raw material import not found.")
+    return import_record
 
 
 def _get_parameter(session: Session, tenant_id: uuid.UUID, parameter_id: uuid.UUID) -> Parameter:

@@ -2,10 +2,16 @@ import {
   buildRawMaterialCreatePayload,
   buildRawMaterialParameterValuePayload,
   buildRawMaterialPricePayload,
+  buildRawMaterialUpdatePayload,
   type MaterialForm,
   type RawMaterialAliasRead,
   type RawMaterialCatalogRead,
+  type RawMaterialImportRead,
+  type RawMaterialPriceForm,
+  type RawMaterialPriceRead,
   type RawMaterialRead,
+  type RawMaterialUpdateForm,
+  type SapRawMaterialImportForm,
 } from "./raw-material-model";
 import type { Parameter } from "./workspace-base-model";
 import { request } from "./workspace-api";
@@ -33,6 +39,13 @@ export function fetchRawMaterialDetail(
   rawMaterialId: string,
 ): Promise<RawMaterialRead> {
   return request<RawMaterialRead>(`/api/v1/raw-materials/${rawMaterialId}`, {
+    method: "GET",
+    headers,
+  });
+}
+
+export function listRawMaterials(headers: HeadersInit): Promise<RawMaterialRead[]> {
+  return request<RawMaterialRead[]>("/api/v1/raw-materials", {
     method: "GET",
     headers,
   });
@@ -88,15 +101,37 @@ export function createRawMaterial(
   });
 }
 
+export function updateRawMaterial(
+  headers: HeadersInit,
+  rawMaterialId: string,
+  materialForm: RawMaterialUpdateForm,
+): Promise<RawMaterialRead> {
+  return request<RawMaterialRead>(`/api/v1/raw-materials/${rawMaterialId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(buildRawMaterialUpdatePayload(materialForm)),
+  });
+}
+
+export function fetchRawMaterialPrices(
+  headers: HeadersInit,
+  rawMaterialId: string,
+): Promise<RawMaterialPriceRead[]> {
+  return request<RawMaterialPriceRead[]>(`/api/v1/raw-materials/${rawMaterialId}/prices`, {
+    method: "GET",
+    headers,
+  });
+}
+
 export function createRawMaterialPrice(
   headers: HeadersInit,
   rawMaterialId: string,
-  price: number,
-): Promise<Record<string, unknown>> {
-  return request<Record<string, unknown>>(`/api/v1/raw-materials/${rawMaterialId}/prices`, {
+  priceForm: RawMaterialPriceForm,
+): Promise<RawMaterialPriceRead> {
+  return request<RawMaterialPriceRead>(`/api/v1/raw-materials/${rawMaterialId}/prices`, {
     method: "POST",
     headers,
-    body: JSON.stringify(buildRawMaterialPricePayload(price)),
+    body: JSON.stringify(buildRawMaterialPricePayload(priceForm)),
   });
 }
 
@@ -129,4 +164,38 @@ export function createRawMaterialAlias(
       body: JSON.stringify({ alias }),
     },
   );
+}
+
+export function previewSapRawMaterialImport(
+  uploadHeaders: HeadersInit,
+  file: File,
+  form: SapRawMaterialImportForm,
+): Promise<RawMaterialImportRead> {
+  const body = new FormData();
+  body.append("file", file);
+  if (form.sheetName.trim()) {
+    body.append("sheet_name", form.sheetName.trim());
+  }
+  if (form.source.trim()) {
+    body.append("source", form.source.trim());
+  }
+  if (form.validFrom) {
+    body.append("valid_from", form.validFrom);
+  }
+
+  return request<RawMaterialImportRead>("/api/v1/raw-material-imports/sap/preview", {
+    method: "POST",
+    headers: uploadHeaders,
+    body,
+  });
+}
+
+export function applySapRawMaterialImport(
+  headers: HeadersInit,
+  importId: string,
+): Promise<RawMaterialImportRead> {
+  return request<RawMaterialImportRead>(`/api/v1/raw-material-imports/${importId}/apply`, {
+    method: "POST",
+    headers,
+  });
 }

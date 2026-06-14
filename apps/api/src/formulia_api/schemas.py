@@ -154,11 +154,52 @@ class RawMaterialPriceCreate(BaseModel):
     valid_from: date | None = None
 
 
+class RawMaterialPriceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    raw_material_id: uuid.UUID
+    price: float
+    currency: str
+    unit: str
+    supplier: str | None
+    source: str
+    valid_from: date
+    valid_to: date | None
+    created_at: datetime
+
+
 class RawMaterialParameterValueCreate(BaseModel):
     parameter_id: uuid.UUID
     value: float
     source: str | None = None
     confidence: float | None = None
+
+
+class RawMaterialImportRowRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    import_id: uuid.UUID
+    row_number: int
+    raw_material_id: uuid.UUID | None
+    raw_name: str | None
+    action: str
+    status: str
+    raw_row_json: dict[str, Any] = Field(default_factory=dict)
+    message: str | None = None
+
+
+class RawMaterialImportRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    file_name: str
+    source: str
+    source_hash: str
+    status: str
+    summary_json: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    rows: list[RawMaterialImportRowRead] = Field(default_factory=list)
 
 
 class FormulaItemCreate(BaseModel):
