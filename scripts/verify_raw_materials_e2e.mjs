@@ -35,6 +35,10 @@ async function main() {
   await assertVisible(materialSummary.getByText("Missing SAP"), "summary missing SAP");
   await page.getByLabel("Show").selectOption("all");
   await assertVisible(page.getByText("Showing 1-3 of 3"), "material show-all counter");
+  await page.getByText("Add raw material").click();
+  const createPanel = page.locator(".materialCreateDisclosure");
+  await assertHidden(createPanel.getByLabel("Code"), "add-material code field");
+  await assertHidden(createPanel.getByLabel("Ntotal"), "add-material Ntotal field");
 
   logStep("filter and open material");
   await page.getByPlaceholder("Code, SAP, name, family, alias").fill("experimental");
@@ -44,6 +48,17 @@ async function main() {
 
   logStep("edit master data");
   await page.getByRole("textbox", { name: "SAP code" }).fill("SAP-2002");
+  const materialSwitches = page.locator(".materialSwitches");
+  const activeCheckbox = materialSwitches.getByLabel("Active");
+  const obsoleteCheckbox = materialSwitches.getByLabel("Obsolete");
+  await obsoleteCheckbox.check();
+  if (await activeCheckbox.isChecked()) {
+    throw new Error("Active checkbox stayed checked after marking the material obsolete.");
+  }
+  await activeCheckbox.check();
+  if (await obsoleteCheckbox.isChecked()) {
+    throw new Error("Obsolete checkbox stayed checked after marking the material active.");
+  }
   await page.getByRole("button", { name: "Save master" }).click();
   await assertVisible(page.getByText("SAP-2002").first(), "saved SAP code");
 
@@ -120,6 +135,12 @@ async function main() {
 async function assertVisible(locator, label) {
   await locator.waitFor({ state: "visible", timeout: 10_000 }).catch((error) => {
     throw new Error(`Expected visible ${label}: ${error.message}`);
+  });
+}
+
+async function assertHidden(locator, label) {
+  await locator.waitFor({ state: "hidden", timeout: 2_000 }).catch((error) => {
+    throw new Error(`Expected hidden ${label}: ${error.message}`);
   });
 }
 

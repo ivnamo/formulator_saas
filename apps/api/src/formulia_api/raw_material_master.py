@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from typing import Any
 
@@ -7,6 +8,9 @@ from fastapi import HTTPException
 from sqlmodel import Session, select
 
 from .models import RawMaterial, RawMaterialPrice
+
+AUTO_RAW_MATERIAL_CODE_PREFIX = "RM-"
+AUTO_RAW_MATERIAL_CODE_PATTERN = re.compile(r"^RM-(\d{6})$")
 
 
 def clean_text(value: str | None) -> str | None:
@@ -36,6 +40,10 @@ def clean_raw_material_payload(values: dict[str, Any]) -> dict[str, Any]:
             cleaned[key] = clean_text(cleaned[key])
     if "name" in cleaned and cleaned["name"] is None:
         raise HTTPException(status_code=400, detail="Raw material name cannot be empty.")
+    if cleaned.get("is_obsolete") is True:
+        cleaned["is_active"] = False
+    elif cleaned.get("is_active") is True:
+        cleaned["is_obsolete"] = False
     return cleaned
 
 
@@ -75,6 +83,25 @@ def ensure_raw_material_identity_available(
                 status_code=409,
                 detail="Raw material name already exists for this tenant.",
             )
+
+
+def generate_raw_material_code(session: Session, tenant_id: uuid.UUID) -> str:
+    materials = session.exec(
+        select(RawMaterial).where(RawMaterial.tenant_id == tenant_id)
+    ).all()
+    existing_codes = {material.code for material in materials if material.code}
+    highest_number = 0
+    for code in existing_codes:
+        match = AUTO_RAW_MATERIAL_CODE_PATTERN.match(code)
+        if match:
+            highest_number = max(highest_number, int(match.group(1)))
+
+    next_number = highest_number + 1
+    while True:
+        candidate = f"{AUTO_RAW_MATERIAL_CODE_PREFIX}{next_number:06d}"
+        if candidate not in existing_codes:
+            return candidate
+        next_number += 1
 
 
 def ensure_valid_raw_material_price(price: float) -> None:

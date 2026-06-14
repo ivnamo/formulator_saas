@@ -153,7 +153,6 @@ export function RawMaterialsE2EHarness() {
       <RawMaterialsPanel
         active
         rawMaterials={rawMaterials}
-        parameter={parameter}
         parameters={parameters}
         materialForm={materialForm}
         aliasInputs={aliasInputs}
@@ -169,7 +168,7 @@ export function RawMaterialsE2EHarness() {
               ...initialMaterials[1],
               id,
               detailLoaded: true,
-              code: materialForm.code || null,
+              code: materialForm.code || `RM-${String(current.length + 1).padStart(6, "0")}`,
               name: materialForm.name || "New fixture material",
               price: materialForm.price ? Number(materialForm.price.replace(",", ".")) : null,
             },
@@ -314,7 +313,7 @@ function applyUpdateForm(material: RawMaterial, form: RawMaterialUpdateForm): Ra
     phMax: form.phMax ? Number(form.phMax.replace(",", ".")) : null,
     solubility: form.solubility || null,
     notes: form.notes,
-    isActive: form.isActive,
+    isActive: form.isObsolete ? false : form.isActive,
     isObsolete: form.isObsolete,
   };
 }

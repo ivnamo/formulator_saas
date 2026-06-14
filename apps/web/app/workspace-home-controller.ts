@@ -570,7 +570,6 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     },
     rawMaterials: {
       rawMaterials: workspace.rawMaterials,
-      parameter: workspace.parameter,
       parameters: workspace.parameters,
       materialForm,
       aliasInputs,

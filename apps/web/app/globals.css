@@ -811,7 +811,7 @@ label span {
 }
 
 .materialForm {
-  grid-template-columns: 90px minmax(150px, 1fr) 112px 112px auto;
+  grid-template-columns: minmax(180px, 1fr) 140px auto;
   margin-bottom: 16px;
 }
 
@@ -1095,6 +1095,7 @@ label span {
   display: grid;
   grid-template-columns: minmax(180px, 0.7fr) minmax(250px, 1.2fr) minmax(260px, 1fr);
   gap: 12px;
+  align-items: end;
   padding: 0 11px 11px;
   border-top: 1px solid var(--border);
 }
@@ -1103,6 +1104,7 @@ label span {
   min-width: 0;
   display: grid;
   gap: 8px;
+  align-content: end;
   margin: 0;
   border: 0;
   padding: 0;
@@ -1589,14 +1591,16 @@ label span {
 
 .materialCompositionToolbar {
   display: grid;
-  grid-template-columns: minmax(170px, 1fr) minmax(150px, 0.72fr) minmax(140px, 0.55fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 10px;
   align-items: end;
 }
 
 .segmentedButtons {
   display: inline-grid;
-  grid-template-columns: repeat(2, minmax(74px, 1fr));
+  grid-template-columns: minmax(102px, 1fr) minmax(54px, 0.65fr);
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 7px;
@@ -1605,14 +1609,16 @@ label span {
 
 .segmentedButtons button {
   min-height: 34px;
+  min-width: 0;
   border: 0;
   border-right: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
-  padding: 0 10px;
+  padding: 0 8px;
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .segmentedButtons button:last-child {
@@ -1635,7 +1641,7 @@ label span {
 
 .materialParameterRow {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(96px, 0.48fr) minmax(54px, 0.32fr) 34px;
+  grid-template-columns: minmax(150px, 1fr) minmax(116px, 0.48fr) 34px;
   gap: 8px;
   align-items: center;
   min-height: 44px;

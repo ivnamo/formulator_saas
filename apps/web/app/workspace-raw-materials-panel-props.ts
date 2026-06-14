@@ -4,7 +4,6 @@ type RawMaterialsPanelProps = WorkspaceHomePanels["rawMaterials"];
 
 type BuildWorkspaceRawMaterialsPanelPropsArgs = {
   rawMaterials: RawMaterialsPanelProps["rawMaterials"];
-  parameter: RawMaterialsPanelProps["parameter"];
   parameters: RawMaterialsPanelProps["parameters"];
   materialForm: RawMaterialsPanelProps["materialForm"];
   aliasInputs: RawMaterialsPanelProps["aliasInputs"];
@@ -29,7 +28,6 @@ export function buildWorkspaceRawMaterialsPanelProps(
 ): RawMaterialsPanelProps {
   return {
     rawMaterials: args.rawMaterials,
-    parameter: args.parameter,
     parameters: args.parameters,
     materialForm: args.materialForm,
     aliasInputs: args.aliasInputs,

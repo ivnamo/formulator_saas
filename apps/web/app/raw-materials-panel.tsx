@@ -30,7 +30,6 @@ import type { Parameter } from "./workspace-base-model";
 type RawMaterialsPanelProps = {
   active: boolean;
   rawMaterials: RawMaterial[];
-  parameter: Parameter | null;
   parameters: Parameter[];
   materialForm: MaterialForm;
   aliasInputs: Record<string, string>;
@@ -144,7 +143,6 @@ function createDefaultSapForm(): SapRawMaterialImportForm {
 export function RawMaterialsPanel({
   active,
   rawMaterials,
-  parameter,
   parameters,
   materialForm,
   aliasInputs,
@@ -581,16 +579,6 @@ export function RawMaterialsPanel({
         </summary>
         <div className="materialForm">
           <label>
-            <span>Code</span>
-            <input
-              value={materialForm.code}
-              onChange={(event) =>
-                onMaterialFormChange((current) => ({ ...current, code: event.target.value }))
-              }
-              disabled={!canEditTenantData}
-            />
-          </label>
-          <label>
             <span>Name</span>
             <input
               value={materialForm.name}
@@ -609,20 +597,6 @@ export function RawMaterialsPanel({
                 onMaterialFormChange((current) => ({ ...current, price: event.target.value }))
               }
               disabled={!canEditTenantData}
-            />
-          </label>
-          <label>
-            <span>{parameter ? parameter.name : "Value"}</span>
-            <input
-              inputMode="decimal"
-              value={materialForm.parameterValue}
-              onChange={(event) =>
-                onMaterialFormChange((current) => ({
-                  ...current,
-                  parameterValue: event.target.value,
-                }))
-              }
-              disabled={!canEditTenantData || !parameter}
             />
           </label>
           <button
@@ -1099,7 +1073,13 @@ export function RawMaterialsPanel({
                       checked={editForm.isActive}
                       onChange={(event) =>
                         setEditForm((current) =>
-                          current ? { ...current, isActive: event.target.checked } : current,
+                          current
+                            ? {
+                                ...current,
+                                isActive: event.target.checked,
+                                isObsolete: event.target.checked ? false : current.isObsolete,
+                              }
+                            : current,
                         )
                       }
                       disabled={!canEditTenantData}
@@ -1112,7 +1092,13 @@ export function RawMaterialsPanel({
                       checked={editForm.isObsolete}
                       onChange={(event) =>
                         setEditForm((current) =>
-                          current ? { ...current, isObsolete: event.target.checked } : current,
+                          current
+                            ? {
+                                ...current,
+                                isActive: event.target.checked ? false : current.isActive,
+                                isObsolete: event.target.checked,
+                              }
+                            : current,
                         )
                       }
                       disabled={!canEditTenantData}
@@ -1259,7 +1245,6 @@ export function RawMaterialsPanel({
                             />
                             <span>{candidate.unit ?? ""}</span>
                           </label>
-                          <code>{currentValue?.source ?? "-"}</code>
                           <button
                             className="iconButton"
                             type="button"

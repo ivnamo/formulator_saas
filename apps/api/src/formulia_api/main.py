@@ -70,6 +70,7 @@ from .raw_material_master import (
     clean_raw_material_payload,
     ensure_raw_material_identity_available,
     ensure_valid_raw_material_price,
+    generate_raw_material_code,
     list_raw_material_prices,
     normalize_name as normalize_raw_material_name,
 )
@@ -341,6 +342,8 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         values = clean_raw_material_payload(payload.model_dump())
+        if not values.get("code"):
+            values["code"] = generate_raw_material_code(session, tenant.tenant_id)
         normalized_name = normalize_raw_material_name(values["name"])
         ensure_raw_material_identity_available(
             session,

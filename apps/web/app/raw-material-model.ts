@@ -252,7 +252,7 @@ export function buildRawMaterialUpdatePayload(form: RawMaterialUpdateForm) {
     ph_max: parseFormNumber(form.phMax),
     solubility: form.solubility.trim() || null,
     notes: form.notes.trim() || null,
-    is_active: form.isActive,
+    is_active: form.isObsolete ? false : form.isActive,
     is_obsolete: form.isObsolete,
   };
 }
