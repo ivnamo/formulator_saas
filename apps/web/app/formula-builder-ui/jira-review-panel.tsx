@@ -58,8 +58,8 @@ export function JiraReviewPanel({
   const normalizedFormulaProjectId = formulaJiraProjectId.trim();
   const selectedIsoProject =
     isoDesignProjects.find((project) => project.id === selectedIsoDesignProjectId) ?? null;
-  const canLinkIso = isQualityFormula && normalizedFormulaProjectId.length > 0;
-  const isMissingRequiredIsoProject = canLinkIso && !selectedIsoProject;
+  const canLinkIso = isQualityFormula;
+  const isMissingRequiredIsoProject = isQualityFormula && !selectedIsoProject;
   const canSendToJira = canPrepareJiraReview && !isMissingRequiredIsoProject;
 
   return (
@@ -75,7 +75,7 @@ export function JiraReviewPanel({
             <select
               value={selectedIsoDesignProjectId}
               onChange={(event) => onSelectedIsoDesignProjectChange(event.target.value)}
-              disabled={isBusy || !canLinkIso}
+              disabled={isBusy || !canLinkIso || normalizedFormulaProjectId.length === 0}
             >
               <option value="">Sin expediente ISO</option>
               {isoDesignProjects.map((project) => (
@@ -106,12 +106,17 @@ export function JiraReviewPanel({
               formula de Calidad creara/actualizara F10-02 en ese expediente.
             </span>
           </>
-        ) : canLinkIso ? (
+        ) : isQualityFormula ? (
           <>
-            <strong>Sin expediente ISO para ProyectoID {normalizedFormulaProjectId}</strong>
+            <strong>
+              {normalizedFormulaProjectId
+                ? `Sin expediente ISO para ProyectoID ${normalizedFormulaProjectId}`
+                : "Sin ProyectoID ISO"}
+            </strong>
             <span>
-              Crea o importa primero un F10-01 con ese ProyectoID para que las formulas de Calidad
-              se registren como F10-02. Puedes prepararlo desde aqui y volver despues al builder.
+              {normalizedFormulaProjectId
+                ? "Crea o importa primero el F10-01 de ese ProyectoID para que la formula de Calidad se registre como F10-02."
+                : "Crea el F10-01 desde aqui; el sistema generara el ProyectoID y lo asignara a la formula al volver al builder."}
             </span>
             <button
               className="secondaryButton"

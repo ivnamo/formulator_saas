@@ -63,6 +63,8 @@ export function MaterialCatalogControls({
   onLoadMore,
   onResetFilters,
 }: MaterialCatalogControlsProps) {
+  const loadMoreCount = Math.min(500, Math.max(catalogTotal - materialResultLimit, 0));
+
   return (
     <>
       <label className="fullWidthLabel">
@@ -104,7 +106,7 @@ export function MaterialCatalogControls({
         <div>
           {materialResultLimit < catalogTotal ? (
             <button className="textButton" type="button" onClick={onLoadMore}>
-              Ver 60 mas
+              Ver {loadMoreCount} mas
             </button>
           ) : null}
           <button className="textButton" type="button" onClick={onResetFilters}>

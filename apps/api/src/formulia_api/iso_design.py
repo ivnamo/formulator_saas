@@ -12,6 +12,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -58,6 +59,10 @@ from .schemas import (
     IsoTenantSettingsUpdate,
 )
 from .tenant import TenantContext, require_tenant_context
+
+
+ISO_REQUEST_NUMBER_PATTERN = re.compile(r"^\d{1,3}/20\d{2}$")
+NUMERIC_PROJECT_CODE_PATTERN = re.compile(r"^\d+$")
 
 
 def default_iso_config() -> dict[str, Any]:
@@ -199,7 +204,22 @@ def register_iso_routes(app: FastAPI) -> None:
             .where(IsoDesignProject.tenant_id == tenant.tenant_id)
             .order_by(IsoDesignProject.year.desc(), IsoDesignProject.iso_request_number)
         ).all()
-        return [_iso_project_read(session, project) for project in projects]
+        trial_counts = {
+            project_id: trial_count
+            for project_id, trial_count in session.exec(
+                select(IsoDesignTrial.design_project_id, func.count(IsoDesignTrial.id))
+                .where(IsoDesignTrial.tenant_id == tenant.tenant_id)
+                .group_by(IsoDesignTrial.design_project_id)
+            ).all()
+        }
+        return [
+            _iso_project_read(
+                session,
+                project,
+                trial_count=trial_counts.get(project.id, 0),
+            )
+            for project in projects
+        ]
 
     @app.post(
         "/api/v1/iso/design-projects",
@@ -213,9 +233,12 @@ def register_iso_routes(app: FastAPI) -> None:
     ) -> dict[str, Any]:
         _require_iso_enabled(session, tenant)
         _validate_project_state(payload.accepted_status, payload.rejection_reason)
-        iso_request_number = _clean_required(payload.iso_request_number, "No Solicitud")
-        year = payload.year or _derive_project_year(payload.iso_request_number)
-        project_code = _clean_optional(payload.project_code)
+        iso_request_number = _clean_iso_request_number(payload.iso_request_number)
+        year = _validated_iso_project_year(iso_request_number, payload.year)
+        project_code = _clean_optional(payload.project_code) or _next_iso_project_code(
+            session,
+            tenant.tenant_id,
+        )
         _ensure_no_duplicate_iso_project(
             session,
             tenant.tenant_id,
@@ -257,7 +280,7 @@ def register_iso_routes(app: FastAPI) -> None:
             session.rollback()
             raise HTTPException(
                 status_code=409,
-                detail="An ISO design project already exists for this request and year.",
+                detail="An ISO design project already exists for this ProyectoID.",
             ) from exc
         session.refresh(project)
         return _iso_project_read(session, project)
@@ -291,12 +314,18 @@ def register_iso_routes(app: FastAPI) -> None:
         next_rejection_reason = updates.get("rejection_reason", project.rejection_reason)
         _validate_project_state(next_accepted_status, next_rejection_reason)
         if "iso_request_number" in updates and updates["iso_request_number"] is not None:
-            updates["iso_request_number"] = _clean_required(
-                updates["iso_request_number"],
-                "No Solicitud",
+            updates["iso_request_number"] = _clean_iso_request_number(updates["iso_request_number"])
+        if "iso_request_number" in updates or "year" in updates:
+            updates["year"] = _validated_iso_project_year(
+                updates.get("iso_request_number", project.iso_request_number),
+                updates.get("year", project.year),
             )
-            if "year" not in updates or updates["year"] is None:
-                updates["year"] = _derive_project_year(updates["iso_request_number"])
+        if "project_code" in updates:
+            updates["project_code"] = (
+                _clean_optional(updates["project_code"])
+                or project.project_code
+                or _next_iso_project_code(session, tenant.tenant_id)
+            )
         _ensure_no_duplicate_iso_project(
             session,
             tenant.tenant_id,
@@ -319,7 +348,7 @@ def register_iso_routes(app: FastAPI) -> None:
             session.rollback()
             raise HTTPException(
                 status_code=409,
-                detail="An ISO design project already exists for this request and year.",
+                detail="An ISO design project already exists for this ProyectoID.",
             ) from exc
         session.refresh(project)
         return _iso_project_read(session, project)
@@ -864,21 +893,20 @@ def _ensure_no_duplicate_iso_project(
     project_code: str | None,
     exclude_project_id: uuid.UUID | None = None,
 ) -> None:
-    statement = select(IsoDesignProject).where(
-        IsoDesignProject.tenant_id == tenant_id,
-        IsoDesignProject.year == year,
-        IsoDesignProject.iso_request_number == iso_request_number,
-    )
-    if exclude_project_id is not None:
-        statement = statement.where(IsoDesignProject.id != exclude_project_id)
-    candidates = session.exec(statement).all()
     normalized_code = (project_code or "").strip().casefold()
+    if not normalized_code:
+        return
+    candidates = session.exec(
+        select(IsoDesignProject).where(IsoDesignProject.tenant_id == tenant_id)
+    ).all()
     for candidate in candidates:
+        if exclude_project_id is not None and candidate.id == exclude_project_id:
+            continue
         candidate_code = (candidate.project_code or "").strip().casefold()
         if candidate_code == normalized_code:
             raise HTTPException(
                 status_code=409,
-                detail="An ISO design project already exists for this request, year and project code.",
+                detail="An ISO design project already exists for this ProyectoID.",
             )
 
 
@@ -1043,14 +1071,20 @@ def _upsert_trial_from_review(
     return trial
 
 
-def _iso_project_read(session: Session, project: IsoDesignProject) -> dict[str, Any]:
-    trials = session.exec(
-        select(IsoDesignTrial).where(
-            IsoDesignTrial.tenant_id == project.tenant_id,
-            IsoDesignTrial.design_project_id == project.id,
-        )
-    ).all()
-    return {**project.model_dump(mode="json"), "trial_count": len(trials)}
+def _iso_project_read(
+    session: Session,
+    project: IsoDesignProject,
+    *,
+    trial_count: int | None = None,
+) -> dict[str, Any]:
+    if trial_count is None:
+        trial_count = session.exec(
+            select(func.count(IsoDesignTrial.id)).where(
+                IsoDesignTrial.tenant_id == project.tenant_id,
+                IsoDesignTrial.design_project_id == project.id,
+            )
+        ).one()
+    return {**project.model_dump(mode="json"), "trial_count": trial_count}
 
 
 def _iso_trial_read(trial: IsoDesignTrial) -> dict[str, Any]:
@@ -1260,8 +1294,8 @@ def _upsert_legacy_project(
     tenant: TenantContext,
     payload: dict[str, Any],
 ) -> tuple[IsoDesignProject, bool]:
-    iso_request_number = _clean_required(str(payload.get("iso_request_number") or ""), "No Solicitud")
-    year = int(payload.get("year") or _derive_project_year(iso_request_number))
+    iso_request_number = _clean_iso_request_number(str(payload.get("iso_request_number") or ""))
+    year = _validated_iso_project_year(iso_request_number, _optional_int(payload.get("year")))
     product_name = _clean_required(str(payload.get("product_name") or ""), "Producto")
     project_code = _clean_optional(payload.get("project_code"))
     project = _find_legacy_project(
@@ -1282,6 +1316,18 @@ def _upsert_legacy_project(
             created_by=tenant.user_id,
         )
     project.project_code = project_code or project.project_code
+    if not project.project_code:
+        project.project_code = _next_iso_project_code(session, tenant.tenant_id)
+    _ensure_no_duplicate_iso_project(
+        session,
+        tenant.tenant_id,
+        year=year,
+        iso_request_number=iso_request_number,
+        project_code=project.project_code,
+        exclude_project_id=None if created else project.id,
+    )
+    project.iso_request_number = iso_request_number
+    project.year = year
     project.requester = _clean_optional(payload.get("requester")) or project.requester
     project.product_name = product_name
     project.commercial_name = _clean_optional(payload.get("commercial_name")) or project.commercial_name
@@ -1315,6 +1361,14 @@ def _find_legacy_project(
     project_code: str | None,
     product_name: str,
 ) -> IsoDesignProject | None:
+    if project_code:
+        normalized_code = project_code.strip().casefold()
+        projects = session.exec(
+            select(IsoDesignProject).where(IsoDesignProject.tenant_id == tenant_id)
+        ).all()
+        for project in projects:
+            if (project.project_code or "").strip().casefold() == normalized_code:
+                return project
     candidates = session.exec(
         select(IsoDesignProject).where(
             IsoDesignProject.tenant_id == tenant_id,
@@ -1322,15 +1376,11 @@ def _find_legacy_project(
             IsoDesignProject.iso_request_number == iso_request_number,
         )
     ).all()
-    if project_code:
-        for project in candidates:
-            if project.project_code == project_code:
-                return project
     normalized_product = product_name.strip().casefold()
     for project in candidates:
         if project.product_name.strip().casefold() == normalized_product:
             return project
-    return candidates[0] if len(candidates) == 1 else None
+    return None
 
 
 def _upsert_legacy_trial(
@@ -1574,6 +1624,38 @@ def _derive_project_year(value: str) -> int:
     if matches:
         return int(matches[-1])
     return date.today().year
+
+
+def _clean_iso_request_number(value: str) -> str:
+    cleaned = _clean_required(value, "No Solicitud")
+    if not ISO_REQUEST_NUMBER_PATTERN.fullmatch(cleaned):
+        raise HTTPException(
+            status_code=400,
+            detail="No Solicitud must use N/YYYY format, for example 12/2026.",
+        )
+    return cleaned
+
+
+def _validated_iso_project_year(iso_request_number: str, year: int | None) -> int:
+    request_year = _derive_project_year(iso_request_number)
+    if year is not None and year != request_year:
+        raise HTTPException(
+            status_code=400,
+            detail="Year must match No Solicitud.",
+        )
+    return request_year
+
+
+def _next_iso_project_code(session: Session, tenant_id: uuid.UUID) -> str:
+    project_codes = session.exec(
+        select(IsoDesignProject.project_code).where(IsoDesignProject.tenant_id == tenant_id)
+    ).all()
+    highest = 0
+    for project_code in project_codes:
+        cleaned = str(project_code or "").strip()
+        if NUMERIC_PROJECT_CODE_PATTERN.fullmatch(cleaned):
+            highest = max(highest, int(cleaned))
+    return str(highest + 1)
 
 
 def _clean_required(value: str, field_name: str) -> str:

@@ -42,6 +42,8 @@ type IsoDesignActionsOptions = {
   isoLegacyImportFile: File | null;
   selectedIsoLegacyImportSheet: string;
   selectedIsoDesignProjectId: string;
+  isoDesignTrialsByProjectId: Record<string, IsoDesignTrial[]>;
+  isoProductValidationsByProjectId: Record<string, IsoProductValidation | null>;
   setIsoSettings: Dispatch<SetStateAction<IsoTenantSettings | null>>;
   setIsoDesignProjects: Dispatch<SetStateAction<IsoDesignProject[]>>;
   setIsoDesignTrialsByProjectId: Dispatch<SetStateAction<Record<string, IsoDesignTrial[]>>>;
@@ -57,6 +59,7 @@ type IsoDesignActionsOptions = {
   runAction: (label: string, action: () => Promise<void>) => Promise<void>;
   setError: (message: string) => void;
   setMessage: (message: string) => void;
+  onProjectCreated?: (project: IsoDesignProject) => boolean | void;
 };
 
 export function useIsoDesignActions({
@@ -68,6 +71,8 @@ export function useIsoDesignActions({
   isoLegacyImportFile,
   selectedIsoLegacyImportSheet,
   selectedIsoDesignProjectId,
+  isoDesignTrialsByProjectId,
+  isoProductValidationsByProjectId,
   setIsoSettings,
   setIsoDesignProjects,
   setIsoDesignTrialsByProjectId,
@@ -81,6 +86,7 @@ export function useIsoDesignActions({
   runAction,
   setError,
   setMessage,
+  onProjectCreated,
 }: IsoDesignActionsOptions) {
   const downloadIsoArtifact = useCallback(
     async (artifact: IsoRecordArtifact) => {
@@ -96,6 +102,47 @@ export function useIsoDesignActions({
     [headers],
   );
 
+  const loadIsoProjectDetails = useCallback(
+    async (projectId: string) => {
+      if (!projectId) {
+        return;
+      }
+      const [trials, validation] = await Promise.all([
+        listIsoDesignTrials(headers, projectId),
+        getIsoProductValidation(headers, projectId),
+      ]);
+      setIsoDesignTrialsByProjectId((current) => ({ ...current, [projectId]: trials }));
+      setIsoProductValidationsByProjectId((current) => ({ ...current, [projectId]: validation }));
+    },
+    [headers, setIsoDesignTrialsByProjectId, setIsoProductValidationsByProjectId],
+  );
+
+  const selectIsoDesignProject = useCallback(
+    (projectId: string) => {
+      setSelectedIsoDesignProjectId(projectId);
+      if (!workspace.tenant || !projectId) {
+        return;
+      }
+      if (
+        isoDesignTrialsByProjectId[projectId] !== undefined &&
+        Object.prototype.hasOwnProperty.call(isoProductValidationsByProjectId, projectId)
+      ) {
+        return;
+      }
+      void loadIsoProjectDetails(projectId).catch((error: unknown) => {
+        setError(error instanceof Error ? error.message : "Could not load ISO project detail");
+      });
+    },
+    [
+      isoDesignTrialsByProjectId,
+      isoProductValidationsByProjectId,
+      loadIsoProjectDetails,
+      setError,
+      setSelectedIsoDesignProjectId,
+      workspace.tenant,
+    ],
+  );
+
   const loadIsoModule = useCallback(
     async (options: { silent?: boolean } = {}) => {
       if (!workspace.tenant) {
@@ -108,25 +155,24 @@ export function useIsoDesignActions({
         if (settings.enabled) {
           const projects = await listIsoDesignProjects(headers);
           setIsoDesignProjects(projects);
-          const trialEntries = await Promise.all(
-            projects.map(async (project) => [
-              project.id,
-              await listIsoDesignTrials(headers, project.id),
-            ] as const),
+          const projectIds = new Set(projects.map((project) => project.id));
+          const firstProjectId = projects[0]?.id ?? "";
+          setIsoDesignTrialsByProjectId((current) =>
+            Object.fromEntries(
+              Object.entries(current).filter(([projectId]) => projectIds.has(projectId)),
+            ),
           );
-          const validationEntries = await Promise.all(
-            projects.map(async (project) => [
-              project.id,
-              await getIsoProductValidation(headers, project.id),
-            ] as const),
+          setIsoProductValidationsByProjectId((current) =>
+            Object.fromEntries(
+              Object.entries(current).filter(([projectId]) => projectIds.has(projectId)),
+            ),
           );
-          setIsoDesignTrialsByProjectId(Object.fromEntries(trialEntries));
-          setIsoProductValidationsByProjectId(Object.fromEntries(validationEntries));
           setSelectedIsoDesignProjectId((current) =>
-            current && projects.some((project) => project.id === current)
-              ? current
-              : (projects[0]?.id ?? ""),
+            current && projectIds.has(current) ? current : firstProjectId,
           );
+          if (firstProjectId) {
+            await loadIsoProjectDetails(firstProjectId);
+          }
         } else {
           setIsoDesignProjects([]);
           setIsoDesignTrialsByProjectId({});
@@ -136,7 +182,11 @@ export function useIsoDesignActions({
       };
 
       if (options.silent) {
-        await load();
+        try {
+          await load();
+        } catch (error) {
+          setError(error instanceof Error ? error.message : "Could not load ISO 9001 module");
+        }
         return;
       }
 
@@ -147,6 +197,7 @@ export function useIsoDesignActions({
     },
     [
       headers,
+      loadIsoProjectDetails,
       runAction,
       setError,
       setIsoDesignProjects,
@@ -174,25 +225,18 @@ export function useIsoDesignActions({
       setIsoSettings(settings);
       const projects = await listIsoDesignProjects(headers);
       setIsoDesignProjects(projects);
-      const trialEntries = await Promise.all(
-        projects.map(async (project) => [
-          project.id,
-          await listIsoDesignTrials(headers, project.id),
-        ] as const),
-      );
-      const validationEntries = await Promise.all(
-        projects.map(async (project) => [
-          project.id,
-          await getIsoProductValidation(headers, project.id),
-        ] as const),
-      );
-      setIsoDesignTrialsByProjectId(Object.fromEntries(trialEntries));
-      setIsoProductValidationsByProjectId(Object.fromEntries(validationEntries));
-      setSelectedIsoDesignProjectId((current) => current || projects[0]?.id || "");
+      setIsoDesignTrialsByProjectId({});
+      setIsoProductValidationsByProjectId({});
+      const nextSelectedProjectId = projects[0]?.id ?? "";
+      setSelectedIsoDesignProjectId(nextSelectedProjectId);
+      if (nextSelectedProjectId) {
+        await loadIsoProjectDetails(nextSelectedProjectId);
+      }
       setMessage("ISO 9001 module active");
     });
   }, [
     headers,
+    loadIsoProjectDetails,
     runAction,
     setError,
     setIsoDesignProjects,
@@ -232,11 +276,17 @@ export function useIsoDesignActions({
       setIsoProductValidationsByProjectId((current) => ({ ...current, [project.id]: null }));
       setSelectedIsoDesignProjectId(project.id);
       setIsoProjectForm(initialIsoDesignProjectForm);
-      setMessage(`ISO project ${project.iso_request_number} ready`);
+      const handled = onProjectCreated?.(project) === true;
+      if (!handled) {
+        setMessage(
+          `F10-01 ${project.iso_request_number} listo con ProyectoID ${project.project_code ?? "-"}`,
+        );
+      }
     });
   }, [
     headers,
     isoProjectForm,
+    onProjectCreated,
     runAction,
     setError,
     setIsoDesignProjects,
@@ -583,6 +633,7 @@ export function useIsoDesignActions({
 
   return {
     loadIsoModule,
+    selectIsoDesignProject,
     enableIsoModule,
     createIsoDesignProject,
     linkIsoTrialFromJiraReview,

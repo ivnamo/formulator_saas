@@ -62,7 +62,7 @@ export function FormulaBasicsStep({
             <input
               aria-label="ProyectoID"
               list="jira-project-id-options"
-              placeholder="FLOWER"
+              placeholder="Selecciona un ProyectoID"
               value={values.formulaJiraProjectId}
               onChange={(event) => onChange({ formulaJiraProjectId: event.target.value })}
               disabled={isBusy}

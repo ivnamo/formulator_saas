@@ -450,6 +450,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   });
   const {
     loadIsoModule,
+    selectIsoDesignProject,
     enableIsoModule,
     createIsoDesignProject,
     selectIsoLegacyImportFormat,
@@ -472,6 +473,8 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     isoLegacyImportFile,
     selectedIsoLegacyImportSheet,
     selectedIsoDesignProjectId,
+    isoDesignTrialsByProjectId,
+    isoProductValidationsByProjectId,
     setIsoSettings,
     setIsoDesignProjects,
     setIsoDesignTrialsByProjectId,
@@ -485,6 +488,22 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     runAction,
     setError,
     setMessage,
+    onProjectCreated: (project) => {
+      if (!isoProjectPreparedFromFormulaBuilder) {
+        return false;
+      }
+      setWorkspace((current) => ({
+        ...current,
+        formulaJiraProjectId: project.project_code ?? current.formulaJiraProjectId,
+      }));
+      setSelectedJiraIsoDesignProjectId(project.id);
+      setIsoProjectPreparedFromFormulaBuilder(false);
+      setActiveView("formula");
+      setMessage(
+        `F10-01 creado: ProyectoID ${project.project_code ?? "-"} asignado a la formula.`,
+      );
+      return true;
+    },
   });
 
   useEffect(() => {
@@ -526,46 +545,38 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       return;
     }
 
-    const projectCode = normalizeIsoProjectCode(workspace.formulaJiraProjectId);
-    if (!projectCode) {
-      setError("Indica el ProyectoID en Datos basicos antes de crear el F10-01.");
-      return;
-    }
-
     const currentYear = String(new Date().getFullYear());
     setIsoProjectForm((current) => ({
       ...current,
       year: current.year || currentYear,
-      projectCode,
-      productName: current.productName || workspace.formulaName || projectCode,
+      projectCode: "",
+      productName: current.productName || workspace.formulaName || "Nueva formula",
       productType: current.productType || workspace.formulaJiraProductType,
       acceptedStatus: current.acceptedStatus || "pending",
       lifecycleStatus: current.lifecycleStatus || "intake",
       comments:
         current.comments ||
-        `Preparado desde Formula Builder para ProyectoID ${projectCode}. Completa No Solicitud y crea el F10-01 antes de enviar la formula a Jira.`,
+        "Preparado desde Formula Builder. Completa No Solicitud; el ProyectoID se generara automaticamente al crear el F10-01.",
     }));
     setIsoProjectPreparedFromFormulaBuilder(true);
     setSelectedIsoDesignProjectId("");
     setActiveView("iso");
     setMessage(
-      "F10-01 preparado desde el builder: completa No Solicitud, crea el expediente y vuelve al Formula Builder.",
+      "F10-01 preparado desde el builder: completa No Solicitud y crea el expediente para generar ProyectoID.",
     );
   }, [
     setActiveView,
-    setError,
     setIsoProjectForm,
     setMessage,
     setSelectedIsoDesignProjectId,
     workspace.formulaJiraIssueType,
     workspace.formulaJiraProductType,
-    workspace.formulaJiraProjectId,
     workspace.formulaName,
   ]);
   const returnToFormulaBuilderFromIso = useCallback(() => {
     setActiveView("formula");
     setMessage(
-      "Vuelta al Formula Builder. Si ya has creado el F10-01, el enlace ISO se recalculara por ProyectoID.",
+      "Vuelta al Formula Builder. El enlace ISO se recalculara por ProyectoID.",
     );
   }, [setActiveView, setMessage]);
   const {
@@ -734,7 +745,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       isBusy,
       canEditTenantData,
       canManageIsoSettings: showInvitationAdminPanel,
-      setSelectedProjectId: setSelectedIsoDesignProjectId,
+      setSelectedProjectId: selectIsoDesignProject,
       setIsoProjectForm,
       loadIsoModule,
       enableIsoModule,

@@ -105,9 +105,7 @@ def _parse_f10_01_sheet(sheet: Worksheet) -> list[IsoLegacyImportRow]:
         product_name = values.get("product_name")
         request_number = values.get("iso_request_number")
         legacy_id = values.get("legacy_id")
-        record_key = _clean_text(request_number) or (
-            f"ID-{legacy_id}" if _clean_text(legacy_id) else None
-        )
+        record_key = _clean_text(request_number)
         parsed_year = _year_from_request(record_key) or year
         payload = {
             "project": {

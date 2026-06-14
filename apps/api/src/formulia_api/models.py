@@ -316,6 +316,11 @@ class IsoDesignProject(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint(
             "tenant_id",
+            "project_code",
+            name="uq_iso_design_projects_project_code",
+        ),
+        UniqueConstraint(
+            "tenant_id",
             "year",
             "iso_request_number",
             "project_code",

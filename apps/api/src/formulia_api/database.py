@@ -6,6 +6,7 @@ from collections.abc import Generator
 
 from fastapi import Request
 from sqlalchemy import Engine, inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -23,6 +24,12 @@ def create_db_engine(database_url: str | None = None) -> Engine:
         if url in {"sqlite://", "sqlite:///:memory:"}:
             engine_args["poolclass"] = StaticPool
     elif url.startswith("postgresql"):
+        connect_args["prepare_threshold"] = None
+        engine_args["pool_pre_ping"] = True
+        engine_args["pool_size"] = int(os.getenv("FORMULIA_DB_POOL_SIZE", "1"))
+        engine_args["max_overflow"] = int(os.getenv("FORMULIA_DB_MAX_OVERFLOW", "0"))
+        engine_args["pool_timeout"] = int(os.getenv("FORMULIA_DB_POOL_TIMEOUT", "10"))
+        engine_args["pool_recycle"] = int(os.getenv("FORMULIA_DB_POOL_RECYCLE", "300"))
         schema = _configured_postgres_schema()
         if schema is not None:
             connect_args["options"] = f"-csearch_path={schema},public"
@@ -191,6 +198,67 @@ def _ensure_iso_design_projects_unique_constraint(
         target_columns,
         schema=schema,
     )
+    _ensure_unique_index(
+        engine,
+        "iso_design_projects",
+        "ix_iso_design_projects_tenant_project_code_unique",
+        ["tenant_id", "project_code"],
+        where="project_code is not null",
+        schema=schema,
+    )
+
+
+def _ensure_unique_index(
+    engine: Engine,
+    table_name: str,
+    index_name: str,
+    columns: list[str],
+    *,
+    where: str | None = None,
+    schema: str | None = None,
+) -> None:
+    if engine.dialect.name != "postgresql":
+        return
+
+    inspected_schema = schema or "public"
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+        index_is_valid = connection.execute(
+            text(
+                """
+                select i.indisvalid
+                from pg_class c
+                join pg_namespace n on n.oid = c.relnamespace
+                join pg_index i on i.indexrelid = c.oid
+                where c.relname = :index_name
+                and n.nspname = :schema_name
+                """
+            ),
+            {"index_name": index_name, "schema_name": inspected_schema},
+        ).scalar_one_or_none()
+        if index_is_valid is True:
+            return
+        qualified_table = _qualified_table_name(engine, table_name, schema)
+        quoted_index = _quote_identifier(index_name)
+        quoted_columns = ", ".join(_quote_identifier(column) for column in columns)
+        where_clause = f" WHERE {where}" if where else ""
+        try:
+            connection.execute(text("SET statement_timeout = '5000ms'"))
+        except SQLAlchemyError:
+            pass
+        if index_is_valid is False:
+            try:
+                connection.execute(text(f"DROP INDEX CONCURRENTLY IF EXISTS {quoted_index}"))
+            except SQLAlchemyError:
+                return
+        try:
+            connection.execute(
+                text(
+                    f"CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS {quoted_index} "
+                    f"ON {qualified_table} ({quoted_columns}){where_clause}"
+                )
+            )
+        except SQLAlchemyError:
+            return
 
 
 def _ensure_sqlite_iso_design_projects_unique_constraint(engine: Engine) -> None:

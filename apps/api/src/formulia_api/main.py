@@ -292,7 +292,7 @@ def register_routes(app: FastAPI) -> None:
         parameter: str | None = Query(default=None),
         parameter_range: list[str] = Query(default_factory=list),
         only_positive: bool = Query(default=True),
-        limit: int = Query(default=60, ge=1, le=250),
+        limit: int = Query(default=500, ge=1, le=1000),
         offset: int = Query(default=0, ge=0),
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),

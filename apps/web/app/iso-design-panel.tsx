@@ -126,8 +126,7 @@ export function IsoDesignPanel({
     !isBusy &&
     legacyImportPreview !== null &&
     legacyImportPreview.ready_rows > 0;
-  const showFormulaBuilderReturn =
-    isPreparedFromFormulaBuilder && projectForm.projectCode.trim().length > 0;
+  const showFormulaBuilderReturn = isPreparedFromFormulaBuilder;
 
   return (
     <section id="iso" className="panel isoPanel" hidden={!active}>
@@ -316,7 +315,7 @@ export function IsoDesignPanel({
             <div className="isoBuilderReturn" aria-label="Formula Builder return">
               <div>
                 <span>Preparado desde Formula Builder</span>
-                <strong>{projectForm.projectCode}</strong>
+                <strong>{projectForm.projectCode || "ProyectoID se generara al crear"}</strong>
               </div>
               <button
                 className="secondaryButton"
@@ -335,6 +334,7 @@ export function IsoDesignPanel({
               <span>{f1001Label} No Solicitud</span>
               <input
                 value={projectForm.isoRequestNumber}
+                placeholder="12/2026"
                 onChange={(event) =>
                   onProjectFormChange((current) => ({
                     ...current,
@@ -356,16 +356,10 @@ export function IsoDesignPanel({
               />
             </label>
             <label>
-              <span>ProyectoID</span>
+              <span>ProyectoID autonumerico</span>
               <input
-                value={projectForm.projectCode}
-                onChange={(event) =>
-                  onProjectFormChange((current) => ({
-                    ...current,
-                    projectCode: event.target.value,
-                  }))
-                }
-                disabled={!canEditTenantData || isBusy}
+                value={projectForm.projectCode || "Se generara al crear"}
+                disabled
               />
             </label>
             <label>

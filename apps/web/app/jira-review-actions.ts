@@ -70,7 +70,13 @@ export function useJiraReviewActions({
       return;
     }
     if (!workspace.formulaJiraProjectId.trim()) {
-      setError("ProyectoID is required before sending to Jira");
+      if (workspace.formulaJiraIssueType.trim().toLowerCase() === "calidad") {
+        setError(
+          "Crea o selecciona un F10-01 para generar ProyectoID antes de enviar la formula de Calidad a Jira.",
+        );
+      } else {
+        setError("ProyectoID is required before sending to Jira");
+      }
       return;
     }
     if (

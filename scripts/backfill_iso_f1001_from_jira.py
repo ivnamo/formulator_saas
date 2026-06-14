@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -35,6 +36,8 @@ JIRA_F1001_FIELDS = [
 @dataclass(frozen=True)
 class BackfillCandidate:
     project_code: str
+    iso_request_number: str
+    jira_project_id: str
     issue_count: int
     first_issue_key: str
     last_issue_key: str
@@ -137,18 +140,20 @@ def _build_candidates(
         grouped[project_code].append(issue)
 
     existing_projects = session.exec(
-        select(IsoDesignProject).where(
-            IsoDesignProject.tenant_id == tenant.id,
-            IsoDesignProject.year == year,
-        )
+        select(IsoDesignProject).where(IsoDesignProject.tenant_id == tenant.id)
     ).all()
     existing_by_code = {
-        (project.project_code or "").strip().casefold(): project for project in existing_projects
+        (project.project_code or "").strip().casefold(): project
+        for project in existing_projects
+        if (project.project_code or "").strip()
     }
+    used_project_codes = set(existing_by_code)
+    next_project_code = _next_numeric_project_code(existing_projects)
+    next_request_number = _next_iso_request_number(existing_projects, year)
 
     candidates = []
-    for project_code in sorted(grouped):
-        rows = grouped[project_code]
+    for jira_project_id in sorted(grouped):
+        rows = grouped[jira_project_id]
         fields = [row.get("fields") or {} for row in rows]
         requester = _first_clean(
             (_mapping(field.get("reporter")).get("displayName") for field in fields)
@@ -161,15 +166,31 @@ def _build_candidates(
         issue_types = Counter(_mapping(field.get("issuetype")).get("name") or "-" for field in fields)
         lifecycle_status = _lifecycle_status_from_jira(statuses, technical_results)
         finished_at = _finished_at_from_jira(fields) if lifecycle_status == "finished" else None
-        existing = existing_by_code.get(project_code.casefold())
+        existing = existing_by_code.get(jira_project_id.casefold())
         action = "update_project" if existing else "create_project"
+        if existing:
+            project_code = existing.project_code or ""
+            iso_request_number = existing.iso_request_number
+        else:
+            if re.fullmatch(r"\d+", jira_project_id) and jira_project_id.casefold() not in used_project_codes:
+                project_code = jira_project_id
+            else:
+                while str(next_project_code).casefold() in used_project_codes:
+                    next_project_code += 1
+                project_code = str(next_project_code)
+                next_project_code += 1
+            used_project_codes.add(project_code.casefold())
+            iso_request_number = f"{next_request_number}/{year}"
+            next_request_number += 1
         candidates.append(
             BackfillCandidate(
                 project_code=project_code,
+                iso_request_number=iso_request_number,
+                jira_project_id=jira_project_id,
                 issue_count=len(rows),
                 first_issue_key=str(rows[0].get("key") or ""),
                 last_issue_key=str(rows[-1].get("key") or ""),
-                product_name=project_code,
+                product_name=jira_project_id,
                 requester=requester,
                 product_type=product_type,
                 lifecycle_status=lifecycle_status,
@@ -193,20 +214,21 @@ def _apply_candidates(
         project = session.exec(
             select(IsoDesignProject).where(
                 IsoDesignProject.tenant_id == tenant.id,
-                IsoDesignProject.year == year,
                 IsoDesignProject.project_code == candidate.project_code,
             )
         ).first()
         if project is None:
             project = IsoDesignProject(
                 tenant_id=tenant.id,
-                iso_request_number=candidate.project_code,
+                iso_request_number=candidate.iso_request_number,
                 year=year,
                 project_code=candidate.project_code,
                 product_name=candidate.product_name,
                 created_by=None,
             )
         project.requester = candidate.requester or project.requester
+        project.iso_request_number = project.iso_request_number or candidate.iso_request_number
+        project.year = year
         project.product_name = candidate.product_name
         project.product_type = candidate.product_type or project.product_type
         project.accepted_status = "accepted"
@@ -270,6 +292,27 @@ def _comment(
             f"Resultado I+D: {_counter_text(technical_results)}.",
         ]
     )
+
+
+def _next_numeric_project_code(projects: list[IsoDesignProject]) -> int:
+    highest = 0
+    for project in projects:
+        value = (project.project_code or "").strip()
+        if re.fullmatch(r"\d+", value):
+            highest = max(highest, int(value))
+    return highest + 1
+
+
+def _next_iso_request_number(projects: list[IsoDesignProject], year: int) -> int:
+    highest = 0
+    pattern = re.compile(rf"^(\d+)/{year}$")
+    for project in projects:
+        if project.year != year:
+            continue
+        match = pattern.fullmatch((project.iso_request_number or "").strip())
+        if match:
+            highest = max(highest, int(match.group(1)))
+    return highest + 1
 
 
 def _lifecycle_status_from_jira(statuses: Counter, technical_results: Counter) -> str:

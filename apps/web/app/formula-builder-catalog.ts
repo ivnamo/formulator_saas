@@ -103,7 +103,7 @@ export function useFormulaBuilderCatalogState({
   });
 
   useEffect(() => {
-    setMaterialResultLimit(60);
+    setMaterialResultLimit(500);
   }, [
     catalogParameterConditionKey,
     familyFilter,

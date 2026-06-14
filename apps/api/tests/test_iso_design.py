@@ -75,7 +75,6 @@ def create_iso_project(client: TestClient, tenant_id: str) -> dict:
         headers=headers(USER_A, tenant_id),
         json={
             "iso_request_number": "1/2026",
-            "project_code": "FLOWER",
             "product_name": "Flower Power",
             "requester": "Comercial",
             "accepted_status": "accepted",
@@ -295,7 +294,7 @@ def test_iso_design_project_crud_and_rejection_rule() -> None:
         headers=headers(USER_A, tenant_id),
         json={
             "iso_request_number": "1/2026",
-            "project_code": "FLOWER",
+            "project_code": project["project_code"],
             "product_name": "Flower Power Duplicate",
         },
     )
@@ -315,6 +314,47 @@ def test_iso_design_project_crud_and_rejection_rule() -> None:
     assert updated.status_code == 200
     assert updated.json()["comments"] == "Planificado para Q3"
     assert updated.json()["rd_hours"] == 4.5
+
+
+def test_iso_design_project_autonumbers_lines_and_allows_repeated_request() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    enable_iso(client, tenant_id)
+
+    first = client.post(
+        "/api/v1/iso/design-projects",
+        headers=headers(USER_A, tenant_id),
+        json={
+            "iso_request_number": "12/2026",
+            "product_name": "Producto A",
+            "accepted_status": "accepted",
+        },
+    )
+    second = client.post(
+        "/api/v1/iso/design-projects",
+        headers=headers(USER_A, tenant_id),
+        json={
+            "iso_request_number": "12/2026",
+            "product_name": "Producto B",
+            "accepted_status": "accepted",
+        },
+    )
+    invalid_request = client.post(
+        "/api/v1/iso/design-projects",
+        headers=headers(USER_A, tenant_id),
+        json={
+            "iso_request_number": "Producto B",
+            "product_name": "Producto C",
+        },
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["iso_request_number"] == "12/2026"
+    assert second.json()["iso_request_number"] == "12/2026"
+    assert first.json()["project_code"] == "1"
+    assert second.json()["project_code"] == "2"
+    assert invalid_request.status_code == 400
 
 
 def test_iso_design_trial_can_be_created_from_jira_review_snapshot() -> None:

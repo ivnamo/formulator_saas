@@ -141,19 +141,9 @@ export function useWorkspaceSettingsActions({
           return;
         }
         const tenantHeaders = { ...baseHeaders, "X-Tenant-Id": tenant.id };
-        const [parameters, invitations] = await Promise.all([
-          listWorkspaceParameters(tenantHeaders),
-          isTenantAdminRole(tenant.role)
-            ? listTenantInvitations(tenantHeaders)
-            : Promise.resolve([]),
-        ]);
-
-        const activeParameter = parameters[0] ?? null;
         setWorkspace({
           ...emptyWorkspace,
           tenant,
-          parameter: activeParameter,
-          parameters,
           rawMaterials: [],
           formulaName: `${tenant.name} Formula`,
         });
@@ -164,12 +154,35 @@ export function useWorkspaceSettingsActions({
         resetCompatibilityState();
         resetJiraConnectionState();
         resetIsoDesignState();
-        setTenantInvitations(invitations);
+        setTenantInvitations([]);
         resetAiWorkflowState();
         resetSavedFormulaComparisonState();
         resetImportState();
         setStatus("idle");
         setMessage(`${tenant.name} loaded`);
+        void (async () => {
+          try {
+            const [parameters, invitations] = await Promise.all([
+              listWorkspaceParameters(tenantHeaders),
+              isTenantAdminRole(tenant.role)
+                ? listTenantInvitations(tenantHeaders)
+                : Promise.resolve([]),
+            ]);
+            const activeParameter = parameters[0] ?? null;
+            setWorkspace((current) =>
+              current.tenant?.id === tenant.id
+                ? {
+                    ...current,
+                    parameter: activeParameter,
+                    parameters,
+                  }
+                : current,
+            );
+            setTenantInvitations(invitations);
+          } catch (error) {
+            setError(error instanceof Error ? error.message : "Could not load tenant metadata");
+          }
+        })();
       } catch (error) {
         setError(error instanceof Error ? error.message : "Could not load tenant");
       }
