@@ -31,6 +31,7 @@ import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
 import { useIsoDesignState } from "./iso-design-state";
 import { useJiraConnectionState } from "./jira-connection-state";
+import { isoJiraIssueTypeLabels } from "./iso-design-model";
 import type { WorkspaceHomeViewProps } from "./workspace-home-view";
 import { buildWorkspaceHomePanels } from "./workspace-home-panels";
 import { useWorkspaceShellState } from "./workspace-shell-state";
@@ -874,6 +875,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       formulaReviewRequests,
       formulaReviewArtifacts,
       isoDesignProjects,
+      jiraIssueTypeOptions: isoJiraIssueTypeLabels(isoSettings),
       formulaJiraProjectId: workspace.formulaJiraProjectId,
       formulaJiraIssueType: workspace.formulaJiraIssueType,
       selectedIsoDesignProjectId: selectedJiraIsoDesignProjectId,
