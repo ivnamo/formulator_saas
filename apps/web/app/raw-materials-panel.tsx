@@ -7,7 +7,9 @@ import {
   Plus,
   Save,
   Search,
+  SlidersHorizontal,
   Upload,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
@@ -61,6 +63,60 @@ type RawMaterialsPanelProps = {
 type MaterialStatusFilter = "all" | "active" | "obsolete";
 type MaterialPriceFilter = "all" | "with_price" | "missing_price";
 type MaterialSapFilter = "all" | "with_sap" | "missing_sap";
+type TechnicalParameterFilter = {
+  id: string;
+  parameterId: string;
+  min: string;
+  max: string;
+};
+
+const LEGACY_PARAMETER_FAMILIES = [
+  {
+    name: "Macronutriente",
+    terms: ["n", "ntotal", "norg", "nnitr", "nure", "namo", "k2o", "p2o5"],
+  },
+  { name: "Secundario", terms: ["cao", "mgo", "so3"] },
+  { name: "Micronutriente", terms: ["zn", "mn", "fe", "cu", "b", "mo", "co", "sio2"] },
+  {
+    name: "Fraccion organica",
+    terms: [
+      "mseca",
+      "morg",
+      "corg",
+      "extracto humico total",
+      "acidos fulvicos",
+      "acidos humicos",
+      "extracto de algas",
+      "polisacaridos",
+    ],
+  },
+  { name: "Aminoacidos", terms: ["sum aa totales", "sum aa libres"] },
+  {
+    name: "Aminograma",
+    terms: [
+      "ac aspartico",
+      "ac glutamico",
+      "alanina",
+      "glicina",
+      "histidina",
+      "isoleucina",
+      "leucina",
+      "lisina",
+      "lys",
+      "serina",
+      "tirosina",
+      "treonina",
+      "valina",
+      "arginina",
+      "fenilalanina",
+      "metionina",
+      "prolina",
+      "hidroxiprolina",
+      "triptofano",
+    ],
+  },
+  { name: "Metales pesados", terms: ["as", "hg", "pb", "cd", "cr", "ni"] },
+] as const;
 
 const emptyPriceForm: RawMaterialPriceForm = {
   price: "",
@@ -104,7 +160,17 @@ export function RawMaterialsPanel({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<MaterialStatusFilter>("all");
   const [priceFilter, setPriceFilter] = useState<MaterialPriceFilter>("all");
+  const [priceMinFilter, setPriceMinFilter] = useState("");
+  const [priceMaxFilter, setPriceMaxFilter] = useState("");
   const [sapFilter, setSapFilter] = useState<MaterialSapFilter>("all");
+  const [parameterFamilyFilters, setParameterFamilyFilters] = useState<string[]>([]);
+  const [selectedTechnicalParameterId, setSelectedTechnicalParameterId] = useState("");
+  const [technicalParameterFilters, setTechnicalParameterFilters] = useState<
+    TechnicalParameterFilter[]
+  >([]);
+  const [compositionQuery, setCompositionQuery] = useState("");
+  const [compositionFamilyFilter, setCompositionFamilyFilter] = useState("all");
+  const [showAllComposition, setShowAllComposition] = useState(false);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<RawMaterialUpdateForm | null>(null);
   const [parameterDrafts, setParameterDrafts] = useState<Record<string, string>>({});
@@ -117,9 +183,17 @@ export function RawMaterialsPanel({
   const [sapNotice, setSapNotice] = useState("");
 
   const summary = useMemo(() => buildMaterialSummary(rawMaterials), [rawMaterials]);
+  const parameterFamilyOptions = useMemo(() => buildParameterFamilyOptions(parameters), [parameters]);
+  const parameterById = useMemo(
+    () => new Map(parameters.map((candidate) => [candidate.id, candidate])),
+    [parameters],
+  );
+  const priceBounds = useMemo(() => buildPriceBounds(rawMaterials), [rawMaterials]);
 
   const filteredMaterials = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = normalizeFilterText(query);
+    const parsedPriceMin = parseOptionalNumber(priceMinFilter);
+    const parsedPriceMax = parseOptionalNumber(priceMaxFilter);
     return rawMaterials.filter((material) => {
       if (
         normalizedQuery &&
@@ -131,7 +205,7 @@ export function RawMaterialsPanel({
           ...material.aliases,
         ]
           .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(normalizedQuery))
+          .some((value) => normalizeFilterText(String(value)).includes(normalizedQuery))
       ) {
         return false;
       }
@@ -153,9 +227,49 @@ export function RawMaterialsPanel({
       if (sapFilter === "missing_sap" && material.externalCode) {
         return false;
       }
+      if (parsedPriceMin !== null && (material.price === null || material.price < parsedPriceMin)) {
+        return false;
+      }
+      if (parsedPriceMax !== null && (material.price === null || material.price > parsedPriceMax)) {
+        return false;
+      }
+      if (
+        parameterFamilyFilters.length > 0 &&
+        !parameterFamilyFilters.some((familyName) =>
+          materialHasValueInFamily(material, parameters, familyName),
+        )
+      ) {
+        return false;
+      }
+      if (
+        technicalParameterFilters.some((filter) => {
+          const candidate = parameterById.get(filter.parameterId);
+          if (!candidate) {
+            return false;
+          }
+          const value = material.parameters[candidate.code]?.value ?? 0;
+          const min = parseOptionalNumber(filter.min);
+          const max = parseOptionalNumber(filter.max);
+          return (min !== null && value < min) || (max !== null && value > max);
+        })
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [priceFilter, query, rawMaterials, sapFilter, statusFilter]);
+  }, [
+    parameterById,
+    parameterFamilyFilters,
+    parameters,
+    priceFilter,
+    priceMaxFilter,
+    priceMinFilter,
+    query,
+    rawMaterials,
+    sapFilter,
+    statusFilter,
+    technicalParameterFilters,
+  ]);
 
   const selectedMaterial = useMemo(() => {
     if (!selectedMaterialId) {
@@ -187,6 +301,50 @@ export function RawMaterialsPanel({
     setParameterDrafts(selectedMaterial ? buildParameterDrafts(selectedMaterial, parameters) : {});
     setPriceForm(emptyPriceForm);
   }, [parameters, selectedMaterial]);
+
+  const visibleCompositionParameters = useMemo(() => {
+    if (!selectedMaterial) {
+      return [];
+    }
+    const normalizedQuery = normalizeFilterText(compositionQuery);
+    const shouldShowOnlyPositive =
+      !showAllComposition && !normalizedQuery && compositionFamilyFilter === "all";
+
+    return parameters
+      .filter((candidate) => {
+        const value = selectedMaterial.parameters[candidate.code]?.value ?? 0;
+        const hasValue = Math.abs(value) > 0.0001;
+        if (shouldShowOnlyPositive && !hasValue) {
+          return false;
+        }
+        if (
+          compositionFamilyFilter !== "all" &&
+          !parameterBelongsToFamily(candidate, compositionFamilyFilter)
+        ) {
+          return false;
+        }
+        if (
+          normalizedQuery &&
+          !getParameterSearchTerms(candidate).some((valueToSearch) =>
+            normalizeFilterText(valueToSearch).includes(normalizedQuery),
+          )
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) => {
+        const leftValue = Math.abs(selectedMaterial.parameters[left.code]?.value ?? 0);
+        const rightValue = Math.abs(selectedMaterial.parameters[right.code]?.value ?? 0);
+        return Number(rightValue > 0.0001) - Number(leftValue > 0.0001);
+      });
+  }, [
+    compositionFamilyFilter,
+    compositionQuery,
+    parameters,
+    selectedMaterial,
+    showAllComposition,
+  ]);
 
   useEffect(() => {
     if (!selectedMaterial) {
@@ -247,6 +405,61 @@ export function RawMaterialsPanel({
     }
   }
 
+  function resetFilters() {
+    setQuery("");
+    setStatusFilter("all");
+    setPriceFilter("all");
+    setPriceMinFilter("");
+    setPriceMaxFilter("");
+    setSapFilter("all");
+    setParameterFamilyFilters([]);
+    setSelectedTechnicalParameterId("");
+    setTechnicalParameterFilters([]);
+  }
+
+  function toggleParameterFamilyFilter(familyName: string) {
+    setParameterFamilyFilters((current) =>
+      current.includes(familyName)
+        ? current.filter((candidate) => candidate !== familyName)
+        : [...current, familyName],
+    );
+  }
+
+  function addTechnicalParameterFilter() {
+    const parameterId = selectedTechnicalParameterId || parameters[0]?.id;
+    if (!parameterId) {
+      return;
+    }
+    setTechnicalParameterFilters((current) => {
+      if (current.some((filter) => filter.parameterId === parameterId)) {
+        return current;
+      }
+      return [
+        ...current,
+        {
+          id: `${parameterId}-${Date.now()}`,
+          parameterId,
+          min: "",
+          max: "",
+        },
+      ];
+    });
+    setSelectedTechnicalParameterId("");
+  }
+
+  function updateTechnicalParameterFilter(
+    filterId: string,
+    patch: Partial<Omit<TechnicalParameterFilter, "id">>,
+  ) {
+    setTechnicalParameterFilters((current) =>
+      current.map((filter) => (filter.id === filterId ? { ...filter, ...patch } : filter)),
+    );
+  }
+
+  function removeTechnicalParameterFilter(filterId: string) {
+    setTechnicalParameterFilters((current) => current.filter((filter) => filter.id !== filterId));
+  }
+
   async function saveSelectedPrice() {
     if (!selectedMaterial) {
       return;
@@ -280,6 +493,12 @@ export function RawMaterialsPanel({
   }
 
   const readySapRows = sapPreview?.rows.filter((row) => row.status === "ready").length ?? 0;
+  const activeAdvancedFilterCount =
+    Number(Boolean(priceMinFilter || priceMaxFilter)) +
+    parameterFamilyFilters.length +
+    technicalParameterFilters.length;
+  const selectedCompositionLabel =
+    compositionFamilyFilter === "all" ? "All families" : compositionFamilyFilter;
 
   return (
     <section id="materials" className="panel materialPanel" hidden={!active}>
@@ -353,83 +572,219 @@ export function RawMaterialsPanel({
         </button>
       </div>
 
-      <div className="materialToolbar">
-        <label>
-          <span>Search</span>
-          <div className="inputWithIcon">
-            <Search size={15} />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Code, SAP, name, family, alias"
-            />
+      <div className="rawMaterialFilterPanel">
+        <div className="materialFilterPrimary">
+          <label className="materialSearch">
+            <span>Search</span>
+            <div className="inputWithIcon">
+              <Search size={15} />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Code, SAP, name, family, alias"
+              />
+            </div>
+          </label>
+          <label>
+            <span>Status</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as MaterialStatusFilter)}
+            >
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="obsolete">Obsolete</option>
+            </select>
+          </label>
+          <label>
+            <span>Price</span>
+            <select
+              value={priceFilter}
+              onChange={(event) => setPriceFilter(event.target.value as MaterialPriceFilter)}
+            >
+              <option value="all">All</option>
+              <option value="with_price">With price</option>
+              <option value="missing_price">Missing price</option>
+            </select>
+          </label>
+          <label>
+            <span>SAP</span>
+            <select
+              value={sapFilter}
+              onChange={(event) => setSapFilter(event.target.value as MaterialSapFilter)}
+            >
+              <option value="all">All</option>
+              <option value="with_sap">With SAP code</option>
+              <option value="missing_sap">Missing SAP code</option>
+            </select>
+          </label>
+          <button className="iconTextButton" type="button" onClick={resetFilters}>
+            <X size={16} />
+            Reset
+          </button>
+        </div>
+
+        <details className="materialAdvancedFilters" open>
+          <summary>
+            <span>
+              <SlidersHorizontal size={16} />
+              Advanced filters
+            </span>
+            <code>
+              {filteredMaterials.length}/{rawMaterials.length}
+              {activeAdvancedFilterCount ? ` | ${activeAdvancedFilterCount} active` : ""}
+            </code>
+          </summary>
+          <div className="materialAdvancedFilterGrid">
+            <fieldset className="materialRangeFilter">
+              <legend>Price range EUR/kg</legend>
+              <div>
+                <label>
+                  <span>Min</span>
+                  <input
+                    inputMode="decimal"
+                    value={priceMinFilter}
+                    onChange={(event) => setPriceMinFilter(event.target.value)}
+                    placeholder={priceBounds.min === null ? "-" : priceBounds.min.toFixed(2)}
+                  />
+                </label>
+                <label>
+                  <span>Max</span>
+                  <input
+                    inputMode="decimal"
+                    value={priceMaxFilter}
+                    onChange={(event) => setPriceMaxFilter(event.target.value)}
+                    placeholder={priceBounds.max === null ? "-" : priceBounds.max.toFixed(2)}
+                  />
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset className="materialFamilyFilters">
+              <legend>Parameter families</legend>
+              <div className="filterChipGroup">
+                {parameterFamilyOptions.map((family) => (
+                  <button
+                    key={family.name}
+                    type="button"
+                    className="filterChip"
+                    data-selected={parameterFamilyFilters.includes(family.name)}
+                    onClick={() => toggleParameterFamilyFilter(family.name)}
+                  >
+                    {family.name}
+                    <span>{family.parameters.length}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="technicalFilters">
+              <legend>Technical columns</legend>
+              <div className="technicalFilterBuilder">
+                <select
+                  value={selectedTechnicalParameterId}
+                  onChange={(event) => setSelectedTechnicalParameterId(event.target.value)}
+                  aria-label="Technical parameter"
+                >
+                  <option value="">Select parameter</option>
+                  {parameters.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.code} | {candidate.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="iconButton"
+                  type="button"
+                  onClick={addTechnicalParameterFilter}
+                  disabled={parameters.length === 0}
+                  title="Add technical filter"
+                  aria-label="Add technical filter"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              {technicalParameterFilters.length ? (
+                <div className="technicalFilterList">
+                  {technicalParameterFilters.map((filter) => {
+                    const candidate = parameterById.get(filter.parameterId);
+                    return (
+                      <div className="technicalFilterRow" key={filter.id}>
+                        <strong>{candidate ? candidate.code : "Parameter"}</strong>
+                        <label>
+                          <span>Min</span>
+                          <input
+                            inputMode="decimal"
+                            value={filter.min}
+                            onChange={(event) =>
+                              updateTechnicalParameterFilter(filter.id, {
+                                min: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>Max</span>
+                          <input
+                            inputMode="decimal"
+                            value={filter.max}
+                            onChange={(event) =>
+                              updateTechnicalParameterFilter(filter.id, {
+                                max: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <button
+                          className="iconButton"
+                          type="button"
+                          onClick={() => removeTechnicalParameterFilter(filter.id)}
+                          title="Remove technical filter"
+                          aria-label={`Remove ${candidate?.name ?? "technical"} filter`}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </fieldset>
           </div>
-        </label>
-        <label>
-          <span>Status</span>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as MaterialStatusFilter)}
-          >
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="obsolete">Obsolete</option>
-          </select>
-        </label>
-        <label>
-          <span>Price</span>
-          <select
-            value={priceFilter}
-            onChange={(event) => setPriceFilter(event.target.value as MaterialPriceFilter)}
-          >
-            <option value="all">All</option>
-            <option value="with_price">With price</option>
-            <option value="missing_price">Missing price</option>
-          </select>
-        </label>
-        <label>
-          <span>SAP</span>
-          <select
-            value={sapFilter}
-            onChange={(event) => setSapFilter(event.target.value as MaterialSapFilter)}
-          >
-            <option value="all">All</option>
-            <option value="with_sap">With SAP code</option>
-            <option value="missing_sap">Missing SAP code</option>
-          </select>
-        </label>
+        </details>
       </div>
 
       <div className="materialMasterGrid">
-        <div className="materialTable">
-          <div className="materialHead materialMasterHead">
-            <span>Material</span>
-            <span>Family</span>
-            <span>Composition</span>
-            <span>Price</span>
-            <span>Status</span>
-            <span>Actions</span>
-          </div>
+        <div className="materialList" role="list">
           {filteredMaterials.length === 0 ? (
             <div className="empty">No raw materials match these filters.</div>
           ) : (
             filteredMaterials.map((material) => (
-              <div
-                className="materialRow materialMasterRow"
+              <article
+                className="materialListItem"
                 data-selected={selectedMaterialId === material.id}
                 key={material.id}
+                role="listitem"
               >
-                <div className="materialIdentity">
-                  <strong>{material.name}</strong>
-                  <MaterialIdentityCodes material={material} />
+                <button
+                  className="materialSelectButton"
+                  type="button"
+                  onClick={() => void selectMaterial(material.id)}
+                >
+                  <span className="materialIdentity">
+                    <strong>{material.name}</strong>
+                    <MaterialIdentityCodes material={material} />
+                  </span>
+                </button>
+                <div className="materialListMeta">
+                  <span>{material.family || "-"}</span>
+                  <MaterialParameterSummary material={material} />
                 </div>
-                <span>{material.family || "-"}</span>
-                <MaterialParameterSummary material={material} />
-                <span>{formatPrice(material)}</span>
-                <span>
+                <div className="materialListAside">
+                  <strong>{formatPrice(material)}</strong>
                   <StatusPill material={material} />
-                </span>
-                <span className="rowActions">
+                </div>
+                <div className="rowActions">
                   <button
                     className="iconButton"
                     type="button"
@@ -450,8 +805,8 @@ export function RawMaterialsPanel({
                   >
                     <Plus size={16} />
                   </button>
-                </span>
-              </div>
+                </div>
+              </article>
             ))
           )}
         </div>
@@ -651,15 +1006,107 @@ export function RawMaterialsPanel({
                     {selectedMaterial.positiveParameterCount}/{parameters.length}
                   </span>
                 </div>
+                <div className="materialCompositionToolbar">
+                  <label className="compositionSearch">
+                    <span>Find parameter</span>
+                    <div className="inputWithIcon">
+                      <Search size={15} />
+                      <input
+                        value={compositionQuery}
+                        onChange={(event) => setCompositionQuery(event.target.value)}
+                        placeholder="Code, name, family"
+                      />
+                    </div>
+                  </label>
+                  <label>
+                    <span>Parameter</span>
+                    <select
+                      aria-label="Jump to parameter"
+                      value=""
+                      onChange={(event) => {
+                        const candidate = parameterById.get(event.target.value);
+                        if (!candidate) {
+                          return;
+                        }
+                        setCompositionFamilyFilter("all");
+                        setCompositionQuery(candidate.code);
+                      }}
+                    >
+                      <option value="">Jump to parameter</option>
+                      {parameters.map((candidate) => (
+                        <option key={candidate.id} value={candidate.id}>
+                          {candidate.code} | {candidate.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Family</span>
+                    <select
+                      value={compositionFamilyFilter}
+                      onChange={(event) => setCompositionFamilyFilter(event.target.value)}
+                    >
+                      <option value="all">All families</option>
+                      {parameterFamilyOptions.map((family) => (
+                        <option key={family.name} value={family.name}>
+                          {family.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="segmentedButtons" aria-label="Composition visibility">
+                    <button
+                      type="button"
+                      data-selected={!showAllComposition}
+                      onClick={() => setShowAllComposition(false)}
+                    >
+                      With value
+                    </button>
+                    <button
+                      type="button"
+                      data-selected={showAllComposition}
+                      onClick={() => setShowAllComposition(true)}
+                    >
+                      All
+                    </button>
+                  </div>
+                </div>
+                <div className="compositionFamilyChips">
+                  {parameterFamilyOptions.map((family) => (
+                    <button
+                      key={family.name}
+                      type="button"
+                      className="filterChip"
+                      data-selected={compositionFamilyFilter === family.name}
+                      onClick={() =>
+                        setCompositionFamilyFilter((current) =>
+                          current === family.name ? "all" : family.name,
+                        )
+                      }
+                    >
+                      {family.name}
+                    </button>
+                  ))}
+                </div>
                 <div className="materialParameterEditor">
-                  {parameters.length ? (
-                    parameters.map((candidate) => {
+                  {visibleCompositionParameters.length ? (
+                    visibleCompositionParameters.map((candidate) => {
                       const currentValue = selectedMaterial.parameters[candidate.code];
                       return (
-                        <div className="materialParameterRow" key={candidate.id}>
+                        <div
+                          className="materialParameterRow"
+                          data-has-value={Boolean(
+                            currentValue && Math.abs(currentValue.value) > 0.0001,
+                          )}
+                          key={candidate.id}
+                        >
                           <div>
-                            <strong>{candidate.code}</strong>
-                            <span>{candidate.name}</span>
+                            <strong>{candidate.name}</strong>
+                            <span>
+                              <code>{candidate.code}</code>
+                              {getParameterFamilyNames(candidate).join(", ") ||
+                                selectedCompositionLabel}
+                            </span>
                           </div>
                           <label>
                             <input
@@ -690,6 +1137,8 @@ export function RawMaterialsPanel({
                         </div>
                       );
                     })
+                  ) : parameters.length ? (
+                    <div className="empty">No parameters match this composition filter.</div>
                   ) : (
                     <div className="empty">No active parameters.</div>
                   )}
@@ -1047,6 +1496,83 @@ function buildMaterialSummary(rawMaterials: RawMaterial[]) {
   );
 }
 
+function buildPriceBounds(rawMaterials: RawMaterial[]) {
+  const prices = rawMaterials
+    .map((material) => material.price)
+    .filter((price): price is number => typeof price === "number");
+  if (prices.length === 0) {
+    return { min: null, max: null };
+  }
+  return {
+    min: Math.min(...prices),
+    max: Math.max(...prices),
+  };
+}
+
+function buildParameterFamilyOptions(parameters: Parameter[]) {
+  const familyOptions = LEGACY_PARAMETER_FAMILIES.map((family) => ({
+    name: family.name,
+    parameters: parameters.filter((candidate) => parameterBelongsToFamily(candidate, family.name)),
+  })).filter((family) => family.parameters.length > 0);
+  const groupedParameterIds = new Set(
+    familyOptions.flatMap((family) => family.parameters.map((candidate) => candidate.id)),
+  );
+  const otherParameters = parameters.filter((candidate) => !groupedParameterIds.has(candidate.id));
+
+  if (otherParameters.length > 0) {
+    return [...familyOptions, { name: "Otros", parameters: otherParameters }];
+  }
+
+  return familyOptions;
+}
+
+function parameterBelongsToFamily(parameter: Parameter, familyName: string): boolean {
+  if (familyName === "Otros") {
+    return getParameterFamilyNames(parameter).length === 0;
+  }
+  const family = LEGACY_PARAMETER_FAMILIES.find((candidate) => candidate.name === familyName);
+  if (!family) {
+    return false;
+  }
+  const keys = [parameter.code, parameter.name].map(normalizeFilterText);
+  return family.terms.some((term) => {
+    const normalizedTerm = normalizeFilterText(term);
+    return keys.some((key) => {
+      if (normalizedTerm.length <= 2) {
+        return key === normalizedTerm;
+      }
+      return key === normalizedTerm || key.includes(normalizedTerm);
+    });
+  });
+}
+
+function getParameterFamilyNames(parameter: Parameter): string[] {
+  return LEGACY_PARAMETER_FAMILIES.filter((family) =>
+    parameterBelongsToFamily(parameter, family.name),
+  ).map((family) => family.name);
+}
+
+function getParameterSearchTerms(parameter: Parameter) {
+  const familyTerms = LEGACY_PARAMETER_FAMILIES.filter((family) =>
+    parameterBelongsToFamily(parameter, family.name),
+  ).flatMap((family) => [family.name, ...family.terms]);
+  return [parameter.code, parameter.name, ...familyTerms];
+}
+
+function materialHasValueInFamily(
+  material: RawMaterial,
+  parameters: Parameter[],
+  familyName: string,
+) {
+  return parameters.some((candidate) => {
+    if (!parameterBelongsToFamily(candidate, familyName)) {
+      return false;
+    }
+    const value = material.parameters[candidate.code]?.value ?? 0;
+    return Math.abs(value) > 0.0001;
+  });
+}
+
 function formatPrice(material: RawMaterial) {
   if (material.price === null) {
     return "-";
@@ -1083,6 +1609,15 @@ function buildParameterDrafts(material: RawMaterial, parameters: Parameter[]) {
   );
 }
 
+function parseOptionalNumber(value: string) {
+  const normalized = value.trim().replace(",", ".");
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function parseDraftNumber(value: string) {
   const normalized = value.trim().replace(",", ".");
   if (!normalized) {
@@ -1090,4 +1625,12 @@ function parseDraftNumber(value: string) {
   }
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeFilterText(value: string | null | undefined) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
 }

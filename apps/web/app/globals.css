@@ -415,6 +415,22 @@ label span {
   border-color: var(--border);
 }
 
+.iconTextButton {
+  min-height: 34px;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: white;
+  color: var(--text);
+  padding: 0 11px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .iconButton {
   width: 32px;
   height: 32px;
@@ -950,14 +966,149 @@ label span {
   font-size: 20px;
 }
 
-.materialToolbar {
+.rawMaterialFilterPanel {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(130px, 0.32fr));
   gap: 10px;
-  align-items: end;
   margin-bottom: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
+}
+
+.materialFilterPrimary {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) repeat(3, minmax(128px, 0.34fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.materialAdvancedFilters {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.materialAdvancedFilters summary {
+  min-height: 40px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 11px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.materialAdvancedFilters summary::-webkit-details-marker {
+  display: none;
+}
+
+.materialAdvancedFilters summary span {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.materialAdvancedFilters summary code {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialAdvancedFilterGrid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(250px, 1.2fr) minmax(260px, 1fr);
+  gap: 12px;
+  padding: 0 11px 11px;
+  border-top: 1px solid var(--border);
+}
+
+.materialAdvancedFilterGrid fieldset {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.materialAdvancedFilterGrid legend {
+  padding: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.materialRangeFilter > div,
+.technicalFilterBuilder,
+.technicalFilterRow {
+  display: grid;
+  gap: 8px;
+  align-items: end;
+}
+
+.materialRangeFilter > div {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.filterChipGroup,
+.compositionFamilyChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.filterChip {
+  min-height: 28px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: white;
+  color: var(--teal-dark);
+  padding: 0 9px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.filterChip[data-selected="true"] {
+  border-color: var(--teal);
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.filterChip span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.technicalFilterBuilder {
+  grid-template-columns: minmax(0, 1fr) 34px;
+}
+
+.technicalFilterList {
+  display: grid;
+  gap: 7px;
+}
+
+.technicalFilterRow {
+  grid-template-columns: minmax(54px, 0.5fr) repeat(2, minmax(64px, 1fr)) 34px;
+  min-width: 0;
+}
+
+.technicalFilterRow strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--teal-dark);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .inputWithIcon {
@@ -979,7 +1130,7 @@ label span {
 
 .materialMasterGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  grid-template-columns: minmax(360px, 0.95fr) minmax(380px, 1.05fr);
   gap: 18px;
   align-items: start;
 }
@@ -988,24 +1139,42 @@ label span {
   min-width: 0;
 }
 
-.materialMasterHead,
-.materialMasterRow {
-  grid-template-columns:
-    minmax(250px, 1.45fr) minmax(92px, 0.45fr) minmax(150px, 0.8fr)
-    minmax(110px, 0.55fr) minmax(78px, 0.4fr) 84px;
+.materialList {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
 }
 
-.materialMasterRow {
-  min-height: 58px;
-  padding: 6px 4px;
+.materialListItem {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.25fr) minmax(120px, 0.72fr) minmax(118px, 0.55fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  min-height: 74px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  padding: 9px;
 }
 
-.materialMasterRow[data-selected="true"] {
+.materialListItem[data-selected="true"] {
+  border-color: rgba(15, 118, 110, 0.42);
   background: rgba(15, 118, 110, 0.07);
 }
 
-.materialMasterRow strong,
-.materialMasterRow span {
+.materialSelectButton {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.materialListItem strong,
+.materialListItem span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -1033,7 +1202,7 @@ label span {
 
 .materialIdentityMeta code {
   display: inline-block;
-  max-width: min(180px, 48%);
+  max-width: min(190px, 100%);
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -1042,6 +1211,15 @@ label span {
   color: var(--teal-dark);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.materialListMeta {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .materialParameterSummary {
@@ -1072,6 +1250,19 @@ label span {
 
 .materialParameterSummary.empty em {
   color: var(--muted);
+  font-weight: 700;
+}
+
+.materialListAside {
+  display: grid;
+  gap: 7px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.materialListAside > strong {
+  color: var(--text);
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -1186,19 +1377,69 @@ label span {
   border-top: 1px solid var(--border);
 }
 
+.materialCompositionToolbar {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) minmax(150px, 0.72fr) minmax(140px, 0.55fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.segmentedButtons {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(74px, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: white;
+}
+
+.segmentedButtons button {
+  min-height: 34px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.segmentedButtons button:last-child {
+  border-right: 0;
+}
+
+.segmentedButtons button[data-selected="true"] {
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--teal-dark);
+}
+
 .materialParameterEditor {
   display: grid;
   gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
 }
 
 .materialParameterRow {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(96px, 0.58fr) minmax(64px, 0.35fr) 34px;
+  grid-template-columns: minmax(150px, 1fr) minmax(96px, 0.48fr) minmax(54px, 0.32fr) 34px;
   gap: 8px;
   align-items: center;
   min-height: 44px;
+  padding: 7px 8px;
   border-top: 1px solid var(--border);
   font-size: 13px;
+}
+
+.materialParameterRow:first-child {
+  border-top: 0;
+}
+
+.materialParameterRow[data-has-value="true"] {
+  background: #fbfcfb;
 }
 
 .materialParameterRow > div {
@@ -1207,8 +1448,7 @@ label span {
   min-width: 0;
 }
 
-.materialParameterRow > div strong,
-.materialParameterRow > div span {
+.materialParameterRow > div strong {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1216,8 +1456,15 @@ label span {
 }
 
 .materialParameterRow > div span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .materialParameterRow label {
@@ -1239,6 +1486,10 @@ label span {
   color: var(--blue);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.materialParameterRow > div code {
+  color: var(--teal-dark);
 }
 
 .sectionTitle {
@@ -3219,8 +3470,11 @@ label span {
   .formGrid.threeColumns,
   .materialForm,
   .materialSummary,
-  .materialToolbar,
+  .materialFilterPrimary,
+  .materialAdvancedFilterGrid,
   .materialMasterGrid,
+  .materialListItem,
+  .materialCompositionToolbar,
   .sapImportSummary,
   .compatibilityForm,
   .jiraForm,
@@ -3250,13 +3504,17 @@ label span {
     grid-template-columns: 1fr;
   }
 
-  .materialTable {
-    overflow-x: auto;
+  .materialListAside {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
   }
 
-  .materialMasterHead,
-  .materialMasterRow {
-    min-width: 760px;
+  .materialListItem .rowActions {
+    justify-content: flex-start;
+  }
+
+  .materialSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

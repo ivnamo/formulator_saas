@@ -45,9 +45,18 @@ async function main() {
   await assertVisible(page.getByText("SAP-2002").first(), "saved SAP code");
 
   logStep("edit chemical composition");
+  await page.getByLabel("Jump to parameter").selectOption({ label: "LYS | Lysine" });
   await page.getByRole("textbox", { name: "Lysine value" }).fill("3.1");
   await page.getByRole("button", { name: "Save Lysine value" }).click();
   await assertVisible(page.getByText("LYS: 3.1000 %").first(), "saved lysine value");
+  await page
+    .locator(".materialFamilyFilters")
+    .getByRole("button", { name: /Aminograma/ })
+    .click();
+  await assertVisible(
+    page.locator(".materialList").getByText("Extracto vegetal experimental"),
+    "family-filtered material",
+  );
 
   logStep("add price");
   const priceForm = page.locator(".priceForm");
