@@ -586,8 +586,559 @@ label span {
 }
 
 .materialPanel,
-.compatibilityPanel {
+.compatibilityPanel,
+.isoPanel {
   grid-column: 1 / -1;
+}
+
+.isoToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.isoStatus {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  background: #fbfcfb;
+}
+
+.isoStatus[data-enabled="true"] {
+  color: var(--teal-dark);
+  border-color: rgba(15, 118, 110, 0.28);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.isoStatus strong {
+  font-size: 13px;
+}
+
+.isoConfigSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.isoConfigSummary div {
+  min-width: 0;
+  min-height: 54px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.isoConfigSummary span,
+.isoProjectHead {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.isoConfigSummary strong {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.isoProjectForm {
+  display: grid;
+  grid-template-columns:
+    minmax(120px, 0.55fr) minmax(76px, 0.3fr) minmax(110px, 0.5fr)
+    minmax(160px, 0.95fr) minmax(130px, 0.65fr);
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.isoProjectForm textarea {
+  min-height: 72px;
+}
+
+.isoBuilderReturn {
+  min-height: 48px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.isoBuilderReturn div {
+  display: grid;
+  gap: 2px;
+}
+
+.isoBuilderReturn span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.isoBuilderReturn strong {
+  color: var(--teal-dark);
+  font-size: 14px;
+}
+
+.isoBuilderReturn .secondaryButton {
+  width: fit-content;
+  background: var(--surface);
+}
+
+.isoImportSection {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.isoImportHeader,
+.isoImportControls,
+.isoImportSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.isoImportHeader div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.isoImportHeader span,
+.isoImportControls label span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.isoImportHeader strong {
+  font-size: 14px;
+}
+
+.isoImportCounters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.isoImportCounters span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fbfcfb;
+  font-size: 12px;
+}
+
+.isoImportCounters span[data-state="ready"] {
+  color: var(--teal-dark);
+  border-color: rgba(15, 118, 110, 0.28);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.isoImportCounters span[data-state="ambiguous"] {
+  color: #92400e;
+  border-color: rgba(146, 64, 14, 0.28);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.isoImportControls {
+  justify-content: flex-start;
+}
+
+.isoImportControls label {
+  min-width: min(210px, 100%);
+}
+
+.isoImportSummary {
+  justify-content: flex-start;
+}
+
+.isoImportSummary div {
+  min-width: min(240px, 100%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.isoImportSummary strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.isoImportTable {
+  display: grid;
+}
+
+.isoImportHead,
+.isoImportRow {
+  display: grid;
+  grid-template-columns:
+    minmax(120px, 0.7fr) minmax(48px, 0.2fr) minmax(100px, 0.55fr)
+    minmax(112px, 0.5fr) minmax(140px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.isoImportHead {
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.isoImportRow {
+  min-height: 44px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.isoImportRow span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.isoWideField {
+  grid-column: span 2;
+}
+
+.isoProjectTable {
+  display: grid;
+}
+
+.isoTrialSection {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.isoTrialHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.isoTrialHeader div {
+  display: grid;
+  gap: 3px;
+}
+
+.isoTrialHeader span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.isoTrialHeader strong {
+  font-size: 14px;
+}
+
+.isoTrialHeader label {
+  width: min(360px, 100%);
+}
+
+.isoTrialTable {
+  display: grid;
+}
+
+.isoValidationSection {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.isoValidationHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.isoValidationHeader div {
+  display: grid;
+  gap: 3px;
+}
+
+.isoValidationHeader span,
+.isoValidationSummary span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.isoValidationHeader strong {
+  font-size: 14px;
+}
+
+.isoExportActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.isoValidationSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.isoValidationSummary div {
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  border-top: 1px solid var(--border);
+}
+
+.isoValidationSummary strong {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.isoValidationTable {
+  display: grid;
+}
+
+.isoProjectHead,
+.isoProjectRow,
+.isoTrialHead,
+.isoTrialRow,
+.isoValidationHead,
+.isoValidationRow {
+  display: grid;
+  gap: 10px;
+  align-items: center;
+}
+
+.isoProjectHead,
+.isoProjectRow {
+  grid-template-columns:
+    minmax(104px, 0.55fr) minmax(112px, 0.55fr) minmax(180px, 1fr)
+    minmax(104px, 0.48fr) minmax(68px, 0.25fr) minmax(92px, 0.42fr);
+}
+
+.isoTrialHead,
+.isoTrialRow {
+  grid-template-columns:
+    minmax(106px, 0.55fr) minmax(180px, 1fr) minmax(132px, 0.6fr)
+    minmax(94px, 0.5fr) minmax(110px, 0.55fr);
+}
+
+.isoValidationHead,
+.isoValidationRow {
+  grid-template-columns:
+    minmax(112px, 0.45fr) minmax(220px, 1fr) minmax(86px, 0.28fr)
+    minmax(132px, 0.42fr);
+}
+
+.isoProjectHead,
+.isoTrialHead,
+.isoValidationHead {
+  min-height: 32px;
+}
+
+.isoProjectRow,
+.isoTrialRow,
+.isoValidationRow {
+  min-height: 52px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.isoProjectRow span,
+.isoTrialRow span,
+.isoValidationRow span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.isoProjectRow strong,
+.isoProjectRow small,
+.isoTrialRow strong,
+.isoTrialRow small,
+.isoValidationRow strong,
+.isoValidationRow small {
+  display: block;
+  min-width: 0;
+}
+
+.isoProjectRow small,
+.isoTrialRow small,
+.isoValidationRow small {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.isoValidationHead {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.isoValidationRow select {
+  min-height: 34px;
+}
+
+.isoReleasedTrialList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.isoValidationEmpty {
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 3px 10px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.isoValidationEmpty svg {
+  grid-row: span 2;
+  color: var(--muted);
+}
+
+.isoValidationEmpty strong,
+.isoValidationEmpty span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.isoValidationEmpty span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.isoProjectRow code {
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.isoPill {
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fbfcfb;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.isoPill[data-state="accepted"] {
+  color: var(--teal-dark);
+  border-color: rgba(15, 118, 110, 0.28);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.isoPill[data-state="rejected"] {
+  color: var(--danger);
+  border-color: var(--danger-soft);
+  background: #fff7f5;
+}
+
+.isoPill[data-state="LIBERADO"],
+.isoPill[data-state="OK_NO_LIBERADO"] {
+  color: var(--teal-dark);
+  border-color: rgba(15, 118, 110, 0.28);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.isoPill[data-state="NOK"],
+.isoPill[data-state="ABANDONADO"],
+.isoPill[data-state="CANCELADO"] {
+  color: var(--danger);
+  border-color: var(--danger-soft);
+  background: #fff7f5;
+}
+
+.isoPill[data-state="ITERADO"],
+.isoPill[data-state="pending_mapping"] {
+  color: var(--amber);
+  border-color: rgba(161, 98, 7, 0.25);
+  background: rgba(161, 98, 7, 0.08);
+}
+
+.isoInactive {
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 4px 10px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.isoInactive svg {
+  grid-row: span 2;
+  color: var(--muted);
+}
+
+.isoInactive strong,
+.isoInactive span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.isoInactive span {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .jiraForm {
@@ -3287,6 +3838,50 @@ label span {
   width: auto;
 }
 
+.jiraIsoSelector {
+  width: min(320px, 100%);
+}
+
+.jiraIsoSelector span {
+  font-size: 11px;
+}
+
+.jiraIsoLinkStatus {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.jiraIsoLinkStatus strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.jiraIsoLinkStatus[data-state="linked"] {
+  border-color: rgba(15, 118, 110, 0.3);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.jiraIsoLinkStatus[data-state="linked"] strong {
+  color: var(--teal-dark);
+}
+
+.jiraIsoLinkStatus[data-state="missing"] {
+  border-color: rgba(217, 119, 6, 0.32);
+  background: rgba(217, 119, 6, 0.08);
+}
+
+.jiraIsoLinkStatus .secondaryButton {
+  width: fit-content;
+  margin-top: 4px;
+  background: var(--surface);
+}
+
 .jiraReviewEmpty {
   color: var(--muted);
   font-size: 13px;
@@ -3694,6 +4289,9 @@ label span {
   .materialCompositionToolbar,
   .sapImportSummary,
   .compatibilityForm,
+  .isoConfigSummary,
+  .isoValidationSummary,
+  .isoProjectForm,
   .jiraForm,
   .jiraConnectionSummary,
   .jiraMetadataColumns,
@@ -3715,10 +4313,15 @@ label span {
   }
 
   .materialPanel,
+  .isoPanel,
   .libraryGrid,
   .importPanel {
     grid-column: auto;
     grid-template-columns: 1fr;
+  }
+
+  .isoWideField {
+    grid-column: auto;
   }
 
   .materialListAside {
@@ -3846,6 +4449,14 @@ label span {
   .sapImportRow,
   .priceHistoryList div,
   .compatibilityRow,
+  .isoProjectHead,
+  .isoProjectRow,
+  .isoImportHead,
+  .isoImportRow,
+  .isoTrialHead,
+  .isoTrialRow,
+  .isoValidationHead,
+  .isoValidationRow,
   .formulaLine,
   .importHead,
   .importRow,
@@ -3904,6 +4515,7 @@ label span {
 
   .materialHead,
   .agentCandidateHead,
+  .isoImportHead,
   .importHead,
   .sapImportHead,
   .aiRunHead {
@@ -3914,6 +4526,7 @@ label span {
   .sapImportRow,
   .formulaLine,
   .agentCandidateRow,
+  .isoImportRow,
   .importRow,
   .aiRunRow {
     gap: 7px;

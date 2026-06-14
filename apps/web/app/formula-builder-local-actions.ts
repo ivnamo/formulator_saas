@@ -34,7 +34,7 @@ export function useFormulaBuilderLocalActions({
   );
 
   const loadMoreCatalogMaterials = useCallback(() => {
-    setMaterialResultLimit((current) => Math.min(current + 60, catalogTotal));
+    setMaterialResultLimit((current) => Math.min(current + 500, catalogTotal));
   }, [catalogTotal, setMaterialResultLimit]);
 
   const selectCurrentParameterView = useCallback(

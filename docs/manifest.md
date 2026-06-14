@@ -184,6 +184,7 @@ Inventario de documentación ordenado por área.
 - [`03-domain/raw_material_master_sap_import.md`](03-domain/raw_material_master_sap_import.md)
 - [`03-domain/jira_connector_onboarding.md`](03-domain/jira_connector_onboarding.md)
 - [`03-domain/jira_formula_review.md`](03-domain/jira_formula_review.md)
+- [`03-domain/iso_9001_design_records.md`](03-domain/iso_9001_design_records.md)
 
 ## IA
 

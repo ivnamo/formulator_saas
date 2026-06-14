@@ -15,6 +15,9 @@ export type FormulaBasicsStepProps = {
   isBusy: boolean;
   hasActiveJiraConnection: boolean;
   values: FormulaBasicsValue;
+  jiraProjectIdOptions: Array<{ value: string; label: string }>;
+  jiraIssueTypeOptions: string[];
+  jiraProductTypeOptions: string[];
   onToggle: (section: BuilderSectionKey) => void;
   onChange: (patch: Partial<FormulaBasicsValue>) => void;
 };
@@ -24,9 +27,18 @@ export function FormulaBasicsStep({
   isBusy,
   hasActiveJiraConnection,
   values,
+  jiraProjectIdOptions,
+  jiraIssueTypeOptions,
+  jiraProductTypeOptions,
   onToggle,
   onChange,
 }: FormulaBasicsStepProps) {
+  const issueTypeOptions = withCurrentOption(jiraIssueTypeOptions, values.formulaJiraIssueType);
+  const productTypeOptions = withCurrentOption(
+    jiraProductTypeOptions,
+    values.formulaJiraProductType,
+  );
+
   return (
     <BuilderStep
       section="basics"
@@ -46,45 +58,60 @@ export function FormulaBasicsStep({
       {hasActiveJiraConnection ? (
         <div className="formulaMetaGrid">
           <label>
-            <span>ProyectoID Jira opcional</span>
+            <span>ProyectoID</span>
             <input
-              placeholder="FLOWER"
+              aria-label="ProyectoID"
+              list="jira-project-id-options"
+              placeholder="Selecciona un ProyectoID"
               value={values.formulaJiraProjectId}
               onChange={(event) => onChange({ formulaJiraProjectId: event.target.value })}
               disabled={isBusy}
             />
           </label>
           <label>
-            <span>Jira activity</span>
-            <input
-              list="jira-activity-options"
+            <span>Issue type Jira</span>
+            <select
               value={values.formulaJiraIssueType}
               onChange={(event) => onChange({ formulaJiraIssueType: event.target.value })}
               disabled={isBusy}
-            />
+            >
+              {issueTypeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             <span>Tipo producto</span>
-            <input
-              list="jira-product-type-options"
+            <select
               value={values.formulaJiraProductType}
               onChange={(event) => onChange({ formulaJiraProductType: event.target.value })}
               disabled={isBusy}
-            />
+            >
+              {productTypeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
-          <datalist id="jira-activity-options">
-            <option value="Calidad" />
-            <option value="Prototipo" />
-            <option value="PoC" />
-          </datalist>
-          <datalist id="jira-product-type-options">
-            <option value="Nuevo" />
-            <option value="Mod A" />
-            <option value="Mod B" />
-            <option value="Mod C" />
+          <datalist id="jira-project-id-options">
+            {jiraProjectIdOptions.map((option) => (
+              <option key={option.value} value={option.value} label={option.label} />
+            ))}
           </datalist>
         </div>
       ) : null}
     </BuilderStep>
   );
+}
+
+function withCurrentOption(options: string[], current: string) {
+  const cleanedOptions = options.map((option) => option.trim()).filter(Boolean);
+  const cleanedCurrent = current.trim();
+  if (cleanedCurrent && !cleanedOptions.includes(cleanedCurrent)) {
+    return [cleanedCurrent, ...cleanedOptions];
+  }
+  return cleanedOptions;
 }

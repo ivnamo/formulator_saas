@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 
 from . import jira_oauth
 from .database import get_session
+from .iso_design import upsert_iso_design_trial_from_review
 from .jira_client import (
     JIRA_API_TOKEN_CREDENTIAL_KEY,
     JiraClientError,
@@ -280,9 +281,19 @@ def register_jira_routes(app: FastAPI) -> None:
                 items,
                 connection,
                 notes=payload.notes,
+                design_project_id=payload.design_project_id,
+                iso_trial_number=payload.iso_trial_number,
+                iso_reason_comment=payload.iso_reason_comment,
             ),
         )
         session.add(review)
+        _upsert_iso_trial_for_review_if_configured(
+            session,
+            tenant,
+            review,
+            trial_number=payload.iso_trial_number,
+            reason_comment=payload.iso_reason_comment,
+        )
         session.commit()
         session.refresh(review)
         return _formula_review_request_read(review)
@@ -363,10 +374,14 @@ def register_jira_routes(app: FastAPI) -> None:
             review.jira_connection_id,
         )
         _validate_review_snapshot_jira_ready(review.snapshot_json, connection)
-        artifact = _ensure_review_excel_artifact(session, tenant.tenant_id, review)
-        payload = build_jira_issue_payload(review.snapshot_json, connection)
         try:
             jira_client = make_jira_client(connection)
+            payload = _validated_jira_issue_payload(
+                review.snapshot_json,
+                connection,
+                jira_client,
+            )
+            artifact = _ensure_review_excel_artifact(session, tenant.tenant_id, review)
             issue = jira_client.create_issue(payload)
         except JiraConfigurationError as exc:
             _record_integration_event(
@@ -422,6 +437,7 @@ def register_jira_routes(app: FastAPI) -> None:
                 error_message=str(exc),
             )
             session.add(review)
+            _upsert_iso_trial_for_review_if_configured(session, tenant, review)
             session.commit()
             session.refresh(review)
             return _formula_review_request_read(review)
@@ -434,6 +450,7 @@ def register_jira_routes(app: FastAPI) -> None:
             review_status="sent_to_jira",
             jira_status=issue.status,
         )
+        _upsert_iso_trial_for_review_if_configured(session, tenant, review)
         _record_integration_event(
             session,
             tenant.tenant_id,
@@ -518,6 +535,7 @@ def register_jira_routes(app: FastAPI) -> None:
         review.review_status = "sent_to_jira"
         review.jira_status = "created"
         review.last_sync_at = checked_at
+        _upsert_iso_trial_for_review_if_configured(session, tenant, review)
         _record_integration_event(
             session,
             tenant.tenant_id,
@@ -558,13 +576,18 @@ def register_jira_routes(app: FastAPI) -> None:
         transition_error: str | None = None
         try:
             jira_client = make_jira_client(connection)
-            issue = jira_client.get_issue(review.jira_issue_key)
+            issue = jira_client.get_issue(
+                review.jira_issue_key,
+                fields=_jira_issue_sync_fields(connection),
+            )
             try:
                 transitions = jira_client.get_issue_transitions(review.jira_issue_key)
                 transition_names = _jira_transition_names(transitions)
             except JiraClientError as exc:
                 transition_error = str(exc)
             jira_status = _jira_issue_status_name(issue)
+            technical_result = _jira_issue_technical_result(issue, connection)
+            normalized_technical_result = _normalize_jira_technical_result(technical_result)
         except JiraConfigurationError as exc:
             _record_jira_sync_error(session, tenant.tenant_id, review, str(exc))
             session.commit()
@@ -584,6 +607,12 @@ def register_jira_routes(app: FastAPI) -> None:
         review.jira_status = jira_status
         review.review_status = mapped_status
         review.last_sync_at = synced_at
+        if technical_result:
+            _store_review_snapshot_technical_result(
+                review,
+                raw_result=technical_result,
+                normalized_result=normalized_technical_result,
+            )
         payload_summary: dict[str, Any] = {
             "jira_issue_key": review.jira_issue_key,
             "jira_status": jira_status,
@@ -591,8 +620,12 @@ def register_jira_routes(app: FastAPI) -> None:
             "mapped": was_mapped,
             "available_transitions": transition_names,
         }
+        if technical_result:
+            payload_summary["jira_technical_result"] = technical_result
+            payload_summary["technical_result"] = normalized_technical_result
         if transition_error:
             payload_summary["transition_error"] = transition_error
+        _upsert_iso_trial_for_review_if_configured(session, tenant, review)
         _record_integration_event(
             session,
             tenant.tenant_id,
@@ -647,18 +680,201 @@ def _validate_jira_formula_fields(
     jira_issue_type: Any,
     jira_product_type: Any,
 ) -> None:
-    project_id = str(jira_project_id or "").strip()
     issue_type = str(jira_issue_type or "").strip()
-    product_type = str(jira_product_type or "").strip()
-    if field_mapping.get("jira_project_id") and not project_id:
-        raise HTTPException(status_code=400, detail="ProyectoID is required before sending to Jira.")
     if not issue_type:
         raise HTTPException(status_code=400, detail="Jira activity is required before sending.")
-    product_type_mapped = field_mapping.get("jira_product_type") or field_mapping.get(
-        "jira_product_type_option"
+
+
+def _validated_jira_issue_payload(
+    snapshot: dict[str, Any],
+    connection: JiraConnection,
+    jira_client: Any,
+) -> dict[str, Any]:
+    project_key = _normalize_project_key(connection.default_project_key)
+    issue_type = _snapshot_jira_issue_type(snapshot, connection)
+    issue_type_metadata = _resolve_jira_issue_type(jira_client, project_key, issue_type)
+    create_metadata = jira_client.get_create_issue_fields(project_key, issue_type_metadata["id"])
+    create_fields = _jira_create_field_metadata(create_metadata)
+    payload = build_jira_issue_payload(snapshot, connection)
+    fields = dict(payload["fields"])
+    fields["project"] = {"key": project_key}
+    fields["issuetype"] = {"name": issue_type_metadata["name"]}
+    fields = _filter_jira_payload_fields(fields, create_fields)
+    _validate_required_jira_payload_fields(fields, create_fields, issue_type_metadata["name"])
+    _validate_jira_payload_field_values(fields, create_fields, issue_type_metadata["name"])
+    return {"fields": fields}
+
+
+def _snapshot_jira_issue_type(snapshot: dict[str, Any], connection: JiraConnection) -> str:
+    jira = _mapping(snapshot.get("jira"))
+    formula = _mapping(snapshot.get("formula"))
+    issue_type = str(
+        jira.get("issue_type") or formula.get("jira_issue_type") or connection.default_issue_type
+    ).strip()
+    if not issue_type:
+        raise HTTPException(status_code=400, detail="Jira issue type is required before sending.")
+    return issue_type
+
+
+def _resolve_jira_issue_type(
+    jira_client: Any,
+    project_key: str,
+    requested_issue_type: str,
+) -> dict[str, Any]:
+    project = jira_client.get_project(project_key)
+    issue_types = [
+        issue_type
+        for issue_type in (
+            _jira_issue_type_read(item) for item in _sequence(project.get("issueTypes"))
+        )
+        if issue_type["id"] and issue_type["name"] and not issue_type["subtask"]
+    ]
+    requested = requested_issue_type.casefold()
+    issue_type = next(
+        (
+            item
+            for item in issue_types
+            if item["id"] == requested_issue_type or item["name"].casefold() == requested
+        ),
+        None,
     )
-    if product_type_mapped and not product_type:
-        raise HTTPException(status_code=400, detail="Tipo producto is required before sending.")
+    if issue_type is None:
+        available = ", ".join(item["name"] for item in issue_types) or "none"
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Jira issue type {requested_issue_type!r} is not available in project "
+                f"{project_key}. Available issue types: {available}."
+            ),
+        )
+    return issue_type
+
+
+def _jira_create_field_metadata(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {
+            "field_id": str(field.get("fieldId") or field.get("id") or ""),
+            "name": str(field.get("name") or field.get("fieldId") or field.get("id") or ""),
+            "required": bool(field.get("required")),
+            "has_default": bool(field.get("hasDefaultValue")),
+            "schema_type": _optional_str(_mapping(field.get("schema")).get("type")),
+            "allowed_values": _jira_allowed_values(field.get("allowedValues")),
+        }
+        for field in _jira_raw_create_fields(metadata)
+        if field.get("fieldId") or field.get("id")
+    ]
+
+
+def _jira_raw_create_fields(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    fields = metadata.get("fields")
+    if isinstance(fields, dict):
+        return [
+            {**field, "fieldId": field.get("fieldId") or field_id}
+            for field_id, field in fields.items()
+            if isinstance(field, dict)
+        ]
+    if isinstance(fields, list):
+        return [field for field in fields if isinstance(field, dict)]
+    return []
+
+
+def _filter_jira_payload_fields(
+    fields: dict[str, Any],
+    create_fields: list[dict[str, Any]],
+) -> dict[str, Any]:
+    allowed_field_ids = {field["field_id"] for field in create_fields}
+    if not allowed_field_ids:
+        return fields
+    return {
+        field_id: value
+        for field_id, value in fields.items()
+        if field_id in allowed_field_ids
+    }
+
+
+def _validate_required_jira_payload_fields(
+    fields: dict[str, Any],
+    create_fields: list[dict[str, Any]],
+    issue_type: str,
+) -> None:
+    missing = [
+        field["name"]
+        for field in create_fields
+        if field["required"]
+        and not field["has_default"]
+        and _jira_payload_value_is_empty(fields.get(field["field_id"]))
+    ]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Jira issue type {issue_type!r} requires fields before sending: "
+                f"{', '.join(missing)}."
+            ),
+        )
+
+
+def _validate_jira_payload_field_values(
+    fields: dict[str, Any],
+    create_fields: list[dict[str, Any]],
+    issue_type: str,
+) -> None:
+    metadata_by_id = {field["field_id"]: field for field in create_fields}
+    for field_id, value in fields.items():
+        metadata = metadata_by_id.get(field_id)
+        if metadata is None or not metadata["allowed_values"]:
+            continue
+        candidate = _jira_payload_allowed_value_label(value)
+        if candidate is None:
+            continue
+        allowed = {
+            label.casefold()
+            for raw_value in metadata["allowed_values"]
+            for label in (
+                raw_value.get("value"),
+                raw_value.get("name"),
+                raw_value.get("key"),
+                raw_value.get("id"),
+            )
+            if label
+        }
+        if allowed and candidate.casefold() not in allowed:
+            allowed_values = ", ".join(
+                str(raw_value.get("value") or raw_value.get("name") or raw_value.get("key") or raw_value.get("id"))
+                for raw_value in metadata["allowed_values"]
+                if raw_value.get("value") or raw_value.get("name") or raw_value.get("key") or raw_value.get("id")
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Jira field {metadata['name']!r} value {candidate!r} is not allowed "
+                    f"for issue type {issue_type!r}. Allowed values: {allowed_values}."
+                ),
+            )
+
+
+def _jira_payload_value_is_empty(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, dict):
+        return all(_jira_payload_value_is_empty(item) for item in value.values())
+    if isinstance(value, list):
+        return not value
+    return False
+
+
+def _jira_payload_allowed_value_label(value: Any) -> str | None:
+    if isinstance(value, dict):
+        for key in ("value", "name", "key", "id"):
+            candidate = value.get(key)
+            if candidate is not None:
+                return str(candidate)
+        return None
+    if isinstance(value, str):
+        return value
+    return None
 
 
 def _jira_issue_status_name(issue: dict[str, Any]) -> str:
@@ -671,6 +887,67 @@ def _jira_issue_status_name(issue: dict[str, Any]) -> str:
     if name:
         return name
     raise JiraClientError("Jira issue did not include a status.")
+
+
+def _jira_issue_sync_fields(connection: JiraConnection) -> str:
+    fields = ["status", "summary"]
+    technical_result_field = connection.field_mapping_json.get("technical_result")
+    if technical_result_field:
+        fields.append(technical_result_field)
+    return ",".join(fields)
+
+
+def _jira_issue_technical_result(
+    issue: dict[str, Any],
+    connection: JiraConnection,
+) -> str | None:
+    field_id = connection.field_mapping_json.get("technical_result")
+    if not field_id:
+        return None
+    return _jira_issue_field_label(issue, field_id)
+
+
+def _jira_issue_field_label(issue: dict[str, Any], field_id: str) -> str | None:
+    value = _mapping(issue.get("fields")).get(field_id)
+    if isinstance(value, dict):
+        for key in ("value", "name", "key", "id"):
+            candidate = value.get(key)
+            if candidate is not None:
+                return str(candidate)
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    return None
+
+
+def _normalize_jira_technical_result(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized = value.strip().casefold()
+    return {
+        "liberado": "LIBERADO",
+        "ok no liberado": "OK_NO_LIBERADO",
+        "nok tecnico": "NOK",
+        "nok técnico": "NOK",
+        "iterado": "ITERADO",
+        "abandonado": "ABANDONADO",
+        "cancelado administrativo": "CANCELADO",
+    }.get(normalized, "pending_mapping")
+
+
+def _store_review_snapshot_technical_result(
+    review: FormulaReviewRequest,
+    *,
+    raw_result: str,
+    normalized_result: str | None,
+) -> None:
+    snapshot = dict(review.snapshot_json)
+    jira = dict(_mapping(snapshot.get("jira")))
+    jira["technical_result_raw"] = raw_result
+    jira["technical_result"] = normalized_result
+    snapshot["jira"] = jira
+    review.snapshot_json = snapshot
 
 
 def _jira_transition_names(transitions: dict[str, Any]) -> list[str]:
@@ -710,6 +987,51 @@ def _record_jira_sync_error(
         payload_summary={"jira_issue_key": review.jira_issue_key},
         error_message=error_message,
     )
+
+
+def _upsert_iso_trial_for_review_if_configured(
+    session: Session,
+    tenant: TenantContext,
+    review: FormulaReviewRequest,
+    *,
+    trial_number: int | None = None,
+    reason_comment: str | None = None,
+) -> None:
+    design_project_id = _review_iso_design_project_id(review)
+    if design_project_id is None:
+        return
+    iso = _mapping(_mapping(review.snapshot_json).get("iso"))
+    upsert_iso_design_trial_from_review(
+        session,
+        tenant,
+        design_project_id=design_project_id,
+        review=review,
+        trial_number=trial_number if trial_number is not None else _optional_int(iso.get("trial_number")),
+        reason_comment=reason_comment or _optional_str(iso.get("reason_comment")),
+    )
+
+
+def _review_iso_design_project_id(review: FormulaReviewRequest) -> uuid.UUID | None:
+    iso = _mapping(_mapping(review.snapshot_json).get("iso"))
+    raw_project_id = _optional_str(iso.get("design_project_id"))
+    if raw_project_id is None:
+        return None
+    try:
+        return uuid.UUID(raw_project_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="ISO design project id in the review snapshot is invalid.",
+        ) from exc
+
+
+def _optional_int(value: Any) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _record_integration_event(
@@ -1165,11 +1487,14 @@ def _formula_jira_snapshot(
     connection: JiraConnection,
     *,
     notes: str | None,
+    design_project_id: uuid.UUID | None = None,
+    iso_trial_number: int | None = None,
+    iso_reason_comment: str | None = None,
 ) -> dict[str, Any]:
     materials_by_id = _materials_by_id(session, tenant_id, [item.raw_material_id for item in items])
     latest_calculation = _latest_calculation(session, tenant_id, formula.id)
     issue_summary = f"{formula.jira_issue_type.upper()} - {formula.jira_project_id or str(formula.id)[:8]} - {formula.name}"
-    return {
+    snapshot: dict[str, Any] = {
         "formula": {
             "id": str(formula.id),
             "name": formula.name,
@@ -1198,6 +1523,14 @@ def _formula_jira_snapshot(
         "notes": _clean_optional(notes),
         "snapshot_type": "jira_formula_review_v1",
     }
+    if design_project_id is not None:
+        snapshot["iso"] = {
+            "design_project_id": str(design_project_id),
+            "trial_number": iso_trial_number,
+            "reason_comment": _clean_optional(iso_reason_comment),
+            "trial_intent": "f10_02_trial",
+        }
+    return snapshot
 
 
 def _materials_by_id(

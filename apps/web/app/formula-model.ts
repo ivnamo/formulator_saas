@@ -60,6 +60,14 @@ export type FormulaReviewRequest = {
       project_key?: string;
       issue_type?: string;
       issue_summary?: string;
+      technical_result_raw?: string;
+      technical_result?: string | null;
+    };
+    iso?: {
+      design_project_id?: string;
+      trial_number?: number | null;
+      reason_comment?: string | null;
+      trial_intent?: string;
     };
     items?: Array<{ name?: string; percentage?: number }>;
     notes?: string | null;

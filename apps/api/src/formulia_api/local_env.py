@@ -15,6 +15,7 @@ LOCAL_ENV_NAMES = {
     "FORMULIA_SUPABASE_SERVICE_ROLE_KEY",
     "FORMULIA_SUPABASE_URL",
     "FORMULIA_JIRA_API_TOKEN",
+    "FORMULIA_JIRA_AUTH_EMAIL",
     "FORMULIA_JIRA_CLOUD_ID",
     "FORMULIA_JIRA_OAUTH_ACCESS_TOKEN",
     "FORMULIA_JIRA_OAUTH_CLIENT_ID",
@@ -46,7 +47,7 @@ def load_local_env(workspace_root: Path | None = None) -> None:
 
 def _load_env_file(path: Path) -> None:
     for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
+        line = raw_line.strip().lstrip("\ufeff")
         if not line or line.startswith("#") or "=" not in line:
             continue
         name, value = line.split("=", 1)

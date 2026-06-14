@@ -20,6 +20,7 @@ type JiraReviewActionsOptions = {
   activeJiraConnection: JiraConnection | null;
   result: CalculationResult | null;
   formulaReviewRequests: FormulaReviewRequest[];
+  selectedJiraIsoDesignProjectId: string;
   headers: HeadersInit;
   uploadHeaders: HeadersInit;
   setFormulaReviewRequests: Dispatch<SetStateAction<FormulaReviewRequest[]>>;
@@ -27,6 +28,7 @@ type JiraReviewActionsOptions = {
     SetStateAction<Record<string, FormulaReviewArtifact[]>>
   >;
   loadFormulaReviewRequests: (formulaId: string) => Promise<void>;
+  onIsoModuleRefresh: () => Promise<void>;
   runAction: (label: string, action: () => Promise<void>) => Promise<void>;
   setError: (message: string) => void;
   setMessage: (message: string) => void;
@@ -43,11 +45,13 @@ export function useJiraReviewActions({
   activeJiraConnection,
   result,
   formulaReviewRequests,
+  selectedJiraIsoDesignProjectId,
   headers,
   uploadHeaders,
   setFormulaReviewRequests,
   setFormulaReviewArtifacts,
   loadFormulaReviewRequests,
+  onIsoModuleRefresh,
   runAction,
   setError,
   setMessage,
@@ -66,22 +70,47 @@ export function useJiraReviewActions({
       return;
     }
     if (!workspace.formulaJiraProjectId.trim()) {
-      setError("ProyectoID is required before sending to Jira");
+      if (workspace.formulaJiraIssueType.trim().toLowerCase() === "calidad") {
+        setError(
+          "Crea o selecciona un F10-01 para generar ProyectoID antes de enviar la formula de Calidad a Jira.",
+        );
+      } else {
+        setError("ProyectoID is required before sending to Jira");
+      }
+      return;
+    }
+    if (
+      workspace.formulaJiraIssueType.trim().toLowerCase() === "calidad" &&
+      !selectedJiraIsoDesignProjectId
+    ) {
+      setError(
+        "No existe F10-01 para este ProyectoID. Crea el expediente ISO antes de enviar la formula de Calidad a Jira.",
+      );
       return;
     }
     const formulaId = workspace.formulaId;
+    const isoProjectId = selectedJiraIsoDesignProjectId || null;
 
     await runAction("Sending formula to Jira", async () => {
-      const existingDraftReview = formulaReviewRequests.find((review) => !review.jira_issue_key);
+      const existingDraftReview = formulaReviewRequests.find(
+        (review) =>
+          !review.jira_issue_key &&
+          (isoProjectId
+            ? review.snapshot.iso?.design_project_id === isoProjectId
+            : !review.snapshot.iso?.design_project_id),
+      );
       const review =
         existingDraftReview ??
-        (await createJiraFormulaReview(headers, formulaId));
+        (await createJiraFormulaReview(headers, formulaId, {
+          design_project_id: isoProjectId,
+        }));
       const sentReview = await sendFormulaReviewToJira(headers, review.id);
       setFormulaReviewRequests((current) => [
         sentReview,
         ...current.filter((item) => item.id !== sentReview.id),
       ]);
       await loadFormulaReviewRequests(sentReview.formula_id);
+      await onIsoModuleRefresh();
       setMessage(jiraSendMessage(sentReview));
     });
   }, [
@@ -89,12 +118,15 @@ export function useJiraReviewActions({
     formulaReviewRequests,
     headers,
     loadFormulaReviewRequests,
+    onIsoModuleRefresh,
     result,
     runAction,
+    selectedJiraIsoDesignProjectId,
     setError,
     setFormulaReviewRequests,
     setMessage,
     workspace.formulaId,
+    workspace.formulaJiraIssueType,
     workspace.formulaJiraProjectId,
     workspace.tenant,
   ]);
@@ -143,10 +175,18 @@ export function useJiraReviewActions({
           current.map((item) => (item.id === review.id ? review : item)),
         );
         await loadFormulaReviewRequests(review.formula_id);
+        await onIsoModuleRefresh();
         setMessage(jiraSendMessage(review));
       });
     },
-    [headers, loadFormulaReviewRequests, runAction, setFormulaReviewRequests, setMessage],
+    [
+      headers,
+      loadFormulaReviewRequests,
+      onIsoModuleRefresh,
+      runAction,
+      setFormulaReviewRequests,
+      setMessage,
+    ],
   );
 
   const retryJiraReviewAttachment = useCallback(
@@ -157,10 +197,18 @@ export function useJiraReviewActions({
           current.map((item) => (item.id === review.id ? review : item)),
         );
         await loadFormulaReviewRequests(review.formula_id);
+        await onIsoModuleRefresh();
         setMessage("Jira Excel attachment retried");
       });
     },
-    [headers, loadFormulaReviewRequests, runAction, setFormulaReviewRequests, setMessage],
+    [
+      headers,
+      loadFormulaReviewRequests,
+      onIsoModuleRefresh,
+      runAction,
+      setFormulaReviewRequests,
+      setMessage,
+    ],
   );
 
   const syncJiraReviewStatus = useCallback(
@@ -170,10 +218,11 @@ export function useJiraReviewActions({
         setFormulaReviewRequests((current) =>
           current.map((item) => (item.id === review.id ? review : item)),
         );
+        await onIsoModuleRefresh();
         setMessage("Jira status synced");
       });
     },
-    [headers, runAction, setFormulaReviewRequests, setMessage],
+    [headers, onIsoModuleRefresh, runAction, setFormulaReviewRequests, setMessage],
   );
 
   return {

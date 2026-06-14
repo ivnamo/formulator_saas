@@ -42,6 +42,7 @@ type WorkspaceSettingsActionsOptions = {
   resetFormulaWorkspaceState: () => void;
   resetCompatibilityState: () => void;
   resetJiraConnectionState: () => void;
+  resetIsoDesignState: () => void;
   resetAiWorkflowState: () => void;
   resetSavedFormulaComparisonState: () => void;
   resetImportState: () => void;
@@ -70,6 +71,7 @@ export function useWorkspaceSettingsActions({
   resetFormulaWorkspaceState,
   resetCompatibilityState,
   resetJiraConnectionState,
+  resetIsoDesignState,
   resetAiWorkflowState,
   resetSavedFormulaComparisonState,
   resetImportState,
@@ -98,6 +100,7 @@ export function useWorkspaceSettingsActions({
       resetFormulaWorkspaceState();
       resetCompatibilityState();
       resetJiraConnectionState();
+      resetIsoDesignState();
       setTenantInvitations([]);
       resetAiWorkflowState();
       resetSavedFormulaComparisonState();
@@ -111,6 +114,7 @@ export function useWorkspaceSettingsActions({
     resetFormulaBuilderSelection,
     resetFormulaWorkspaceState,
     resetImportState,
+    resetIsoDesignState,
     resetJiraConnectionState,
     resetRawMaterialWorkspaceState,
     resetSavedFormulaComparisonState,
@@ -139,23 +143,10 @@ export function useWorkspaceSettingsActions({
           return;
         }
         const tenantHeaders = { ...baseHeaders, "X-Tenant-Id": tenant.id };
-        const [parameters, rawMaterials, invitations] = await Promise.all([
-          listWorkspaceParameters(tenantHeaders),
-          listRawMaterials(tenantHeaders),
-          isTenantAdminRole(tenant.role)
-            ? listTenantInvitations(tenantHeaders)
-            : Promise.resolve([]),
-        ]);
-
-        const activeParameter = parameters[0] ?? null;
         setWorkspace({
           ...emptyWorkspace,
           tenant,
-          parameter: activeParameter,
-          parameters,
-          rawMaterials: rawMaterials.map((material) =>
-            toWorkspaceRawMaterial(material, {}, parameters),
-          ),
+          rawMaterials: [],
           formulaName: `${tenant.name} Formula`,
         });
         resetFormulaBuilderSelection();
@@ -164,12 +155,40 @@ export function useWorkspaceSettingsActions({
         resetFormulaWorkspaceState();
         resetCompatibilityState();
         resetJiraConnectionState();
-        setTenantInvitations(invitations);
+        resetIsoDesignState();
+        setTenantInvitations([]);
         resetAiWorkflowState();
         resetSavedFormulaComparisonState();
         resetImportState();
         setStatus("idle");
         setMessage(`${tenant.name} loaded`);
+        void (async () => {
+          try {
+            const [parameters, rawMaterials, invitations] = await Promise.all([
+              listWorkspaceParameters(tenantHeaders),
+              listRawMaterials(tenantHeaders),
+              isTenantAdminRole(tenant.role)
+                ? listTenantInvitations(tenantHeaders)
+                : Promise.resolve([]),
+            ]);
+            const activeParameter = parameters[0] ?? null;
+            setWorkspace((current) =>
+              current.tenant?.id === tenant.id
+                ? {
+                    ...current,
+                    parameter: activeParameter,
+                    parameters,
+                    rawMaterials: rawMaterials.map((material) =>
+                      toWorkspaceRawMaterial(material, {}, parameters),
+                    ),
+                  }
+                : current,
+            );
+            setTenantInvitations(invitations);
+          } catch (error) {
+            setError(error instanceof Error ? error.message : "Could not load tenant metadata");
+          }
+        })();
       } catch (error) {
         setError(error instanceof Error ? error.message : "Could not load tenant");
       }
@@ -180,6 +199,7 @@ export function useWorkspaceSettingsActions({
       resetFormulaBuilderSelection,
       resetFormulaWorkspaceState,
       resetImportState,
+      resetIsoDesignState,
       resetJiraConnectionState,
       resetRawMaterialWorkspaceState,
       resetSavedFormulaComparisonState,

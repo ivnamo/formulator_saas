@@ -20,6 +20,9 @@ La formula completa viaja como snapshot adjunto, normalmente Excel, y opcionalme
 
 - Configurar una conexion Jira por tenant.
 - Mapear proyecto, tipo de issue y campos Jira.
+- Elegir el issue type por formula/version enviada, no como decision fija de la conexion.
+- Validar y filtrar campos contra la metadata real de Jira para el issue type elegido.
+- Vincular opcionalmente la review a un expediente ISO mediante `design_project_id`.
 - Enviar una formula/version a Jira.
 - Crear un snapshot inmutable de la version enviada.
 - Generar y adjuntar un Excel de formulacion.
@@ -27,6 +30,7 @@ La formula completa viaja como snapshot adjunto, normalmente Excel, y opcionalme
 - Mostrar el estado Jira dentro de la ficha de formula.
 - Sincronizar cambios de estado desde Jira.
 - Registrar auditoria de envios, errores y sincronizaciones.
+- Crear/actualizar un ensayo F10-02 cuando la review esta vinculada a un expediente ISO.
 
 ### Fuera de alcance inicial
 
@@ -49,13 +53,16 @@ La formula completa viaja como snapshot adjunto, normalmente Excel, y opcionalme
 ```text
 Formula en FormulIA
   -> validar datos minimos
+  -> elegir expediente ISO si aplica
   -> crear snapshot/version enviada
+  -> crear ensayo F10-02 pendiente si hay expediente ISO
   -> generar Excel
   -> crear issue en Jira
   -> adjuntar Excel
   -> guardar issue key/URL
   -> laboratorio revisa en tablero Jira
   -> FormulIA sincroniza estado
+  -> F10-02 recoge estado Jira + Resultado I+D normalizado
 ```
 
 ## Flujo detallado
@@ -75,13 +82,14 @@ Formula en FormulIA
    - Excel que se va a adjuntar.
 5. El usuario confirma el envio.
 6. El backend crea un snapshot inmutable de la version enviada.
-7. El backend genera un Excel desde ese snapshot.
-8. El backend crea un issue en Jira.
-9. El backend adjunta el Excel al issue.
-10. El backend guarda el vinculo Jira en FormulIA.
-11. La formula muestra un panel de revision con el estado actual.
-12. El laboratorio trabaja el ticket en Jira.
-13. FormulIA consulta Jira o recibe webhooks para actualizar el estado.
+7. Si el usuario eligio expediente ISO, el backend crea/actualiza el ensayo F10-02 vinculado a `review_request_id`.
+8. El backend genera un Excel desde ese snapshot.
+9. El backend crea un issue en Jira.
+10. El backend adjunta el Excel al issue.
+11. El backend guarda el vinculo Jira en FormulIA y actualiza el ensayo F10-02 con issue key/URL.
+12. La formula muestra un panel de revision con el estado actual.
+13. El laboratorio trabaja el ticket en Jira.
+14. FormulIA consulta Jira o recibe webhooks para actualizar el estado y el resultado tecnico ISO.
 
 ## Datos enviados a Jira
 
@@ -89,7 +97,7 @@ Formula en FormulIA
 
 - Summary: `Revision formula - {formula_code} - {product_name}`
 - Project key: configurable por tenant.
-- Issue type: configurable, por ejemplo `Revision de formula`.
+- Issue type: definido por formula/version enviada. En el tenant piloto `ID` los valores reales son `Prototipo`, `PoC`, `Calidad` y `Muestra`.
 - Description: resumen tecnico y enlace al SaaS.
 - Priority: configurable o elegida por usuario.
 - Assignee: usuario/equipo de laboratorio.
@@ -105,6 +113,23 @@ Formula en FormulIA
 - Main active content/riqueza, si aplica.
 - Requested by.
 - FormulIA formula URL.
+
+### Validacion por issue type
+
+Antes de crear el issue, el backend consulta `createmeta` de Jira para el proyecto destino y el issue type de la formula.
+
+Reglas implementadas:
+
+- Resolver el issue type real por nombre o id.
+- Construir el payload con los campos mapeados del tenant.
+- Filtrar cualquier campo que Jira no permita crear para ese issue type.
+- Bloquear el envio si Jira marca un campo requerido sin valor ni default.
+- Validar opciones tipo select contra los valores permitidos por Jira.
+
+En el tenant piloto:
+
+- `Prototipo` y `Calidad` exigen `ProyectoID` y `Tipo producto`.
+- `PoC` y `Muestra` no aceptan esos campos en la pantalla de creacion; se filtran del payload aunque el mapping global exista.
 
 ### Description sugerida
 
@@ -181,8 +206,12 @@ Sincronizacion:
 
 - `POST /formula-reviews/{review_id}/sync` lee el issue Jira por REST v3 y actualiza `jira_status`, `review_status` y `last_sync_at`.
 - El estado interno se calcula con `status_mapping`. Si el estado Jira no esta mapeado, FormulIA conserva el `review_status` actual y registra el estado Jira recibido.
+- Si el tenant mapea `technical_result`, la sincronizacion solicita tambien ese campo de Jira. En el tenant piloto corresponde a `Resultado I+D` (`customfield_11024`).
+- El valor de `Resultado I+D` se guarda en el snapshot del review como literal y normalizado, por ejemplo `NOK tecnico -> NOK` o `Liberado -> LIBERADO`.
 - La llamada tambien intenta leer transiciones disponibles y las guarda en auditoria para diagnostico, pero no cambia estados en Jira.
 - Para activar un cliente nuevo hay que confirmar los nombres exactos de estados Jira y su equivalencia interna antes de enviar formulas reales.
+- Si la review esta vinculada a ISO, la sincronizacion actualiza el ensayo F10-02 idempotentemente.
+- Solo `Resultado I+D = Liberado` normalizado a `LIBERADO` habilita crear F10-03; `FINALIZADO` por si solo no libera producto.
 
 ## Versionado
 

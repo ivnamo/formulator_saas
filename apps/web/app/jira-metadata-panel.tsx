@@ -11,6 +11,7 @@ const JIRA_MAPPING_KEYS = [
   "jira_issue_type",
   "jira_product_type",
   "jira_product_type_option",
+  "technical_result",
   "estimated_cost",
   "notes",
 ] as const;

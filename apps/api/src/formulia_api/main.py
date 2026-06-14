@@ -45,6 +45,7 @@ from .excel_import import (
     list_formula_xlsx_sheets,
     parse_formula_xlsx,
 )
+from .iso_design import register_iso_routes
 from .jira_integration import register_jira_routes
 from .local_env import load_local_env
 from .models import (
@@ -149,6 +150,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     )
     register_routes(app)
     register_jira_routes(app)
+    register_iso_routes(app)
     return app
 
 
@@ -309,7 +311,7 @@ def register_routes(app: FastAPI) -> None:
         parameter: str | None = Query(default=None),
         parameter_range: list[str] = Query(default_factory=list),
         only_positive: bool = Query(default=True),
-        limit: int = Query(default=60, ge=1, le=250),
+        limit: int = Query(default=500, ge=1, le=1000),
         offset: int = Query(default=0, ge=0),
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),

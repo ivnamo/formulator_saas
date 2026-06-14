@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from "react";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
@@ -10,6 +11,7 @@ import {
 import { useSavedFormulaActions } from "./saved-formula-actions";
 import { useJiraReviewActions } from "./jira-review-actions";
 import { useExcelImportActions } from "./excel-import-actions";
+import { useIsoDesignActions } from "./iso-design-actions";
 import { useJiraConnectionActions } from "./jira-connection-actions";
 import { useAiAssistantActions } from "./ai-assistant-actions";
 import { useCompatibilityActions } from "./compatibility-actions";
@@ -27,7 +29,9 @@ import { useRawMaterialWorkspaceState } from "./raw-material-state";
 import { useFormulaWorkspaceState } from "./formula-workspace-state";
 import { useCompatibilityState } from "./compatibility-state";
 import { useAiWorkflowState } from "./ai-workflow-state";
+import { useIsoDesignState } from "./iso-design-state";
 import { useJiraConnectionState } from "./jira-connection-state";
+import { isoJiraIssueTypeLabels } from "./iso-design-model";
 import type { WorkspaceHomeViewProps } from "./workspace-home-view";
 import { buildWorkspaceHomePanels } from "./workspace-home-panels";
 import { useWorkspaceShellState } from "./workspace-shell-state";
@@ -42,6 +46,8 @@ export type WorkspaceHomeControllerState =
     };
 
 export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
+  const [isoProjectPreparedFromFormulaBuilder, setIsoProjectPreparedFromFormulaBuilder] =
+    useState(false);
   const {
     workspace,
     setWorkspace,
@@ -132,6 +138,31 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     resetJiraConnectionState,
   } = useJiraConnectionState();
   const {
+    isoSettings,
+    setIsoSettings,
+    isoDesignProjects,
+    setIsoDesignProjects,
+    isoDesignTrialsByProjectId,
+    setIsoDesignTrialsByProjectId,
+    isoProductValidationsByProjectId,
+    setIsoProductValidationsByProjectId,
+    selectedIsoDesignProjectId,
+    setSelectedIsoDesignProjectId,
+    selectedJiraIsoDesignProjectId,
+    setSelectedJiraIsoDesignProjectId,
+    isoProjectForm,
+    setIsoProjectForm,
+    isoLegacyImportFormat,
+    setIsoLegacyImportFormat,
+    isoLegacyImportFile,
+    setIsoLegacyImportFile,
+    selectedIsoLegacyImportSheet,
+    setSelectedIsoLegacyImportSheet,
+    isoLegacyImportPreview,
+    setIsoLegacyImportPreview,
+    resetIsoDesignState,
+  } = useIsoDesignState();
+  const {
     requirementText,
     setRequirementText,
     requirementParse,
@@ -171,6 +202,10 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     useWorkspaceShellState();
   const { session, authChecked, authHeaders, headers, uploadHeaders } =
     useWorkspaceAuthSession(workspace.tenant);
+
+  useEffect(() => {
+    setIsoProjectPreparedFromFormulaBuilder(false);
+  }, [workspace.tenant?.id]);
   const {
     catalogMaterialIds,
     catalogTotal,
@@ -217,6 +252,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     resetFormulaWorkspaceState,
     resetCompatibilityState,
     resetJiraConnectionState,
+    resetIsoDesignState,
     resetAiWorkflowState,
     resetSavedFormulaComparisonState,
     resetImportState,
@@ -420,6 +456,137 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setMessage,
   });
   const {
+    loadIsoModule,
+    selectIsoDesignProject,
+    enableIsoModule,
+    createIsoDesignProject,
+    selectIsoLegacyImportFormat,
+    selectIsoLegacyImportFile,
+    previewSelectedIsoLegacyImportSheet,
+    applySelectedIsoLegacyImport,
+    createIsoProductValidation,
+    updateIsoProductValidationChecks,
+    publishIsoProductValidation,
+    exportIsoF1001,
+    exportIsoF1002,
+    exportIsoF1003,
+    exportIsoDossier,
+  } = useIsoDesignActions({
+    workspace,
+    headers,
+    uploadHeaders,
+    isoProjectForm,
+    isoLegacyImportFormat,
+    isoLegacyImportFile,
+    selectedIsoLegacyImportSheet,
+    selectedIsoDesignProjectId,
+    isoDesignTrialsByProjectId,
+    isoProductValidationsByProjectId,
+    setIsoSettings,
+    setIsoDesignProjects,
+    setIsoDesignTrialsByProjectId,
+    setIsoProductValidationsByProjectId,
+    setSelectedIsoDesignProjectId,
+    setIsoProjectForm,
+    setIsoLegacyImportFormat,
+    setIsoLegacyImportFile,
+    setSelectedIsoLegacyImportSheet,
+    setIsoLegacyImportPreview,
+    runAction,
+    setError,
+    setMessage,
+    onProjectCreated: (project) => {
+      if (!isoProjectPreparedFromFormulaBuilder) {
+        return false;
+      }
+      setWorkspace((current) => ({
+        ...current,
+        formulaJiraProjectId: project.project_code ?? current.formulaJiraProjectId,
+      }));
+      setSelectedJiraIsoDesignProjectId(project.id);
+      setIsoProjectPreparedFromFormulaBuilder(false);
+      setActiveView("formula");
+      setMessage(
+        `F10-01 creado: ProyectoID ${project.project_code ?? "-"} asignado a la formula.`,
+      );
+      return true;
+    },
+  });
+
+  useEffect(() => {
+    if (!workspace.tenant || !session?.access_token) {
+      return;
+    }
+    void refreshJiraConnections({ silent: true });
+  }, [refreshJiraConnections, session?.access_token, workspace.tenant]);
+  useEffect(() => {
+    if (!workspace.tenant || !session?.access_token) {
+      return;
+    }
+    void loadIsoModule({ silent: true });
+  }, [loadIsoModule, session?.access_token, workspace.tenant]);
+  useEffect(() => {
+    setSelectedJiraIsoDesignProjectId(() => {
+      if (!isIsoQualityFormula(workspace.formulaJiraIssueType)) {
+        return "";
+      }
+      const formulaProjectCode = normalizeIsoProjectCode(workspace.formulaJiraProjectId);
+      if (!formulaProjectCode) {
+        return "";
+      }
+      return (
+        isoDesignProjects.find(
+          (project) => normalizeIsoProjectCode(project.project_code) === formulaProjectCode,
+        )?.id ?? ""
+      );
+    });
+  }, [
+    isoDesignProjects,
+    setSelectedJiraIsoDesignProjectId,
+    workspace.formulaJiraIssueType,
+    workspace.formulaJiraProjectId,
+  ]);
+  const prepareIsoProjectFromFormula = useCallback(() => {
+    if (!isIsoQualityFormula(workspace.formulaJiraIssueType)) {
+      setMessage("ISO solo aplica automaticamente a formulas con issue type Jira Calidad.");
+      return;
+    }
+
+    const currentYear = String(new Date().getFullYear());
+    setIsoProjectForm((current) => ({
+      ...current,
+      year: current.year || currentYear,
+      projectCode: "",
+      productName: current.productName || workspace.formulaName || "Nueva formula",
+      productType: current.productType || workspace.formulaJiraProductType,
+      acceptedStatus: current.acceptedStatus || "pending",
+      lifecycleStatus: current.lifecycleStatus || "intake",
+      comments:
+        current.comments ||
+        "Preparado desde Formula Builder. Completa No Solicitud; el ProyectoID se generara automaticamente al crear el F10-01.",
+    }));
+    setIsoProjectPreparedFromFormulaBuilder(true);
+    setSelectedIsoDesignProjectId("");
+    setActiveView("iso");
+    setMessage(
+      "F10-01 preparado desde el builder: completa No Solicitud y crea el expediente para generar ProyectoID.",
+    );
+  }, [
+    setActiveView,
+    setIsoProjectForm,
+    setMessage,
+    setSelectedIsoDesignProjectId,
+    workspace.formulaJiraIssueType,
+    workspace.formulaJiraProductType,
+    workspace.formulaName,
+  ]);
+  const returnToFormulaBuilderFromIso = useCallback(() => {
+    setActiveView("formula");
+    setMessage(
+      "Vuelta al Formula Builder. El enlace ISO se recalculara por ProyectoID.",
+    );
+  }, [setActiveView, setMessage]);
+  const {
     parseRequirements,
     planRequirements,
     refreshAiRuns,
@@ -489,11 +656,13 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     activeJiraConnection,
     result,
     formulaReviewRequests,
+    selectedJiraIsoDesignProjectId,
     headers,
     uploadHeaders,
     setFormulaReviewRequests,
     setFormulaReviewArtifacts,
     loadFormulaReviewRequests,
+    onIsoModuleRefresh: () => loadIsoModule({ silent: true }),
     runAction,
     setError,
     setMessage,
@@ -567,6 +736,39 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       authorizeJiraOAuth,
       setJiraMappingKey,
       mapJiraField,
+    },
+    isoDesign: {
+      settings: isoSettings,
+      projects: isoDesignProjects,
+      trialsByProjectId: isoDesignTrialsByProjectId,
+      validationsByProjectId: isoProductValidationsByProjectId,
+      selectedProjectId: selectedIsoDesignProjectId,
+      projectForm: isoProjectForm,
+      legacyImportFormat: isoLegacyImportFormat,
+      legacyImportPreview: isoLegacyImportPreview,
+      legacyImportFileName: isoLegacyImportFile?.name ?? "",
+      selectedLegacyImportSheet: selectedIsoLegacyImportSheet,
+      isPreparedFromFormulaBuilder: isoProjectPreparedFromFormulaBuilder,
+      isBusy,
+      canEditTenantData,
+      canManageIsoSettings: showInvitationAdminPanel,
+      setSelectedProjectId: selectIsoDesignProject,
+      setIsoProjectForm,
+      loadIsoModule,
+      enableIsoModule,
+      createIsoDesignProject,
+      selectIsoLegacyImportFormat,
+      selectIsoLegacyImportFile,
+      previewSelectedIsoLegacyImportSheet,
+      applySelectedIsoLegacyImport,
+      createIsoProductValidation,
+      updateIsoProductValidationChecks,
+      publishIsoProductValidation,
+      exportIsoF1001,
+      exportIsoF1002,
+      exportIsoF1003,
+      exportIsoDossier,
+      returnToFormulaBuilderFromIso,
     },
     rawMaterials: {
       rawMaterials: workspace.rawMaterials,
@@ -697,6 +899,11 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       canConfirmDraftReview,
       formulaReviewRequests,
       formulaReviewArtifacts,
+      isoDesignProjects,
+      jiraIssueTypeOptions: isoJiraIssueTypeLabels(isoSettings),
+      formulaJiraProjectId: workspace.formulaJiraProjectId,
+      formulaJiraIssueType: workspace.formulaJiraIssueType,
+      selectedIsoDesignProjectId: selectedJiraIsoDesignProjectId,
       canPrepareJiraReview,
       formulaLineDetails,
       parameterRows,
@@ -726,6 +933,8 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       clearComparisonMaterials,
       updateDraftReviewNotes,
       confirmDraftReview,
+      setSelectedIsoDesignProjectId: setSelectedJiraIsoDesignProjectId,
+      prepareIsoProjectFromFormula,
       sendCurrentFormulaToJira,
       generateJiraReviewExcel,
       downloadJiraReviewArtifact,
@@ -755,4 +964,12 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       panels,
     },
   };
+}
+
+function normalizeIsoProjectCode(value: string | null | undefined) {
+  return (value ?? "").trim().toUpperCase();
+}
+
+function isIsoQualityFormula(issueType: string | null | undefined) {
+  return (issueType ?? "").trim().toLowerCase() === "calidad";
 }

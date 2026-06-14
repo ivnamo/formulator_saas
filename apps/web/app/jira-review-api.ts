@@ -7,11 +7,14 @@ import { apiUrl, request } from "./workspace-api";
 export function createJiraFormulaReview(
   headers: HeadersInit,
   formulaId: string,
+  payload: {
+    design_project_id?: string | null;
+  } = {},
 ): Promise<FormulaReviewRequest> {
   return request<FormulaReviewRequest>(`/api/v1/formulas/${formulaId}/reviews/jira`, {
     method: "POST",
     headers,
-    body: JSON.stringify({}),
+    body: JSON.stringify(payload),
   });
 }
 

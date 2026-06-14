@@ -8,6 +8,9 @@ type FormulaBuilderMaterialsProps = FormulaBuilderPanelProps["materials"];
 type FormulaBuilderCompositionProps = FormulaBuilderPanelProps["composition"];
 type FormulaBuilderCalculationProps = FormulaBuilderPanelProps["calculation"];
 
+const DEFAULT_JIRA_ISSUE_TYPE_OPTIONS = ["Calidad", "Prototipo", "PoC", "Muestra"];
+const DEFAULT_JIRA_PRODUCT_TYPE_OPTIONS = ["Nuevo", "Mod A", "Mod B", "Mod C"];
+
 type BuildFormulaBuilderPanelPropsArgs = {
   workspace: WorkspaceState;
   builderSections: Record<BuilderSectionKey, boolean>;
@@ -54,6 +57,11 @@ type BuildFormulaBuilderPanelPropsArgs = {
   canConfirmDraftReview: FormulaBuilderCompositionProps["canConfirmDraftReview"];
   formulaReviewRequests: FormulaBuilderCompositionProps["formulaReviewRequests"];
   formulaReviewArtifacts: FormulaBuilderCompositionProps["formulaReviewArtifacts"];
+  isoDesignProjects: FormulaBuilderCompositionProps["isoDesignProjects"];
+  jiraIssueTypeOptions: FormulaBuilderBasicsProps["jiraIssueTypeOptions"];
+  formulaJiraProjectId: FormulaBuilderCompositionProps["formulaJiraProjectId"];
+  formulaJiraIssueType: FormulaBuilderCompositionProps["formulaJiraIssueType"];
+  selectedIsoDesignProjectId: FormulaBuilderCompositionProps["selectedIsoDesignProjectId"];
   canPrepareJiraReview: FormulaBuilderCompositionProps["canPrepareJiraReview"];
   formulaLineDetails: FormulaBuilderCompositionProps["formulaLineDetails"];
   parameterRows: FormulaBuilderCalculationProps["parameterRows"];
@@ -83,6 +91,8 @@ type BuildFormulaBuilderPanelPropsArgs = {
   clearComparisonMaterials: FormulaBuilderMaterialsProps["onClearComparison"];
   updateDraftReviewNotes: FormulaBuilderCompositionProps["onNotesChange"];
   confirmDraftReview: FormulaBuilderCompositionProps["onConfirmDraftReview"];
+  setSelectedIsoDesignProjectId: FormulaBuilderCompositionProps["onSelectedIsoDesignProjectChange"];
+  prepareIsoProjectFromFormula: FormulaBuilderCompositionProps["onPrepareIsoProject"];
   sendCurrentFormulaToJira: FormulaBuilderCompositionProps["onSendCurrentFormulaToJira"];
   generateJiraReviewExcel: FormulaBuilderCompositionProps["onGenerateReviewExcel"];
   downloadJiraReviewArtifact: FormulaBuilderCompositionProps["onDownloadArtifact"];
@@ -104,6 +114,11 @@ function buildFormulaBuilderBasicsProps(
     isBusy: args.isBusy,
     hasActiveJiraConnection: Boolean(args.activeJiraConnection),
     values: args.formulaBasicsValue,
+    jiraProjectIdOptions: buildJiraProjectIdOptions(args.isoDesignProjects),
+    jiraIssueTypeOptions: args.jiraIssueTypeOptions.length
+      ? args.jiraIssueTypeOptions
+      : DEFAULT_JIRA_ISSUE_TYPE_OPTIONS,
+    jiraProductTypeOptions: DEFAULT_JIRA_PRODUCT_TYPE_OPTIONS,
     onToggle: args.toggleBuilderSection,
     onChange: args.updateFormulaBasics,
   };
@@ -185,6 +200,10 @@ function buildFormulaBuilderCompositionProps(
     activeJiraConnection: args.activeJiraConnection,
     formulaReviewRequests: args.formulaReviewRequests,
     formulaReviewArtifacts: args.formulaReviewArtifacts,
+    isoDesignProjects: args.isoDesignProjects,
+    formulaJiraProjectId: args.formulaJiraProjectId,
+    formulaJiraIssueType: args.formulaJiraIssueType,
+    selectedIsoDesignProjectId: args.selectedIsoDesignProjectId,
     canPrepareJiraReview: args.canPrepareJiraReview,
     formulaLineDetails: args.formulaLineDetails,
     visibleParameterCodes: args.visibleParameterCodes,
@@ -192,6 +211,8 @@ function buildFormulaBuilderCompositionProps(
     onToggle: args.toggleBuilderSection,
     onNotesChange: args.updateDraftReviewNotes,
     onConfirmDraftReview: args.confirmDraftReview,
+    onSelectedIsoDesignProjectChange: args.setSelectedIsoDesignProjectId,
+    onPrepareIsoProject: args.prepareIsoProjectFromFormula,
     onSendCurrentFormulaToJira: args.sendCurrentFormulaToJira,
     onGenerateReviewExcel: args.generateJiraReviewExcel,
     onDownloadArtifact: args.downloadJiraReviewArtifact,
@@ -226,6 +247,22 @@ function buildFormulaBuilderCalculationProps(
     onSelectParameterView: args.selectCurrentParameterView,
     onSaveFormula: args.saveFormula,
   };
+}
+
+function buildJiraProjectIdOptions(
+  projects: FormulaBuilderCompositionProps["isoDesignProjects"],
+): FormulaBuilderBasicsProps["jiraProjectIdOptions"] {
+  const options = new Map<string, string>();
+  for (const project of projects) {
+    const projectCode = project.project_code?.trim();
+    if (!projectCode || options.has(projectCode)) {
+      continue;
+    }
+    options.set(projectCode, `${project.iso_request_number} - ${project.product_name}`);
+  }
+  return [...options.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((left, right) => left.value.localeCompare(right.value, "es"));
 }
 
 export function buildFormulaBuilderPanelProps(

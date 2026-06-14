@@ -69,7 +69,11 @@ export function useJiraConnectionActions({
         return connections;
       };
       if (options.silent) {
-        await loadConnections();
+        try {
+          await loadConnections();
+        } catch (error) {
+          setError(error instanceof Error ? error.message : "Could not load Jira connections");
+        }
         return;
       }
       await runAction("Refreshing integrations", async () => {

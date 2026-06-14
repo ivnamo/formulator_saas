@@ -1,4 +1,5 @@
 import {
+  ClipboardCheck,
   Download,
   ExternalLink,
   FileSpreadsheet,
@@ -6,6 +7,7 @@ import {
   Send,
 } from "lucide-react";
 import type { FormulaReviewArtifact, FormulaReviewRequest } from "../formula-model";
+import type { IsoDesignProject } from "../iso-design-model";
 import type { JiraConnection } from "../jira-connection-model";
 import { formatDateTime } from "../workspace-utils";
 
@@ -13,8 +15,14 @@ type JiraReviewPanelProps = {
   activeJiraConnection: JiraConnection | null;
   formulaReviewRequests: FormulaReviewRequest[];
   formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
+  isoDesignProjects: IsoDesignProject[];
+  formulaJiraProjectId: string;
+  formulaJiraIssueType: string;
+  selectedIsoDesignProjectId: string;
   canPrepareJiraReview: boolean;
   isBusy: boolean;
+  onSelectedIsoDesignProjectChange: (projectId: string) => void;
+  onPrepareIsoProject: () => void | Promise<void>;
   onSendCurrentFormulaToJira: () => void | Promise<void>;
   onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
   onDownloadArtifact: (artifact: FormulaReviewArtifact) => void | Promise<void>;
@@ -27,8 +35,14 @@ export function JiraReviewPanel({
   activeJiraConnection,
   formulaReviewRequests,
   formulaReviewArtifacts,
+  isoDesignProjects,
+  formulaJiraProjectId,
+  formulaJiraIssueType,
+  selectedIsoDesignProjectId,
   canPrepareJiraReview,
   isBusy,
+  onSelectedIsoDesignProjectChange,
+  onPrepareIsoProject,
   onSendCurrentFormulaToJira,
   onGenerateReviewExcel,
   onDownloadArtifact,
@@ -40,6 +54,14 @@ export function JiraReviewPanel({
     return null;
   }
 
+  const isQualityFormula = formulaJiraIssueType.trim().toLowerCase() === "calidad";
+  const normalizedFormulaProjectId = formulaJiraProjectId.trim();
+  const selectedIsoProject =
+    isoDesignProjects.find((project) => project.id === selectedIsoDesignProjectId) ?? null;
+  const canLinkIso = isQualityFormula;
+  const isMissingRequiredIsoProject = isQualityFormula && !selectedIsoProject;
+  const canSendToJira = canPrepareJiraReview && !isMissingRequiredIsoProject;
+
   return (
     <div className="jiraReviewBox">
       <div className="jiraReviewHeader">
@@ -47,15 +69,71 @@ export function JiraReviewPanel({
           <span>Jira review</span>
           <strong>{activeJiraConnection ? "Configured" : "Not configured"}</strong>
         </div>
+        {isoDesignProjects.length ? (
+          <label className="jiraIsoSelector">
+            <span>Expediente ISO</span>
+            <select
+              value={selectedIsoDesignProjectId}
+              onChange={(event) => onSelectedIsoDesignProjectChange(event.target.value)}
+              disabled={isBusy || !canLinkIso || normalizedFormulaProjectId.length === 0}
+            >
+              <option value="">Sin expediente ISO</option>
+              {isoDesignProjects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.project_code ? `${project.project_code} - ` : ""}
+                  {project.iso_request_number} - {project.product_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <button
           className="secondaryButton"
           type="button"
           onClick={() => void onSendCurrentFormulaToJira()}
-          disabled={!canPrepareJiraReview}
+          disabled={!canSendToJira}
         >
           <Send size={16} />
           Send to Jira
         </button>
+      </div>
+      <div className="jiraIsoLinkStatus" data-state={selectedIsoProject ? "linked" : "missing"}>
+        {selectedIsoProject ? (
+          <>
+            <strong>ISO enlazada por ProyectoID {selectedIsoProject.project_code}</strong>
+            <span>
+              {selectedIsoProject.iso_request_number} - {selectedIsoProject.product_name}. Esta
+              formula de Calidad creara/actualizara F10-02 en ese expediente.
+            </span>
+          </>
+        ) : isQualityFormula ? (
+          <>
+            <strong>
+              {normalizedFormulaProjectId
+                ? `Sin expediente ISO para ProyectoID ${normalizedFormulaProjectId}`
+                : "Sin ProyectoID ISO"}
+            </strong>
+            <span>
+              {normalizedFormulaProjectId
+                ? "Crea o importa primero el F10-01 de ese ProyectoID para que la formula de Calidad se registre como F10-02."
+                : "Crea el F10-01 desde aqui; el sistema generara el ProyectoID y lo asignara a la formula al volver al builder."}
+            </span>
+            <button
+              className="secondaryButton"
+              type="button"
+              onClick={() => void onPrepareIsoProject()}
+              disabled={isBusy}
+            >
+              <ClipboardCheck size={16} />
+              Crear F10-01
+            </button>
+          </>
+        ) : (
+          <>
+            <strong>ISO no aplica a esta formula</strong>
+            <span>Solo se vinculan automaticamente formulas con issue type Jira Calidad.</span>
+          </>
+        )}
       </div>
       {formulaReviewRequests.length === 0 ? (
         <div className="jiraReviewEmpty">No Jira review prepared for this formula.</div>
@@ -79,6 +157,17 @@ export function JiraReviewPanel({
                       ? `${review.jira_issue_key} - ${excelArtifact?.file_name ?? "Excel pending"}`
                       : (excelArtifact?.file_name ?? "Excel pending")}
                   </small>
+                  {review.snapshot.jira?.technical_result_raw ? (
+                    <small>
+                      Resultado I+D: {review.snapshot.jira.technical_result_raw}
+                      {review.snapshot.jira.technical_result
+                        ? ` (${review.snapshot.jira.technical_result})`
+                        : ""}
+                    </small>
+                  ) : null}
+                  {review.snapshot.iso?.design_project_id ? (
+                    <small>ISO: {review.snapshot.iso.design_project_id}</small>
+                  ) : null}
                 </span>
                 <div className="jiraReviewActions">
                   <button

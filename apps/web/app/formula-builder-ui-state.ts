@@ -73,7 +73,7 @@ const initialFormulaBuilderUiState: FormulaBuilderUiState = {
   catalogPriceMax: "",
   catalogParameterToAdd: "",
   catalogParameterConditions: [],
-  materialResultLimit: 60,
+  materialResultLimit: 500,
   selectedMaterialId: null,
   comparisonMaterialIds: [],
   expandedMaterialIds: [],
