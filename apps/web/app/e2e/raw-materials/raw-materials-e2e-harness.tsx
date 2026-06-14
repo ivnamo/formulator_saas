@@ -25,7 +25,21 @@ const lysineParameter: Parameter = {
   unit: "%",
 };
 
-const parameters = [parameter, lysineParameter];
+const valineParameter: Parameter = {
+  id: "11111111-1111-4111-8111-111111111113",
+  code: "VAL",
+  name: "Valina",
+  unit: "%",
+};
+
+const leucineParameter: Parameter = {
+  id: "11111111-1111-4111-8111-111111111114",
+  code: "LEU",
+  name: "Leucina",
+  unit: "%",
+};
+
+const parameters = [parameter, lysineParameter, valineParameter, leucineParameter];
 
 const initialMaterials: RawMaterial[] = [
   {

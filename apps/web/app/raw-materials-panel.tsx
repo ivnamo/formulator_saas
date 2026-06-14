@@ -1688,10 +1688,7 @@ function getParameterFamilyNames(parameter: Parameter): string[] {
 }
 
 function getParameterSearchTerms(parameter: Parameter) {
-  const familyTerms = LEGACY_PARAMETER_FAMILIES.filter((family) =>
-    parameterBelongsToFamily(parameter, family.name),
-  ).flatMap((family) => [family.name, ...family.terms]);
-  return [parameter.code, parameter.name, ...familyTerms];
+  return [parameter.code, parameter.name, ...getParameterFamilyNames(parameter)];
 }
 
 function materialHasValueInFamily(

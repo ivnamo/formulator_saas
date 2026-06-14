@@ -64,6 +64,15 @@ async function main() {
 
   logStep("edit chemical composition");
   await page.getByText("Chemical composition").click();
+  const compositionPanel = page.locator(".materialParametersPanel");
+  await compositionPanel.getByLabel("Find parameter").fill("valina");
+  await assertVisible(compositionPanel.getByText("Valina", { exact: true }), "valina search match");
+  await assertHidden(
+    compositionPanel.getByText("Leucina", { exact: true }),
+    "non-matching amino acid in valina search",
+  );
+  await assertVisible(compositionPanel.getByText("VAL", { exact: true }), "valina code search match");
+  await compositionPanel.getByLabel("Find parameter").fill("");
   await page.getByLabel("Jump to parameter").selectOption({ label: "LYS | Lysine" });
   await page.getByRole("textbox", { name: "Lysine value" }).fill("3.1");
   await page.getByRole("button", { name: "Save Lysine value" }).click();
