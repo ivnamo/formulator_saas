@@ -43,6 +43,7 @@ export type FormulaCompositionStepProps = {
   onNotesChange: (notes: string) => void;
   onConfirmDraftReview: () => void | Promise<void>;
   onSelectedIsoDesignProjectChange: (projectId: string) => void;
+  onPrepareIsoProject: () => void | Promise<void>;
   onSendCurrentFormulaToJira: () => void | Promise<void>;
   onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
   onDownloadArtifact: (artifact: FormulaReviewArtifact) => void | Promise<void>;
@@ -84,6 +85,7 @@ export function FormulaCompositionStep({
   onNotesChange,
   onConfirmDraftReview,
   onSelectedIsoDesignProjectChange,
+  onPrepareIsoProject,
   onSendCurrentFormulaToJira,
   onGenerateReviewExcel,
   onDownloadArtifact,
@@ -131,6 +133,7 @@ export function FormulaCompositionStep({
         canPrepareJiraReview={canPrepareJiraReview}
         isBusy={isBusy}
         onSelectedIsoDesignProjectChange={onSelectedIsoDesignProjectChange}
+        onPrepareIsoProject={onPrepareIsoProject}
         onSendCurrentFormulaToJira={onSendCurrentFormulaToJira}
         onGenerateReviewExcel={onGenerateReviewExcel}
         onDownloadArtifact={onDownloadArtifact}

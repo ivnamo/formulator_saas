@@ -13,6 +13,7 @@ type BuildWorkspaceIsoDesignPanelPropsArgs = {
   legacyImportPreview: IsoDesignPanelProps["legacyImportPreview"];
   legacyImportFileName: IsoDesignPanelProps["legacyImportFileName"];
   selectedLegacyImportSheet: IsoDesignPanelProps["selectedLegacyImportSheet"];
+  isPreparedFromFormulaBuilder: IsoDesignPanelProps["isPreparedFromFormulaBuilder"];
   isBusy: IsoDesignPanelProps["isBusy"];
   canEditTenantData: IsoDesignPanelProps["canEditTenantData"];
   canManageIsoSettings: IsoDesignPanelProps["canManageIsoSettings"];
@@ -32,6 +33,7 @@ type BuildWorkspaceIsoDesignPanelPropsArgs = {
   exportIsoF1002: IsoDesignPanelProps["onExportIsoF1002"];
   exportIsoF1003: IsoDesignPanelProps["onExportIsoF1003"];
   exportIsoDossier: IsoDesignPanelProps["onExportIsoDossier"];
+  returnToFormulaBuilderFromIso: IsoDesignPanelProps["onReturnToFormulaBuilder"];
 };
 
 export function buildWorkspaceIsoDesignPanelProps(
@@ -48,6 +50,7 @@ export function buildWorkspaceIsoDesignPanelProps(
     legacyImportPreview: args.legacyImportPreview,
     legacyImportFileName: args.legacyImportFileName,
     selectedLegacyImportSheet: args.selectedLegacyImportSheet,
+    isPreparedFromFormulaBuilder: args.isPreparedFromFormulaBuilder,
     isBusy: args.isBusy,
     canEditTenantData: args.canEditTenantData,
     canManageIsoSettings: args.canManageIsoSettings,
@@ -67,5 +70,6 @@ export function buildWorkspaceIsoDesignPanelProps(
     onExportIsoF1002: args.exportIsoF1002,
     onExportIsoF1003: args.exportIsoF1003,
     onExportIsoDossier: args.exportIsoDossier,
+    onReturnToFormulaBuilder: args.returnToFormulaBuilderFromIso,
   };
 }

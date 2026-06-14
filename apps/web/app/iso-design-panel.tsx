@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   CheckCircle2,
   ClipboardCheck,
   Download,
@@ -40,6 +41,7 @@ type IsoDesignPanelProps = {
   legacyImportPreview: IsoLegacyImportPreview | null;
   legacyImportFileName: string;
   selectedLegacyImportSheet: string;
+  isPreparedFromFormulaBuilder: boolean;
   isBusy: boolean;
   canEditTenantData: boolean;
   canManageIsoSettings: boolean;
@@ -62,6 +64,7 @@ type IsoDesignPanelProps = {
   onExportIsoF1002: (projectId: string) => void | Promise<void>;
   onExportIsoF1003: (projectId: string) => void | Promise<void>;
   onExportIsoDossier: (projectId: string) => void | Promise<void>;
+  onReturnToFormulaBuilder: () => void | Promise<void>;
 };
 
 export function IsoDesignPanel({
@@ -76,6 +79,7 @@ export function IsoDesignPanel({
   legacyImportPreview,
   legacyImportFileName,
   selectedLegacyImportSheet,
+  isPreparedFromFormulaBuilder,
   isBusy,
   canEditTenantData,
   canManageIsoSettings,
@@ -95,6 +99,7 @@ export function IsoDesignPanel({
   onExportIsoF1002,
   onExportIsoF1003,
   onExportIsoDossier,
+  onReturnToFormulaBuilder,
 }: IsoDesignPanelProps) {
   const isEnabled = Boolean(settings?.enabled);
   const f1001Label = isoFormatLabel(settings, "f10_01", "F10-01");
@@ -121,6 +126,8 @@ export function IsoDesignPanel({
     !isBusy &&
     legacyImportPreview !== null &&
     legacyImportPreview.ready_rows > 0;
+  const showFormulaBuilderReturn =
+    isPreparedFromFormulaBuilder && projectForm.projectCode.trim().length > 0;
 
   return (
     <section id="iso" className="panel isoPanel" hidden={!active}>
@@ -304,6 +311,24 @@ export function IsoDesignPanel({
               </div>
             ) : null}
           </div>
+
+          {showFormulaBuilderReturn ? (
+            <div className="isoBuilderReturn" aria-label="Formula Builder return">
+              <div>
+                <span>Preparado desde Formula Builder</span>
+                <strong>{projectForm.projectCode}</strong>
+              </div>
+              <button
+                className="secondaryButton"
+                type="button"
+                onClick={() => void onReturnToFormulaBuilder()}
+                disabled={isBusy}
+              >
+                <ArrowLeft size={17} />
+                Volver al Formula Builder
+              </button>
+            </div>
+          ) : null}
 
           <div className="isoProjectForm" aria-label="Create ISO design project">
             <label>

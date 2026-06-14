@@ -73,6 +73,15 @@ export function useJiraReviewActions({
       setError("ProyectoID is required before sending to Jira");
       return;
     }
+    if (
+      workspace.formulaJiraIssueType.trim().toLowerCase() === "calidad" &&
+      !selectedJiraIsoDesignProjectId
+    ) {
+      setError(
+        "No existe F10-01 para este ProyectoID. Crea el expediente ISO antes de enviar la formula de Calidad a Jira.",
+      );
+      return;
+    }
     const formulaId = workspace.formulaId;
     const isoProjectId = selectedJiraIsoDesignProjectId || null;
 
@@ -111,6 +120,7 @@ export function useJiraReviewActions({
     setFormulaReviewRequests,
     setMessage,
     workspace.formulaId,
+    workspace.formulaJiraIssueType,
     workspace.formulaJiraProjectId,
     workspace.tenant,
   ]);

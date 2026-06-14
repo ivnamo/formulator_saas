@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
@@ -45,6 +45,8 @@ export type WorkspaceHomeControllerState =
     };
 
 export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
+  const [isoProjectPreparedFromFormulaBuilder, setIsoProjectPreparedFromFormulaBuilder] =
+    useState(false);
   const {
     workspace,
     setWorkspace,
@@ -199,6 +201,10 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     useWorkspaceShellState();
   const { session, authChecked, authHeaders, headers, uploadHeaders } =
     useWorkspaceAuthSession(workspace.tenant);
+
+  useEffect(() => {
+    setIsoProjectPreparedFromFormulaBuilder(false);
+  }, [workspace.tenant?.id]);
   const {
     catalogMaterialIds,
     catalogTotal,
@@ -484,6 +490,12 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     if (!workspace.tenant || !session?.access_token) {
       return;
     }
+    void refreshJiraConnections({ silent: true });
+  }, [refreshJiraConnections, session?.access_token, workspace.tenant]);
+  useEffect(() => {
+    if (!workspace.tenant || !session?.access_token) {
+      return;
+    }
     void loadIsoModule({ silent: true });
   }, [loadIsoModule, session?.access_token, workspace.tenant]);
   useEffect(() => {
@@ -507,6 +519,54 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     workspace.formulaJiraIssueType,
     workspace.formulaJiraProjectId,
   ]);
+  const prepareIsoProjectFromFormula = useCallback(() => {
+    if (!isIsoQualityFormula(workspace.formulaJiraIssueType)) {
+      setMessage("ISO solo aplica automaticamente a formulas con issue type Jira Calidad.");
+      return;
+    }
+
+    const projectCode = normalizeIsoProjectCode(workspace.formulaJiraProjectId);
+    if (!projectCode) {
+      setError("Indica el ProyectoID en Datos basicos antes de crear el F10-01.");
+      return;
+    }
+
+    const currentYear = String(new Date().getFullYear());
+    setIsoProjectForm((current) => ({
+      ...current,
+      year: current.year || currentYear,
+      projectCode,
+      productName: current.productName || workspace.formulaName || projectCode,
+      productType: current.productType || workspace.formulaJiraProductType,
+      acceptedStatus: current.acceptedStatus || "pending",
+      lifecycleStatus: current.lifecycleStatus || "intake",
+      comments:
+        current.comments ||
+        `Preparado desde Formula Builder para ProyectoID ${projectCode}. Completa No Solicitud y crea el F10-01 antes de enviar la formula a Jira.`,
+    }));
+    setIsoProjectPreparedFromFormulaBuilder(true);
+    setSelectedIsoDesignProjectId("");
+    setActiveView("iso");
+    setMessage(
+      "F10-01 preparado desde el builder: completa No Solicitud, crea el expediente y vuelve al Formula Builder.",
+    );
+  }, [
+    setActiveView,
+    setError,
+    setIsoProjectForm,
+    setMessage,
+    setSelectedIsoDesignProjectId,
+    workspace.formulaJiraIssueType,
+    workspace.formulaJiraProductType,
+    workspace.formulaJiraProjectId,
+    workspace.formulaName,
+  ]);
+  const returnToFormulaBuilderFromIso = useCallback(() => {
+    setActiveView("formula");
+    setMessage(
+      "Vuelta al Formula Builder. Si ya has creado el F10-01, el enlace ISO se recalculara por ProyectoID.",
+    );
+  }, [setActiveView, setMessage]);
   const {
     parseRequirements,
     planRequirements,
@@ -669,6 +729,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       legacyImportPreview: isoLegacyImportPreview,
       legacyImportFileName: isoLegacyImportFile?.name ?? "",
       selectedLegacyImportSheet: selectedIsoLegacyImportSheet,
+      isPreparedFromFormulaBuilder: isoProjectPreparedFromFormulaBuilder,
       isBusy,
       canEditTenantData,
       canManageIsoSettings: showInvitationAdminPanel,
@@ -688,6 +749,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       exportIsoF1002,
       exportIsoF1003,
       exportIsoDossier,
+      returnToFormulaBuilderFromIso,
     },
     rawMaterials: {
       rawMaterials: workspace.rawMaterials,
@@ -845,6 +907,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       updateDraftReviewNotes,
       confirmDraftReview,
       setSelectedIsoDesignProjectId: setSelectedJiraIsoDesignProjectId,
+      prepareIsoProjectFromFormula,
       sendCurrentFormulaToJira,
       generateJiraReviewExcel,
       downloadJiraReviewArtifact,

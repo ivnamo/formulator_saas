@@ -1,4 +1,5 @@
 import {
+  ClipboardCheck,
   Download,
   ExternalLink,
   FileSpreadsheet,
@@ -21,6 +22,7 @@ type JiraReviewPanelProps = {
   canPrepareJiraReview: boolean;
   isBusy: boolean;
   onSelectedIsoDesignProjectChange: (projectId: string) => void;
+  onPrepareIsoProject: () => void | Promise<void>;
   onSendCurrentFormulaToJira: () => void | Promise<void>;
   onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
   onDownloadArtifact: (artifact: FormulaReviewArtifact) => void | Promise<void>;
@@ -40,6 +42,7 @@ export function JiraReviewPanel({
   canPrepareJiraReview,
   isBusy,
   onSelectedIsoDesignProjectChange,
+  onPrepareIsoProject,
   onSendCurrentFormulaToJira,
   onGenerateReviewExcel,
   onDownloadArtifact,
@@ -56,6 +59,8 @@ export function JiraReviewPanel({
   const selectedIsoProject =
     isoDesignProjects.find((project) => project.id === selectedIsoDesignProjectId) ?? null;
   const canLinkIso = isQualityFormula && normalizedFormulaProjectId.length > 0;
+  const isMissingRequiredIsoProject = canLinkIso && !selectedIsoProject;
+  const canSendToJira = canPrepareJiraReview && !isMissingRequiredIsoProject;
 
   return (
     <div className="jiraReviewBox">
@@ -86,7 +91,7 @@ export function JiraReviewPanel({
           className="secondaryButton"
           type="button"
           onClick={() => void onSendCurrentFormulaToJira()}
-          disabled={!canPrepareJiraReview}
+          disabled={!canSendToJira}
         >
           <Send size={16} />
           Send to Jira
@@ -106,8 +111,17 @@ export function JiraReviewPanel({
             <strong>Sin expediente ISO para ProyectoID {normalizedFormulaProjectId}</strong>
             <span>
               Crea o importa primero un F10-01 con ese ProyectoID para que las formulas de Calidad
-              se registren como F10-02.
+              se registren como F10-02. Puedes prepararlo desde aqui y volver despues al builder.
             </span>
+            <button
+              className="secondaryButton"
+              type="button"
+              onClick={() => void onPrepareIsoProject()}
+              disabled={isBusy}
+            >
+              <ClipboardCheck size={16} />
+              Crear F10-01
+            </button>
           </>
         ) : (
           <>

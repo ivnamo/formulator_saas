@@ -88,6 +88,7 @@ type BuildFormulaBuilderPanelPropsArgs = {
   updateDraftReviewNotes: FormulaBuilderCompositionProps["onNotesChange"];
   confirmDraftReview: FormulaBuilderCompositionProps["onConfirmDraftReview"];
   setSelectedIsoDesignProjectId: FormulaBuilderCompositionProps["onSelectedIsoDesignProjectChange"];
+  prepareIsoProjectFromFormula: FormulaBuilderCompositionProps["onPrepareIsoProject"];
   sendCurrentFormulaToJira: FormulaBuilderCompositionProps["onSendCurrentFormulaToJira"];
   generateJiraReviewExcel: FormulaBuilderCompositionProps["onGenerateReviewExcel"];
   downloadJiraReviewArtifact: FormulaBuilderCompositionProps["onDownloadArtifact"];
@@ -202,6 +203,7 @@ function buildFormulaBuilderCompositionProps(
     onNotesChange: args.updateDraftReviewNotes,
     onConfirmDraftReview: args.confirmDraftReview,
     onSelectedIsoDesignProjectChange: args.setSelectedIsoDesignProjectId,
+    onPrepareIsoProject: args.prepareIsoProjectFromFormula,
     onSendCurrentFormulaToJira: args.sendCurrentFormulaToJira,
     onGenerateReviewExcel: args.generateJiraReviewExcel,
     onDownloadArtifact: args.downloadJiraReviewArtifact,

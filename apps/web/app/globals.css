@@ -651,6 +651,42 @@ label span {
   min-height: 72px;
 }
 
+.isoBuilderReturn {
+  min-height: 48px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.isoBuilderReturn div {
+  display: grid;
+  gap: 2px;
+}
+
+.isoBuilderReturn span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.isoBuilderReturn strong {
+  color: var(--teal-dark);
+  font-size: 14px;
+}
+
+.isoBuilderReturn .secondaryButton {
+  width: fit-content;
+  background: var(--surface);
+}
+
 .isoImportSection {
   display: grid;
   gap: 12px;
@@ -2918,6 +2954,12 @@ label span {
 .jiraIsoLinkStatus[data-state="missing"] {
   border-color: rgba(217, 119, 6, 0.32);
   background: rgba(217, 119, 6, 0.08);
+}
+
+.jiraIsoLinkStatus .secondaryButton {
+  width: fit-content;
+  margin-top: 4px;
+  background: var(--surface);
 }
 
 .jiraReviewEmpty {
