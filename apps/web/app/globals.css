@@ -2890,6 +2890,36 @@ label span {
   font-size: 11px;
 }
 
+.jiraIsoLinkStatus {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.jiraIsoLinkStatus strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.jiraIsoLinkStatus[data-state="linked"] {
+  border-color: rgba(15, 118, 110, 0.3);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.jiraIsoLinkStatus[data-state="linked"] strong {
+  color: var(--teal-dark);
+}
+
+.jiraIsoLinkStatus[data-state="missing"] {
+  border-color: rgba(217, 119, 6, 0.32);
+  background: rgba(217, 119, 6, 0.08);
+}
+
 .jiraReviewEmpty {
   color: var(--muted);
   font-size: 13px;

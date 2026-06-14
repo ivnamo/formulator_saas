@@ -29,6 +29,8 @@ export type FormulaCompositionStepProps = {
   formulaReviewRequests: FormulaReviewRequest[];
   formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
   isoDesignProjects: IsoDesignProject[];
+  formulaJiraProjectId: string;
+  formulaJiraIssueType: string;
   selectedIsoDesignProjectId: string;
   canPrepareJiraReview: boolean;
   formulaLineDetails: FormulaLineDetail[];
@@ -68,6 +70,8 @@ export function FormulaCompositionStep({
   formulaReviewRequests,
   formulaReviewArtifacts,
   isoDesignProjects,
+  formulaJiraProjectId,
+  formulaJiraIssueType,
   selectedIsoDesignProjectId,
   canPrepareJiraReview,
   formulaLineDetails,
@@ -121,6 +125,8 @@ export function FormulaCompositionStep({
         formulaReviewRequests={formulaReviewRequests}
         formulaReviewArtifacts={formulaReviewArtifacts}
         isoDesignProjects={isoDesignProjects}
+        formulaJiraProjectId={formulaJiraProjectId}
+        formulaJiraIssueType={formulaJiraIssueType}
         selectedIsoDesignProjectId={selectedIsoDesignProjectId}
         canPrepareJiraReview={canPrepareJiraReview}
         isBusy={isBusy}

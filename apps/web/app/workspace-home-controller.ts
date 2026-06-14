@@ -487,10 +487,26 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     void loadIsoModule({ silent: true });
   }, [loadIsoModule, session?.access_token, workspace.tenant]);
   useEffect(() => {
-    setSelectedJiraIsoDesignProjectId((current) =>
-      current && isoDesignProjects.some((project) => project.id === current) ? current : "",
-    );
-  }, [isoDesignProjects, setSelectedJiraIsoDesignProjectId]);
+    setSelectedJiraIsoDesignProjectId(() => {
+      if (!isIsoQualityFormula(workspace.formulaJiraIssueType)) {
+        return "";
+      }
+      const formulaProjectCode = normalizeIsoProjectCode(workspace.formulaJiraProjectId);
+      if (!formulaProjectCode) {
+        return "";
+      }
+      return (
+        isoDesignProjects.find(
+          (project) => normalizeIsoProjectCode(project.project_code) === formulaProjectCode,
+        )?.id ?? ""
+      );
+    });
+  }, [
+    isoDesignProjects,
+    setSelectedJiraIsoDesignProjectId,
+    workspace.formulaJiraIssueType,
+    workspace.formulaJiraProjectId,
+  ]);
   const {
     parseRequirements,
     planRequirements,
@@ -796,6 +812,8 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       formulaReviewRequests,
       formulaReviewArtifacts,
       isoDesignProjects,
+      formulaJiraProjectId: workspace.formulaJiraProjectId,
+      formulaJiraIssueType: workspace.formulaJiraIssueType,
       selectedIsoDesignProjectId: selectedJiraIsoDesignProjectId,
       canPrepareJiraReview,
       formulaLineDetails,
@@ -856,4 +874,12 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       panels,
     },
   };
+}
+
+function normalizeIsoProjectCode(value: string | null | undefined) {
+  return (value ?? "").trim().toUpperCase();
+}
+
+function isIsoQualityFormula(issueType: string | null | undefined) {
+  return (issueType ?? "").trim().toLowerCase() === "calidad";
 }

@@ -15,6 +15,8 @@ type JiraReviewPanelProps = {
   formulaReviewRequests: FormulaReviewRequest[];
   formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
   isoDesignProjects: IsoDesignProject[];
+  formulaJiraProjectId: string;
+  formulaJiraIssueType: string;
   selectedIsoDesignProjectId: string;
   canPrepareJiraReview: boolean;
   isBusy: boolean;
@@ -32,6 +34,8 @@ export function JiraReviewPanel({
   formulaReviewRequests,
   formulaReviewArtifacts,
   isoDesignProjects,
+  formulaJiraProjectId,
+  formulaJiraIssueType,
   selectedIsoDesignProjectId,
   canPrepareJiraReview,
   isBusy,
@@ -47,6 +51,12 @@ export function JiraReviewPanel({
     return null;
   }
 
+  const isQualityFormula = formulaJiraIssueType.trim().toLowerCase() === "calidad";
+  const normalizedFormulaProjectId = formulaJiraProjectId.trim();
+  const selectedIsoProject =
+    isoDesignProjects.find((project) => project.id === selectedIsoDesignProjectId) ?? null;
+  const canLinkIso = isQualityFormula && normalizedFormulaProjectId.length > 0;
+
   return (
     <div className="jiraReviewBox">
       <div className="jiraReviewHeader">
@@ -60,11 +70,12 @@ export function JiraReviewPanel({
             <select
               value={selectedIsoDesignProjectId}
               onChange={(event) => onSelectedIsoDesignProjectChange(event.target.value)}
-              disabled={isBusy}
+              disabled={isBusy || !canLinkIso}
             >
               <option value="">Sin expediente ISO</option>
               {isoDesignProjects.map((project) => (
                 <option key={project.id} value={project.id}>
+                  {project.project_code ? `${project.project_code} - ` : ""}
                   {project.iso_request_number} - {project.product_name}
                 </option>
               ))}
@@ -80,6 +91,30 @@ export function JiraReviewPanel({
           <Send size={16} />
           Send to Jira
         </button>
+      </div>
+      <div className="jiraIsoLinkStatus" data-state={selectedIsoProject ? "linked" : "missing"}>
+        {selectedIsoProject ? (
+          <>
+            <strong>ISO enlazada por ProyectoID {selectedIsoProject.project_code}</strong>
+            <span>
+              {selectedIsoProject.iso_request_number} - {selectedIsoProject.product_name}. Esta
+              formula de Calidad creara/actualizara F10-02 en ese expediente.
+            </span>
+          </>
+        ) : canLinkIso ? (
+          <>
+            <strong>Sin expediente ISO para ProyectoID {normalizedFormulaProjectId}</strong>
+            <span>
+              Crea o importa primero un F10-01 con ese ProyectoID para que las formulas de Calidad
+              se registren como F10-02.
+            </span>
+          </>
+        ) : (
+          <>
+            <strong>ISO no aplica a esta formula</strong>
+            <span>Solo se vinculan automaticamente formulas con issue type Jira Calidad.</span>
+          </>
+        )}
       </div>
       {formulaReviewRequests.length === 0 ? (
         <div className="jiraReviewEmpty">No Jira review prepared for this formula.</div>

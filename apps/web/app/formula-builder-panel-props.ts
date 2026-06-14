@@ -55,6 +55,8 @@ type BuildFormulaBuilderPanelPropsArgs = {
   formulaReviewRequests: FormulaBuilderCompositionProps["formulaReviewRequests"];
   formulaReviewArtifacts: FormulaBuilderCompositionProps["formulaReviewArtifacts"];
   isoDesignProjects: FormulaBuilderCompositionProps["isoDesignProjects"];
+  formulaJiraProjectId: FormulaBuilderCompositionProps["formulaJiraProjectId"];
+  formulaJiraIssueType: FormulaBuilderCompositionProps["formulaJiraIssueType"];
   selectedIsoDesignProjectId: FormulaBuilderCompositionProps["selectedIsoDesignProjectId"];
   canPrepareJiraReview: FormulaBuilderCompositionProps["canPrepareJiraReview"];
   formulaLineDetails: FormulaBuilderCompositionProps["formulaLineDetails"];
@@ -189,6 +191,8 @@ function buildFormulaBuilderCompositionProps(
     formulaReviewRequests: args.formulaReviewRequests,
     formulaReviewArtifacts: args.formulaReviewArtifacts,
     isoDesignProjects: args.isoDesignProjects,
+    formulaJiraProjectId: args.formulaJiraProjectId,
+    formulaJiraIssueType: args.formulaJiraIssueType,
     selectedIsoDesignProjectId: args.selectedIsoDesignProjectId,
     canPrepareJiraReview: args.canPrepareJiraReview,
     formulaLineDetails: args.formulaLineDetails,
