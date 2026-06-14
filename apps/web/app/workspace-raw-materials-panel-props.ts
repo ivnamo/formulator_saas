@@ -4,7 +4,7 @@ type RawMaterialsPanelProps = WorkspaceHomePanels["rawMaterials"];
 
 type BuildWorkspaceRawMaterialsPanelPropsArgs = {
   rawMaterials: RawMaterialsPanelProps["rawMaterials"];
-  parameter: RawMaterialsPanelProps["parameter"];
+  parameters: RawMaterialsPanelProps["parameters"];
   materialForm: RawMaterialsPanelProps["materialForm"];
   aliasInputs: RawMaterialsPanelProps["aliasInputs"];
   canEditTenantData: RawMaterialsPanelProps["canEditTenantData"];
@@ -12,8 +12,15 @@ type BuildWorkspaceRawMaterialsPanelPropsArgs = {
   setMaterialForm: RawMaterialsPanelProps["onMaterialFormChange"];
   setAliasInputs: RawMaterialsPanelProps["onAliasInputsChange"];
   createMaterial: RawMaterialsPanelProps["onCreateMaterial"];
+  inspectMaterial: RawMaterialsPanelProps["onInspectMaterial"];
   addFormulaLine: RawMaterialsPanelProps["onAddFormulaLine"];
   createAlias: RawMaterialsPanelProps["onCreateAlias"];
+  updateMaterial: RawMaterialsPanelProps["onUpdateMaterial"];
+  updateMaterialParameterValue: RawMaterialsPanelProps["onUpdateMaterialParameterValue"];
+  loadMaterialPriceHistory: RawMaterialsPanelProps["onLoadMaterialPriceHistory"];
+  addMaterialPrice: RawMaterialsPanelProps["onAddMaterialPrice"];
+  previewSapImport: RawMaterialsPanelProps["onPreviewSapImport"];
+  applySapImport: RawMaterialsPanelProps["onApplySapImport"];
 };
 
 export function buildWorkspaceRawMaterialsPanelProps(
@@ -21,7 +28,7 @@ export function buildWorkspaceRawMaterialsPanelProps(
 ): RawMaterialsPanelProps {
   return {
     rawMaterials: args.rawMaterials,
-    parameter: args.parameter,
+    parameters: args.parameters,
     materialForm: args.materialForm,
     aliasInputs: args.aliasInputs,
     canEditTenantData: args.canEditTenantData,
@@ -29,7 +36,14 @@ export function buildWorkspaceRawMaterialsPanelProps(
     onMaterialFormChange: args.setMaterialForm,
     onAliasInputsChange: args.setAliasInputs,
     onCreateMaterial: args.createMaterial,
+    onInspectMaterial: args.inspectMaterial,
     onAddFormulaLine: args.addFormulaLine,
     onCreateAlias: args.createAlias,
+    onUpdateMaterial: args.updateMaterial,
+    onUpdateMaterialParameterValue: args.updateMaterialParameterValue,
+    onLoadMaterialPriceHistory: args.loadMaterialPriceHistory,
+    onAddMaterialPrice: args.addMaterialPrice,
+    onPreviewSapImport: args.previewSapImport,
+    onApplySapImport: args.applySapImport,
   };
 }

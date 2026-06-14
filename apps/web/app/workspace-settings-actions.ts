@@ -21,6 +21,8 @@ import {
   listTenantWorkspaces,
   listWorkspaceParameters,
 } from "./workspace-settings-api";
+import { listRawMaterials } from "./raw-material-api";
+import { toWorkspaceRawMaterial } from "./raw-material-model";
 
 type WorkspaceSettingsActionsOptions = {
   workspace: WorkspaceState;
@@ -162,8 +164,9 @@ export function useWorkspaceSettingsActions({
         setMessage(`${tenant.name} loaded`);
         void (async () => {
           try {
-            const [parameters, invitations] = await Promise.all([
+            const [parameters, rawMaterials, invitations] = await Promise.all([
               listWorkspaceParameters(tenantHeaders),
+              listRawMaterials(tenantHeaders),
               isTenantAdminRole(tenant.role)
                 ? listTenantInvitations(tenantHeaders)
                 : Promise.resolve([]),
@@ -175,6 +178,9 @@ export function useWorkspaceSettingsActions({
                     ...current,
                     parameter: activeParameter,
                     parameters,
+                    rawMaterials: rawMaterials.map((material) =>
+                      toWorkspaceRawMaterial(material, {}, parameters),
+                    ),
                   }
                 : current,
             );

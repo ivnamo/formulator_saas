@@ -67,6 +67,7 @@ Profundiza en capacidades funcionales del motor de formulación.
 - [`optimization_engine.md`](03-domain/optimization_engine.md): motor matemático de optimización.
 - [`compatibility_engine.md`](03-domain/compatibility_engine.md): incompatibilidades y evidencias.
 - [`erp_integrations.md`](03-domain/erp_integrations.md): integraciones ERP/SAP.
+- [`raw_material_master_sap_import.md`](03-domain/raw_material_master_sap_import.md): maestro de materias primas e importacion SAP con preview/staging/apply.
 - [`jira_connector_onboarding.md`](03-domain/jira_connector_onboarding.md): checklist portable para configurar Jira en nuevos clientes.
 - [`jira_formula_review.md`](03-domain/jira_formula_review.md): envio de formulas a Jira para revision de laboratorio con Excel adjunto.
 - [`iso_9001_design_records.md`](03-domain/iso_9001_design_records.md): modulo ISO 9001 para F10-01, F10-02, F10-03, Jira y expediente de diseno.
