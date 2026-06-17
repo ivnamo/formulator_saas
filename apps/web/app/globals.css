@@ -2622,18 +2622,6 @@ label span {
   align-items: center;
 }
 
-.aliasResolveControls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
-  gap: 8px;
-  align-items: center;
-}
-
-.aliasResolveControls span {
-  color: var(--muted);
-  font-weight: 700;
-}
-
 .suggestionButton {
   grid-column: 1 / -1;
   min-width: 0;
@@ -2660,6 +2648,99 @@ label span {
 .suggestionButton:disabled {
   cursor: not-allowed;
   opacity: 0.56;
+}
+
+.materialSearchSelect {
+  position: relative;
+  min-width: 0;
+}
+
+.materialSearchInput {
+  min-width: 0;
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.materialSearchInput:focus-within {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+.materialSearchInput svg {
+  justify-self: center;
+}
+
+.materialSearchInput input {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  padding: 0 8px 0 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.materialSearchInput input:focus {
+  box-shadow: none;
+}
+
+.materialSearchMenu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 260px;
+  overflow: auto;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 4px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.materialSearchMenu button {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  border: 0;
+  border-radius: 5px;
+  padding: 7px 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.materialSearchMenu button:hover,
+.materialSearchMenu button:focus,
+.materialSearchMenu button[aria-selected="true"] {
+  background: var(--surface-muted);
+}
+
+.materialSearchMenu strong,
+.materialSearchMenu small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.materialSearchMenu span {
+  padding: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .aiControls {
