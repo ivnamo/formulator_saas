@@ -2506,6 +2506,23 @@ label span {
   min-width: 0;
 }
 
+.pasteImportBox {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin: -4px 0 14px;
+}
+
+.pasteImportBox label {
+  min-width: 0;
+}
+
+.pasteImportBox textarea {
+  min-height: 74px;
+  font-size: 12px;
+}
+
 .importSummary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
@@ -4581,6 +4598,7 @@ label span {
   .priceForm,
   .sapImportControls,
   .importActions,
+  .pasteImportBox,
   .libraryActions,
   .comparisonConstraintBar,
   .aiControls {

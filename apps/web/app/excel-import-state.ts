@@ -41,6 +41,15 @@ export function useExcelImportState() {
     setSelectedImportSheet(preview.sheet_name);
   }, []);
 
+  const setPastedPreview = useCallback((preview: ExcelImportPreview) => {
+    setImportPreview(preview);
+    setImportFile(null);
+    setImportFileName("Pasted rows");
+    setImportFormulaName((current) => current || "Pasted Formula");
+    setAvailableImportSheets([]);
+    setSelectedImportSheet("");
+  }, []);
+
   const resolveImportRow = useCallback((rowNumber: number, rawMaterialId: string) => {
     if (!rawMaterialId) {
       return false;
@@ -61,6 +70,7 @@ export function useExcelImportState() {
     resetImportState,
     setPendingFile,
     setPreview,
+    setPastedPreview,
     setImportFormulaName,
     setSelectedImportSheet,
     resolveImportRow,

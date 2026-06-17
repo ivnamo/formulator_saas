@@ -16,6 +16,7 @@ type BuildWorkspaceExcelImportPanelPropsArgs = {
   setImportFormulaName: ExcelImportPanelProps["onFormulaNameChange"];
   selectExcelImportFile: ExcelImportPanelProps["onSelectFile"];
   previewSelectedImportSheet: ExcelImportPanelProps["onPreviewSheet"];
+  parsePastedImportRows: ExcelImportPanelProps["onParsePastedRows"];
   saveExcelImport: ExcelImportPanelProps["onSaveImport"];
   resolveImportRow: ExcelImportPanelProps["onResolveRow"];
   createMaterialFromImportRow: ExcelImportPanelProps["onCreateMaterialFromRow"];
@@ -40,6 +41,7 @@ export function buildWorkspaceExcelImportPanelProps(
     onFormulaNameChange: args.setImportFormulaName,
     onSelectFile: args.selectExcelImportFile,
     onPreviewSheet: args.previewSelectedImportSheet,
+    onParsePastedRows: args.parsePastedImportRows,
     onSaveImport: args.saveExcelImport,
     onResolveRow: args.resolveImportRow,
     onCreateMaterialFromRow: args.createMaterialFromImportRow,

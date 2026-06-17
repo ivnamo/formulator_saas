@@ -1,8 +1,9 @@
-import { AlertTriangle, Check, Plus, Save, Search } from "lucide-react";
+import { AlertTriangle, Check, ClipboardPaste, Plus, Save, Search } from "lucide-react";
 import { useMemo, useState, type FocusEvent, type KeyboardEvent } from "react";
 import {
   ATLANTICA_ID_LAB_PARSER,
   COMPACT_LAB_TRIAL_PARSER,
+  PASTED_ROWS_PARSER,
   aliasFromImportRow,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
@@ -27,6 +28,7 @@ type ExcelImportPanelProps = {
   onFormulaNameChange: (value: string) => void;
   onSelectFile: (file: File | null) => void | Promise<void>;
   onPreviewSheet: (sheetName: string) => void | Promise<void>;
+  onParsePastedRows: (text: string) => void;
   onSaveImport: () => void | Promise<void>;
   onResolveRow: (rowNumber: number, rawMaterialId: string) => void;
   onCreateMaterialFromRow: (row: ExcelImportPreviewRow) => void | Promise<void>;
@@ -49,6 +51,7 @@ export function ExcelImportPanel({
   onFormulaNameChange,
   onSelectFile,
   onPreviewSheet,
+  onParsePastedRows,
   onSaveImport,
   onResolveRow,
   onCreateMaterialFromRow,
@@ -58,6 +61,7 @@ export function ExcelImportPanel({
   const isAtlanticaTemplate = importPreview?.parser === ATLANTICA_ID_LAB_PARSER;
   const parserLabel = importPreview ? importParserLabel(importPreview.parser) : "Generic";
   const heading = importPreview ? importPreviewHeading(importPreview) : "No file";
+  const [pastedRowsText, setPastedRowsText] = useState("");
 
   return (
     <section id="import" className="panel importPanel" hidden={!active}>
@@ -117,6 +121,28 @@ export function ExcelImportPanel({
         >
           <Save size={17} />
           Save formula
+        </button>
+      </div>
+      <div className="pasteImportBox">
+        <label>
+          <span>Paste rows</span>
+          <textarea
+            aria-label="Paste material rows"
+            disabled={!canEditTenantData || isBusy}
+            placeholder={"AGUA\t41,1\nEDTA TETRASODICO\t0,2"}
+            rows={4}
+            value={pastedRowsText}
+            onChange={(event) => setPastedRowsText(event.target.value)}
+          />
+        </label>
+        <button
+          className="secondaryButton"
+          disabled={!canEditTenantData || isBusy || !pastedRowsText.trim()}
+          type="button"
+          onClick={() => onParsePastedRows(pastedRowsText)}
+        >
+          <ClipboardPaste size={17} />
+          Parse pasted rows
         </button>
       </div>
       <div className="importSummary">
@@ -479,6 +505,9 @@ function importPreviewHeading(importPreview: ExcelImportPreview): string {
   if (importPreview.parser === COMPACT_LAB_TRIAL_PARSER) {
     return "Ensayo compacto";
   }
+  if (importPreview.parser === PASTED_ROWS_PARSER) {
+    return "Pegado";
+  }
   return importPreview.sheet_name;
 }
 
@@ -488,6 +517,9 @@ function importParserLabel(parser: string): string {
   }
   if (parser === COMPACT_LAB_TRIAL_PARSER) {
     return "Ensayo compacto";
+  }
+  if (parser === PASTED_ROWS_PARSER) {
+    return "Pegado";
   }
   return "Generic";
 }
