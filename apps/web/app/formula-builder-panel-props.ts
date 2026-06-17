@@ -61,6 +61,7 @@ type BuildFormulaBuilderPanelPropsArgs = {
   jiraIssueTypeOptions: FormulaBuilderBasicsProps["jiraIssueTypeOptions"];
   formulaJiraProjectId: FormulaBuilderCompositionProps["formulaJiraProjectId"];
   formulaJiraIssueType: FormulaBuilderCompositionProps["formulaJiraIssueType"];
+  formulaJiraDescription: FormulaBuilderCompositionProps["formulaJiraDescription"];
   selectedIsoDesignProjectId: FormulaBuilderCompositionProps["selectedIsoDesignProjectId"];
   canPrepareJiraReview: FormulaBuilderCompositionProps["canPrepareJiraReview"];
   formulaLineDetails: FormulaBuilderCompositionProps["formulaLineDetails"];
@@ -92,6 +93,7 @@ type BuildFormulaBuilderPanelPropsArgs = {
   updateDraftReviewNotes: FormulaBuilderCompositionProps["onNotesChange"];
   confirmDraftReview: FormulaBuilderCompositionProps["onConfirmDraftReview"];
   setSelectedIsoDesignProjectId: FormulaBuilderCompositionProps["onSelectedIsoDesignProjectChange"];
+  setFormulaJiraDescription: FormulaBuilderCompositionProps["onJiraDescriptionChange"];
   prepareIsoProjectFromFormula: FormulaBuilderCompositionProps["onPrepareIsoProject"];
   sendCurrentFormulaToJira: FormulaBuilderCompositionProps["onSendCurrentFormulaToJira"];
   generateJiraReviewExcel: FormulaBuilderCompositionProps["onGenerateReviewExcel"];
@@ -204,6 +206,7 @@ function buildFormulaBuilderCompositionProps(
     isoDesignProjects: args.isoDesignProjects,
     formulaJiraProjectId: args.formulaJiraProjectId,
     formulaJiraIssueType: args.formulaJiraIssueType,
+    formulaJiraDescription: args.formulaJiraDescription,
     selectedIsoDesignProjectId: args.selectedIsoDesignProjectId,
     canPrepareJiraReview: args.canPrepareJiraReview,
     formulaLineDetails: args.formulaLineDetails,
@@ -213,6 +216,7 @@ function buildFormulaBuilderCompositionProps(
     onNotesChange: args.updateDraftReviewNotes,
     onConfirmDraftReview: args.confirmDraftReview,
     onSelectedIsoDesignProjectChange: args.setSelectedIsoDesignProjectId,
+    onJiraDescriptionChange: args.setFormulaJiraDescription,
     onPrepareIsoProject: args.prepareIsoProjectFromFormula,
     onSendCurrentFormulaToJira: args.sendCurrentFormulaToJira,
     onGenerateReviewExcel: args.generateJiraReviewExcel,

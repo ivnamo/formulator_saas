@@ -11,6 +11,7 @@ export type WorkspaceState = {
   formulaJiraProjectId: string;
   formulaJiraIssueType: string;
   formulaJiraProductType: string;
+  formulaJiraDescription: string;
   formulaLines: FormulaLine[];
 };
 
@@ -24,5 +25,6 @@ export const emptyWorkspace: WorkspaceState = {
   formulaJiraProjectId: "",
   formulaJiraIssueType: "Calidad",
   formulaJiraProductType: "Nuevo",
+  formulaJiraDescription: "",
   formulaLines: [],
 };

@@ -60,6 +60,7 @@ export type FormulaReviewRequest = {
       project_key?: string;
       issue_type?: string;
       issue_summary?: string;
+      issue_description?: string | null;
       technical_result_raw?: string;
       technical_result?: string | null;
     };

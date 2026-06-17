@@ -98,6 +98,7 @@ export function useJiraReviewActions({
       return;
     }
     const isoProjectId = selectedJiraIsoDesignProjectId || null;
+    const jiraDescription = workspace.formulaJiraDescription.trim();
 
     await runAction("Sending formula to Jira", async () => {
       const payload = buildManualFormulaSavePayload(workspace, workspace.formulaLines);
@@ -116,12 +117,14 @@ export function useJiraReviewActions({
           !review.jira_issue_key &&
           (isoProjectId
             ? review.snapshot.iso?.design_project_id === isoProjectId
-            : !review.snapshot.iso?.design_project_id),
+            : !review.snapshot.iso?.design_project_id) &&
+          (review.snapshot.jira?.issue_description ?? "") === jiraDescription,
       );
       const review =
         existingDraftReview ??
         (await createJiraFormulaReview(headers, formula.id, {
           design_project_id: isoProjectId,
+          description: jiraDescription || null,
         }));
       const sentReview = await sendFormulaReviewToJira(headers, review.id);
       setFormulaReviewRequests((current) => [
@@ -148,6 +151,7 @@ export function useJiraReviewActions({
     setMessage,
     setWorkspace,
     workspace.formulaId,
+    workspace.formulaJiraDescription,
     workspace.formulaJiraIssueType,
     workspace.formulaJiraProjectId,
     workspace.formulaJiraProductType,

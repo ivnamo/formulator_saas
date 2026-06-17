@@ -9,6 +9,7 @@ export function createJiraFormulaReview(
   formulaId: string,
   payload: {
     design_project_id?: string | null;
+    description?: string | null;
   } = {},
 ): Promise<FormulaReviewRequest> {
   return request<FormulaReviewRequest>(`/api/v1/formulas/${formulaId}/reviews/jira`, {

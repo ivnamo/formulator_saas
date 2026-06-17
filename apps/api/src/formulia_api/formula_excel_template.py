@@ -4,7 +4,7 @@ import hashlib
 import re
 import unicodedata
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from io import BytesIO
 from pathlib import Path
@@ -123,7 +123,7 @@ def build_formula_id_lab_excel(
 
 def build_formula_id_lab_excel_from_snapshot(
     snapshot: dict[str, Any],
-    review_id: uuid.UUID,
+    _review_id: uuid.UUID,
 ) -> FormulaExcelArtifact:
     formula = _mapping(snapshot.get("formula"))
     calculation = _mapping(snapshot.get("latest_calculation"))
@@ -136,7 +136,8 @@ def build_formula_id_lab_excel_from_snapshot(
         parameters=parameters,
         metadata=FormulaExcelMetadata(notes=_optional_str(snapshot.get("notes"))),
     )
-    return build_formula_id_lab_excel(context, suffix=str(review_id)[:8])
+    excel = build_formula_id_lab_excel(context)
+    return replace(excel, file_name=formula_excel_download_file_name(context.name))
 
 
 def formula_excel_download_file_name(

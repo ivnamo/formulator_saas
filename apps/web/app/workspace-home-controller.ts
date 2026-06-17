@@ -555,6 +555,15 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     workspace.formulaJiraIssueType,
     workspace.formulaJiraProjectId,
   ]);
+  const setFormulaJiraDescription = useCallback(
+    (description: string) => {
+      setWorkspace((current) => ({
+        ...current,
+        formulaJiraDescription: description,
+      }));
+    },
+    [setWorkspace],
+  );
   const prepareIsoProjectFromFormula = useCallback(() => {
     if (!isIsoQualityFormula(workspace.formulaJiraIssueType)) {
       setMessage("ISO solo aplica automaticamente a formulas con issue type Jira Calidad.");
@@ -929,6 +938,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       jiraIssueTypeOptions: isoJiraIssueTypeLabels(isoSettings),
       formulaJiraProjectId: workspace.formulaJiraProjectId,
       formulaJiraIssueType: workspace.formulaJiraIssueType,
+      formulaJiraDescription: workspace.formulaJiraDescription,
       selectedIsoDesignProjectId: selectedJiraIsoDesignProjectId,
       canPrepareJiraReview,
       formulaLineDetails,
@@ -960,6 +970,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       updateDraftReviewNotes,
       confirmDraftReview,
       setSelectedIsoDesignProjectId: setSelectedJiraIsoDesignProjectId,
+      setFormulaJiraDescription,
       prepareIsoProjectFromFormula,
       sendCurrentFormulaToJira,
       generateJiraReviewExcel,

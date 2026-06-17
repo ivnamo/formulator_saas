@@ -308,9 +308,17 @@ def build_jira_issue_payload(snapshot: dict[str, Any], connection: JiraConnectio
         "project": {"key": connection.default_project_key},
         "issuetype": {"name": issue_type},
         "summary": summary,
-        "description": _adf_document(snapshot),
-        "labels": ["formulia", "formula-review"],
     }
+    description = str(jira.get("issue_description") or "").strip()
+    if description:
+        fields["description"] = _adf_document_from_text(description)
+    labels = [
+        str(label).strip()
+        for label in _sequence(jira.get("labels"))
+        if str(label).strip()
+    ]
+    if labels:
+        fields["labels"] = labels
     if connection.default_assignee:
         fields["assignee"] = {"accountId": connection.default_assignee}
     fields.update(_mapped_custom_fields(snapshot, connection.field_mapping_json))
@@ -342,38 +350,8 @@ def _mapped_custom_fields(
     }
 
 
-def _adf_document(snapshot: dict[str, Any]) -> dict[str, Any]:
-    formula = _mapping(snapshot.get("formula"))
-    jira = _mapping(snapshot.get("jira"))
-    calculation = _mapping(snapshot.get("latest_calculation"))
-    items = _sequence(snapshot.get("items"))
-    parameter_lines = [
-        f"{parameter.get('code')}: {parameter.get('value')} {parameter.get('unit') or ''}".strip()
-        for parameter in _sequence(calculation.get("parameters"))
-        if isinstance(parameter, dict)
-    ]
-    warning_lines = [
-        f"{warning.get('code')}: {warning.get('message')}"
-        for warning in _sequence(calculation.get("warnings"))
-        if isinstance(warning, dict)
-    ]
-    paragraphs = [
-        "Formula review prepared from FormulIA Cloud.",
-        f"Formula: {formula.get('name') or '-'}",
-        f"Version: {formula.get('version') or '-'}",
-        f"Status: {formula.get('status') or '-'}",
-        f"Objective: {formula.get('objective') or '-'}",
-        f"Estimated cost: {_formula_cost(snapshot) or '-'} {calculation.get('currency') or formula.get('currency') or ''}".strip(),
-        f"Jira project: {jira.get('project_key') or '-'}",
-        f"Composition lines: {len(items)}",
-    ]
-    if parameter_lines:
-        paragraphs.append(f"Parameters: {'; '.join(parameter_lines[:8])}")
-    if warning_lines:
-        paragraphs.append(f"Warnings: {'; '.join(warning_lines[:8])}")
-    if snapshot.get("notes"):
-        paragraphs.append(f"Notes: {snapshot['notes']}")
-    paragraphs.append("The attached Excel is the technical snapshot submitted for review.")
+def _adf_document_from_text(text: str) -> dict[str, Any]:
+    paragraphs = [line.strip() for line in text.splitlines() if line.strip()] or [text]
     return {
         "type": "doc",
         "version": 1,

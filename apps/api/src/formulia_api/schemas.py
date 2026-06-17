@@ -425,6 +425,7 @@ class JiraOAuthCallbackRead(BaseModel):
 
 class FormulaJiraReviewCreate(BaseModel):
     notes: str | None = None
+    description: str | None = None
     design_project_id: uuid.UUID | None = None
     iso_trial_number: int | None = None
     iso_reason_comment: str | None = None
