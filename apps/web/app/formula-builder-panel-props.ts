@@ -7,6 +7,7 @@ type FormulaBuilderBasicsProps = FormulaBuilderPanelProps["basics"];
 type FormulaBuilderMaterialsProps = FormulaBuilderPanelProps["materials"];
 type FormulaBuilderCompositionProps = FormulaBuilderPanelProps["composition"];
 type FormulaBuilderCalculationProps = FormulaBuilderPanelProps["calculation"];
+type FormulaBuilderReviewProps = FormulaBuilderPanelProps["review"];
 
 const DEFAULT_JIRA_ISSUE_TYPE_OPTIONS = ["Calidad", "Prototipo", "PoC", "Muestra"];
 const DEFAULT_JIRA_PRODUCT_TYPE_OPTIONS = ["Nuevo", "Mod A", "Mod B", "Mod C"];
@@ -17,7 +18,7 @@ type BuildFormulaBuilderPanelPropsArgs = {
   totalPercentage: FormulaBuilderPanelProps["totalPercentage"];
   isFormulaBalanced: FormulaBuilderPanelProps["isFormulaBalanced"];
   isBusy: FormulaBuilderBasicsProps["isBusy"];
-  activeJiraConnection: FormulaBuilderCompositionProps["activeJiraConnection"];
+  activeJiraConnection: FormulaBuilderReviewProps["activeJiraConnection"];
   formulaBasicsValue: FormulaBuilderBasicsProps["values"];
   catalogLoading: FormulaBuilderMaterialsProps["catalogLoading"];
   catalogTotal: FormulaBuilderMaterialsProps["catalogTotal"];
@@ -55,11 +56,11 @@ type BuildFormulaBuilderPanelPropsArgs = {
   draftReview: FormulaBuilderCompositionProps["draftReview"];
   draftComparison: FormulaBuilderCompositionProps["draftComparison"];
   canConfirmDraftReview: FormulaBuilderCompositionProps["canConfirmDraftReview"];
-  formulaReviewRequests: FormulaBuilderCompositionProps["formulaReviewRequests"];
-  formulaReviewArtifacts: FormulaBuilderCompositionProps["formulaReviewArtifacts"];
+  formulaReviewRequests: FormulaBuilderReviewProps["formulaReviewRequests"];
+  formulaReviewArtifacts: FormulaBuilderReviewProps["formulaReviewArtifacts"];
   isoDesignProjects: FormulaBuilderBasicsProps["isoDesignProjects"];
   jiraIssueTypeOptions: FormulaBuilderBasicsProps["jiraIssueTypeOptions"];
-  formulaJiraDescription: FormulaBuilderCompositionProps["formulaJiraDescription"];
+  formulaJiraDescription: FormulaBuilderReviewProps["formulaJiraDescription"];
   selectedIsoDesignProjectId: FormulaBuilderBasicsProps["selectedIsoDesignProjectId"];
   canPrepareJiraReview: boolean;
   formulaLineDetails: FormulaBuilderCompositionProps["formulaLineDetails"];
@@ -91,14 +92,14 @@ type BuildFormulaBuilderPanelPropsArgs = {
   updateDraftReviewNotes: FormulaBuilderCompositionProps["onNotesChange"];
   confirmDraftReview: FormulaBuilderCompositionProps["onConfirmDraftReview"];
   setSelectedIsoDesignProjectId: FormulaBuilderBasicsProps["onSelectedIsoDesignProjectChange"];
-  setFormulaJiraDescription: FormulaBuilderCompositionProps["onJiraDescriptionChange"];
+  setFormulaJiraDescription: FormulaBuilderReviewProps["onJiraDescriptionChange"];
   prepareIsoProjectFromFormula: FormulaBuilderBasicsProps["onPrepareIsoProject"];
-  sendCurrentFormulaToJira: FormulaBuilderCompositionProps["onSendCurrentFormulaToJira"];
-  generateJiraReviewExcel: FormulaBuilderCompositionProps["onGenerateReviewExcel"];
-  downloadJiraReviewArtifact: FormulaBuilderCompositionProps["onDownloadArtifact"];
-  sendJiraReviewToJira: FormulaBuilderCompositionProps["onSendReviewToJira"];
-  syncJiraReviewStatus: FormulaBuilderCompositionProps["onSyncReviewStatus"];
-  retryJiraReviewAttachment: FormulaBuilderCompositionProps["onRetryReviewAttachment"];
+  sendCurrentFormulaToJira: FormulaBuilderReviewProps["onSendCurrentFormulaToJira"];
+  generateJiraReviewExcel: FormulaBuilderReviewProps["onGenerateReviewExcel"];
+  downloadJiraReviewArtifact: FormulaBuilderReviewProps["onDownloadArtifact"];
+  sendJiraReviewToJira: FormulaBuilderReviewProps["onSendReviewToJira"];
+  syncJiraReviewStatus: FormulaBuilderReviewProps["onSyncReviewStatus"];
+  retryJiraReviewAttachment: FormulaBuilderReviewProps["onRetryReviewAttachment"];
   moveFormulaLine: FormulaBuilderCompositionProps["onMoveLine"];
   updateFormulaLine: FormulaBuilderCompositionProps["onUpdateLine"];
   duplicateFormulaLine: FormulaBuilderCompositionProps["onDuplicateLine"];
@@ -202,17 +203,31 @@ function buildFormulaBuilderCompositionProps(
     draftComparison: args.draftComparison,
     isBusy: args.isBusy,
     canConfirmDraftReview: args.canConfirmDraftReview,
-    activeJiraConnection: args.activeJiraConnection,
-    formulaReviewRequests: args.formulaReviewRequests,
-    formulaReviewArtifacts: args.formulaReviewArtifacts,
-    formulaJiraDescription: args.formulaJiraDescription,
-    canSendCurrentFormulaToJira: canSendCurrentFormulaToJira(args),
     formulaLineDetails: args.formulaLineDetails,
     visibleParameterCodes: args.visibleParameterCodes,
     showOnlyPositiveParameters: args.showOnlyPositiveParameters,
     onToggle: args.toggleBuilderSection,
     onNotesChange: args.updateDraftReviewNotes,
     onConfirmDraftReview: args.confirmDraftReview,
+    onMoveLine: args.moveFormulaLine,
+    onUpdateLine: args.updateFormulaLine,
+    onDuplicateLine: args.duplicateFormulaLine,
+    onRemoveLine: args.removeFormulaLine,
+  };
+}
+
+function buildFormulaBuilderReviewProps(
+  args: BuildFormulaBuilderPanelPropsArgs,
+): FormulaBuilderReviewProps {
+  return {
+    isOpen: args.builderSections.review,
+    activeJiraConnection: args.activeJiraConnection,
+    formulaReviewRequests: args.formulaReviewRequests,
+    formulaReviewArtifacts: args.formulaReviewArtifacts,
+    formulaJiraDescription: args.formulaJiraDescription,
+    canSendCurrentFormulaToJira: canSendCurrentFormulaToJira(args),
+    isBusy: args.isBusy,
+    onToggle: args.toggleBuilderSection,
     onJiraDescriptionChange: args.setFormulaJiraDescription,
     onSendCurrentFormulaToJira: args.sendCurrentFormulaToJira,
     onGenerateReviewExcel: args.generateJiraReviewExcel,
@@ -220,10 +235,6 @@ function buildFormulaBuilderCompositionProps(
     onSendReviewToJira: args.sendJiraReviewToJira,
     onSyncReviewStatus: args.syncJiraReviewStatus,
     onRetryReviewAttachment: args.retryJiraReviewAttachment,
-    onMoveLine: args.moveFormulaLine,
-    onUpdateLine: args.updateFormulaLine,
-    onDuplicateLine: args.duplicateFormulaLine,
-    onRemoveLine: args.removeFormulaLine,
   };
 }
 
@@ -283,5 +294,6 @@ export function buildFormulaBuilderPanelProps(
     materials: buildFormulaBuilderMaterialsProps(args),
     composition: buildFormulaBuilderCompositionProps(args),
     calculation: buildFormulaBuilderCalculationProps(args),
+    review: buildFormulaBuilderReviewProps(args),
   };
 }

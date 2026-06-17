@@ -15,6 +15,10 @@ import {
   type FormulaMaterialsStepProps,
 } from "./formula-builder-ui/formula-materials-step";
 import {
+  FormulaReviewStep,
+  type FormulaReviewStepProps,
+} from "./formula-builder-ui/formula-review-step";
+import {
   formatResultPrice,
   formatSignedDelta,
   formatSignedInteger,
@@ -33,6 +37,7 @@ type FormulaBuilderWorkspaceProps = {
   materials: FormulaMaterialsStepProps;
   composition: FormulaCompositionWorkspaceProps;
   calculation: FormulaCalculationStepProps;
+  review: FormulaReviewStepProps;
 };
 
 export function FormulaBuilderWorkspace({
@@ -43,6 +48,7 @@ export function FormulaBuilderWorkspace({
   materials,
   composition,
   calculation,
+  review,
 }: FormulaBuilderWorkspaceProps) {
   return (
     <section id="formula" className="panel formulaPanel formulaBuilder" hidden={!active}>
@@ -59,6 +65,7 @@ export function FormulaBuilderWorkspace({
         formatSignedInteger={formatSignedInteger}
       />
       <FormulaCalculationStep {...calculation} />
+      <FormulaReviewStep {...review} />
     </section>
   );
 }

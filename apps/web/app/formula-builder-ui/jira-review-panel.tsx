@@ -9,7 +9,7 @@ import type { FormulaReviewArtifact, FormulaReviewRequest } from "../formula-mod
 import type { JiraConnection } from "../jira-connection-model";
 import { formatDateTime } from "../workspace-utils";
 
-type JiraReviewPanelProps = {
+export type JiraReviewPanelProps = {
   activeJiraConnection: JiraConnection | null;
   formulaReviewRequests: FormulaReviewRequest[];
   formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
@@ -40,10 +40,6 @@ export function JiraReviewPanel({
   onSyncReviewStatus,
   onRetryReviewAttachment,
 }: JiraReviewPanelProps) {
-  if (!activeJiraConnection && formulaReviewRequests.length === 0) {
-    return null;
-  }
-
   return (
     <div className="jiraReviewBox">
       <div className="jiraReviewHeader">

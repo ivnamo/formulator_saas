@@ -54,7 +54,7 @@ export type ParameterViewPresetKey =
   | "all"
   | "custom";
 
-export type BuilderSectionKey = "basics" | "materials" | "formula" | "calculation";
+export type BuilderSectionKey = "basics" | "materials" | "formula" | "calculation" | "review";
 
 export type CatalogParameterCondition = {
   id: string;
@@ -130,6 +130,7 @@ export const DEFAULT_BUILDER_SECTIONS: Record<BuilderSectionKey, boolean> = {
   materials: false,
   formula: false,
   calculation: false,
+  review: false,
 };
 
 export function normalizeParameterLookup(value: string | null | undefined) {

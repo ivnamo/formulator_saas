@@ -2,16 +2,12 @@ import type { FormulaLineDetail } from "../formula-builder-derived";
 import type { BuilderSectionKey } from "../formula-builder-model";
 import type {
   CalculationResult,
-  FormulaReviewArtifact,
-  FormulaReviewRequest,
 } from "../formula-model";
-import type { JiraConnection } from "../jira-connection-model";
 import type { DraftComparison, DraftReviewState } from "../workspace-comparison";
 import { BuilderStep } from "./builder-step";
 import { DraftReviewPanel } from "./draft-review-panel";
 import { FormulaLineTable } from "./formula-line-table";
 import { FormulaProgressSummary } from "./formula-progress-summary";
-import { JiraReviewPanel } from "./jira-review-panel";
 
 export type FormulaCompositionStepProps = {
   isOpen: boolean;
@@ -24,11 +20,6 @@ export type FormulaCompositionStepProps = {
   draftComparison: DraftComparison | null;
   isBusy: boolean;
   canConfirmDraftReview: boolean;
-  activeJiraConnection: JiraConnection | null;
-  formulaReviewRequests: FormulaReviewRequest[];
-  formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
-  formulaJiraDescription: string;
-  canSendCurrentFormulaToJira: boolean;
   formulaLineDetails: FormulaLineDetail[];
   visibleParameterCodes: string[];
   showOnlyPositiveParameters: boolean;
@@ -38,13 +29,6 @@ export type FormulaCompositionStepProps = {
   onToggle: (section: BuilderSectionKey) => void;
   onNotesChange: (notes: string) => void;
   onConfirmDraftReview: () => void | Promise<void>;
-  onJiraDescriptionChange: (description: string) => void;
-  onSendCurrentFormulaToJira: () => void | Promise<void>;
-  onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
-  onDownloadArtifact: (artifact: FormulaReviewArtifact) => void | Promise<void>;
-  onSendReviewToJira: (reviewId: string) => void | Promise<void>;
-  onSyncReviewStatus: (reviewId: string) => void | Promise<void>;
-  onRetryReviewAttachment: (reviewId: string) => void | Promise<void>;
   onMoveLine: (localId: string, direction: -1 | 1) => void;
   onUpdateLine: (localId: string, percentage: number) => void;
   onDuplicateLine: (localId: string) => void;
@@ -62,11 +46,6 @@ export function FormulaCompositionStep({
   draftComparison,
   isBusy,
   canConfirmDraftReview,
-  activeJiraConnection,
-  formulaReviewRequests,
-  formulaReviewArtifacts,
-  formulaJiraDescription,
-  canSendCurrentFormulaToJira,
   formulaLineDetails,
   visibleParameterCodes,
   showOnlyPositiveParameters,
@@ -76,13 +55,6 @@ export function FormulaCompositionStep({
   onToggle,
   onNotesChange,
   onConfirmDraftReview,
-  onJiraDescriptionChange,
-  onSendCurrentFormulaToJira,
-  onGenerateReviewExcel,
-  onDownloadArtifact,
-  onSendReviewToJira,
-  onSyncReviewStatus,
-  onRetryReviewAttachment,
   onMoveLine,
   onUpdateLine,
   onDuplicateLine,
@@ -122,21 +94,6 @@ export function FormulaCompositionStep({
         formatSignedInteger={formatSignedInteger}
         onNotesChange={onNotesChange}
         onConfirmDraftReview={onConfirmDraftReview}
-      />
-      <JiraReviewPanel
-        activeJiraConnection={activeJiraConnection}
-        formulaReviewRequests={formulaReviewRequests}
-        formulaReviewArtifacts={formulaReviewArtifacts}
-        formulaJiraDescription={formulaJiraDescription}
-        canSendCurrentFormulaToJira={canSendCurrentFormulaToJira}
-        isBusy={isBusy}
-        onJiraDescriptionChange={onJiraDescriptionChange}
-        onSendCurrentFormulaToJira={onSendCurrentFormulaToJira}
-        onGenerateReviewExcel={onGenerateReviewExcel}
-        onDownloadArtifact={onDownloadArtifact}
-        onSendReviewToJira={onSendReviewToJira}
-        onSyncReviewStatus={onSyncReviewStatus}
-        onRetryReviewAttachment={onRetryReviewAttachment}
       />
     </BuilderStep>
   );
