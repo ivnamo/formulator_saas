@@ -1,8 +1,5 @@
 import type { CalculationParameterRow } from "../formula-builder-derived";
-import type {
-  BuilderSectionKey,
-  ParameterViewPresetKey,
-} from "../formula-builder-model";
+import type { BuilderSectionKey } from "../formula-builder-model";
 import type { CalculationResult } from "../formula-model";
 import { BuilderStep } from "./builder-step";
 import { FormulaCalculationPanel } from "./formula-calculation-panel";
@@ -14,15 +11,11 @@ export type FormulaCalculationStepProps = {
   visibleWarnings: CalculationResult["warnings"];
   selectedPresetLabel: string;
   visibleParameterSummary: string;
-  showOnlyPositiveParameters: boolean;
-  parameterViewPreset: ParameterViewPresetKey;
   isFormulaBalanced: boolean;
   totalPercentage: number;
   isBusy: boolean;
   canSaveFormula: boolean;
   onToggle: (section: BuilderSectionKey) => void;
-  onShowOnlyPositiveChange: (value: boolean) => void;
-  onSelectParameterView: (value: ParameterViewPresetKey) => void;
   onSaveFormula: () => void | Promise<void>;
   onExportExcel: () => void | Promise<void>;
 };
@@ -34,15 +27,11 @@ export function FormulaCalculationStep({
   visibleWarnings,
   selectedPresetLabel,
   visibleParameterSummary,
-  showOnlyPositiveParameters,
-  parameterViewPreset,
   isFormulaBalanced,
   totalPercentage,
   isBusy,
   canSaveFormula,
   onToggle,
-  onShowOnlyPositiveChange,
-  onSelectParameterView,
   onSaveFormula,
   onExportExcel,
 }: FormulaCalculationStepProps) {
@@ -65,14 +54,10 @@ export function FormulaCalculationStep({
         visibleWarnings={visibleWarnings}
         selectedPresetLabel={selectedPresetLabel}
         visibleParameterSummary={visibleParameterSummary}
-        showOnlyPositiveParameters={showOnlyPositiveParameters}
-        parameterViewPreset={parameterViewPreset}
         isFormulaBalanced={isFormulaBalanced}
         totalPercentage={totalPercentage}
         isBusy={isBusy}
         canSaveFormula={canSaveFormula}
-        onShowOnlyPositiveChange={onShowOnlyPositiveChange}
-        onSelectParameterView={onSelectParameterView}
         onSaveFormula={onSaveFormula}
         onExportExcel={onExportExcel}
       />

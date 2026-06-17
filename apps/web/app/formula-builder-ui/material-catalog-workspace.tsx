@@ -49,6 +49,8 @@ export function MaterialCatalogWorkspace({
   onToggleExpandedMaterial,
   onClearComparison,
 }: MaterialCatalogWorkspaceProps) {
+  const hasContextPanel = selectedMaterial !== null || comparisonMaterials.length > 0;
+
   return (
     <div className="catalogWorkspace">
       <MaterialCatalogList
@@ -69,23 +71,27 @@ export function MaterialCatalogWorkspace({
         onAddFormulaLine={onAddFormulaLine}
         onToggleExpandedMaterial={onToggleExpandedMaterial}
       />
-      {selectedMaterial ? (
-        <MaterialInspectorPanel
-          selectedMaterial={selectedMaterial}
-          selectedMaterialParameters={selectedMaterialParameters}
-          detailedMaterialIds={detailedMaterialIds}
-          formulaLines={formulaLines}
-          isBusy={isBusy}
-          onAddFormulaLine={onAddFormulaLine}
-        />
-      ) : null}
-      {comparisonMaterials.length ? (
-        <MaterialComparePanel
-          comparisonMaterials={comparisonMaterials}
-          visibleParameterCodes={visibleParameterCodes}
-          showOnlyPositiveParameters={showOnlyPositiveParameters}
-          onClearComparison={onClearComparison}
-        />
+      {hasContextPanel ? (
+        <div className="catalogContextRail">
+          {selectedMaterial ? (
+            <MaterialInspectorPanel
+              selectedMaterial={selectedMaterial}
+              selectedMaterialParameters={selectedMaterialParameters}
+              detailedMaterialIds={detailedMaterialIds}
+              formulaLines={formulaLines}
+              isBusy={isBusy}
+              onAddFormulaLine={onAddFormulaLine}
+            />
+          ) : null}
+          {comparisonMaterials.length ? (
+            <MaterialComparePanel
+              comparisonMaterials={comparisonMaterials}
+              visibleParameterCodes={visibleParameterCodes}
+              showOnlyPositiveParameters={showOnlyPositiveParameters}
+              onClearComparison={onClearComparison}
+            />
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

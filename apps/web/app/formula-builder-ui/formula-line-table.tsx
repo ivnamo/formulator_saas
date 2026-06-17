@@ -85,13 +85,6 @@ export function FormulaLineTable({
                   {material?.externalCode ? `ERP ${material.externalCode}` : "Sin ERP"}
                   {material?.family ? ` - ${material.family}` : ""}
                 </small>
-                {parameterPreview.length ? (
-                  <span className="parameterBadgeList">
-                    {parameterPreview.map((parameter) => (
-                      <em key={parameter.code}>{formatParameterValue(parameter)}</em>
-                    ))}
-                  </span>
-                ) : null}
               </span>
               <input
                 aria-label={`${material?.name ?? "Material"} percentage`}

@@ -114,16 +114,17 @@ export function MaterialCatalogList({
               </span>
               <div className="quickMaterialActions">
                 <button
-                  className="iconButton"
+                  className="secondaryButton compactButton"
                   type="button"
                   onClick={() => void onInspectMaterial(material.id)}
                   title="Inspeccionar materia"
                   aria-label={`Inspeccionar ${material.name}`}
                 >
                   <ListChecks size={16} />
+                  Detalle
                 </button>
                 <button
-                  className="iconButton"
+                  className="secondaryButton compactButton"
                   type="button"
                   data-selected={isCompared}
                   onClick={() => void onToggleCompareMaterial(material.id)}
@@ -131,6 +132,7 @@ export function MaterialCatalogList({
                   aria-label={`Comparar ${material.name}`}
                 >
                   <Copy size={15} />
+                  Comparar
                 </button>
                 <button
                   className="secondaryButton compactButton"

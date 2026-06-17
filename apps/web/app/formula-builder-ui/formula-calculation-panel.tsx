@@ -2,11 +2,9 @@ import { AlertTriangle, Beaker, Download, Loader2, Save } from "lucide-react";
 import type { CalculationParameterRow } from "../formula-builder-derived";
 import {
   parameterDisplayCode,
-  type ParameterViewPresetKey,
 } from "../formula-builder-model";
 import { normalizeWarningSeverity } from "../formula-formatters";
 import type { CalculationResult } from "../formula-model";
-import { ParameterPresetPicker } from "./parameter-preset-picker";
 
 type FormulaCalculationPanelProps = {
   isBackendResult: boolean;
@@ -14,14 +12,10 @@ type FormulaCalculationPanelProps = {
   visibleWarnings: CalculationResult["warnings"];
   selectedPresetLabel: string;
   visibleParameterSummary: string;
-  showOnlyPositiveParameters: boolean;
-  parameterViewPreset: ParameterViewPresetKey;
   isFormulaBalanced: boolean;
   totalPercentage: number;
   isBusy: boolean;
   canSaveFormula: boolean;
-  onShowOnlyPositiveChange: (value: boolean) => void;
-  onSelectParameterView: (value: ParameterViewPresetKey) => void;
   onSaveFormula: () => void | Promise<void>;
   onExportExcel: () => void | Promise<void>;
 };
@@ -32,14 +26,10 @@ export function FormulaCalculationPanel({
   visibleWarnings,
   selectedPresetLabel,
   visibleParameterSummary,
-  showOnlyPositiveParameters,
-  parameterViewPreset,
   isFormulaBalanced,
   totalPercentage,
   isBusy,
   canSaveFormula,
-  onShowOnlyPositiveChange,
-  onSelectParameterView,
   onSaveFormula,
   onExportExcel,
 }: FormulaCalculationPanelProps) {
@@ -51,22 +41,9 @@ export function FormulaCalculationPanel({
       </div>
       <div className="parameterControls">
         <div>
-          <strong>{selectedPresetLabel}</strong>
+          <strong>Vista {selectedPresetLabel}</strong>
           <span>{visibleParameterSummary}</span>
         </div>
-        <label className="switchControl">
-          <input
-            type="checkbox"
-            checked={showOnlyPositiveParameters}
-            onChange={(event) => onShowOnlyPositiveChange(event.target.checked)}
-          />
-          <span>Solo parametros &gt; 0</span>
-        </label>
-        <ParameterPresetPicker
-          value={parameterViewPreset}
-          onChange={onSelectParameterView}
-          compact
-        />
       </div>
       <div className="parameterList">
         {parameterRows.length ? (

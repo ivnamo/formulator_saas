@@ -3477,8 +3477,10 @@ label span {
 }
 
 .formulaIsoLinkPanel {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
@@ -3500,6 +3502,7 @@ label span {
   grid-template-columns: minmax(220px, 1fr) auto;
   gap: 10px;
   align-items: end;
+  flex: 1 1 460px;
 }
 
 .formulaIsoSelector {
@@ -3509,6 +3512,8 @@ label span {
 .formulaIsoLinkStatus {
   display: grid;
   gap: 2px;
+  flex: 0 1 380px;
+  padding-top: 2px;
 }
 
 .formulaIsoLinkStatus strong {
@@ -3777,6 +3782,13 @@ label span {
   align-items: start;
 }
 
+.catalogContextRail {
+  display: grid;
+  gap: 10px;
+  position: sticky;
+  top: 12px;
+}
+
 .quickMaterialList {
   display: grid;
   gap: 6px;
@@ -3849,6 +3861,13 @@ label span {
 
 .quickMaterialActions {
   justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.quickMaterialActions .secondaryButton[data-selected="true"] {
+  border-color: var(--teal);
+  background: rgba(27, 148, 130, 0.1);
+  color: var(--teal-dark);
 }
 
 .compactButton {
@@ -4355,7 +4374,7 @@ label span {
 .formulaLineRow {
   display: grid;
   grid-template-columns:
-    112px 82px minmax(220px, 1.35fr) 78px minmax(220px, 1fr)
+    112px 82px minmax(220px, 1.2fr) 78px minmax(240px, 1.15fr)
     minmax(90px, 0.7fr) 76px;
   gap: 10px;
   align-items: center;
@@ -4748,6 +4767,16 @@ label span {
   .draftReviewActions .secondaryButton {
     width: auto;
   }
+
+  .formulaIsoLinkPanel {
+    flex-direction: column;
+  }
+
+  .formulaIsoLinkControls,
+  .formulaIsoLinkStatus {
+    width: 100%;
+    flex-basis: auto;
+  }
 }
 
 @media (max-width: 620px) {
@@ -4823,6 +4852,10 @@ label span {
   .formulaLineTable {
     margin-right: -16px;
     padding-right: 16px;
+  }
+
+  .catalogContextRail {
+    position: static;
   }
 
   .aiActions {
