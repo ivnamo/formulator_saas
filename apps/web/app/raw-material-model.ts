@@ -453,6 +453,10 @@ export function withRawMaterialAlias(
   );
 }
 
+export function isSelectableRawMaterial(material: RawMaterial): boolean {
+  return !material.isObsolete;
+}
+
 function parseFormNumber(value: string): number | null {
   const normalized = value.trim().replace(",", ".");
   if (!normalized) {

@@ -1,7 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { BuilderSectionKey } from "./formula-builder-model";
 import type { CalculationResult } from "./formula-model";
-import type { RawMaterial } from "./raw-material-model";
+import { isSelectableRawMaterial, type RawMaterial } from "./raw-material-model";
 import type { WorkspaceState } from "./workspace-state-model";
 import { makeLocalId } from "./workspace-utils";
 
@@ -27,7 +27,10 @@ export function useFormulaLineActions({
 
   const addFormulaLine = useCallback(
     async (rawMaterialId: string) => {
-      await ensureRawMaterialDetail(rawMaterialId);
+      const material = await ensureRawMaterialDetail(rawMaterialId);
+      if (material && !isSelectableRawMaterial(material)) {
+        return;
+      }
       setWorkspace((current) => ({
         ...current,
         formulaLines: [

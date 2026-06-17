@@ -6,6 +6,7 @@ import { isTenantAdminRole } from "./tenant-roles";
 import type { Status } from "./workspace-base-model";
 import type { DraftReviewState } from "./workspace-comparison";
 import type { WorkspaceState } from "./workspace-state-model";
+import { isSelectableRawMaterial } from "./raw-material-model";
 
 export type WorkspaceCapabilitiesOptions = {
   workspace: WorkspaceState;
@@ -97,10 +98,15 @@ export function buildWorkspaceCapabilities({
   const canParseRequirements =
     Boolean(workspace.tenant) && requirementText.trim().length >= 3 && !isBusy;
   const canPlanRequirements = canParseRequirements;
+  const selectableRawMaterialIds = new Set(
+    workspace.rawMaterials.filter(isSelectableRawMaterial).map((material) => material.id),
+  );
   const canCreateCompatibilityRule =
     Boolean(workspace.tenant) &&
     Boolean(compatibilityRuleForm.materialAId) &&
     Boolean(compatibilityRuleForm.materialBId) &&
+    selectableRawMaterialIds.has(compatibilityRuleForm.materialAId) &&
+    selectableRawMaterialIds.has(compatibilityRuleForm.materialBId) &&
     compatibilityRuleForm.materialAId !== compatibilityRuleForm.materialBId &&
     compatibilityRuleForm.message.trim().length > 0 &&
     !isBusy;

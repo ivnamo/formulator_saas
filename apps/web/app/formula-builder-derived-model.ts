@@ -5,7 +5,7 @@ import {
   type ParameterViewPresetKey,
 } from "./formula-builder-model";
 import { compareParameterRows } from "./formula-builder-preview";
-import type { RawMaterial } from "./raw-material-model";
+import { isSelectableRawMaterial, type RawMaterial } from "./raw-material-model";
 import type { FormulaLine, Parameter } from "./workspace-base-model";
 
 export type FormulaLineDetail = FormulaLine & {
@@ -54,6 +54,9 @@ export function buildParameterCatalog(
   }
 
   for (const material of rawMaterials) {
+    if (!isSelectableRawMaterial(material)) {
+      continue;
+    }
     for (const parameter of Object.values(material.parameters)) {
       const existing = catalog.get(parameter.code);
       if (existing) {
@@ -111,6 +114,7 @@ export function buildMaterialSearchResults(
   return catalogMaterialIds
     .map((id) => rawMaterialsById.get(id))
     .filter((material): material is RawMaterial => Boolean(material))
+    .filter(isSelectableRawMaterial)
     .filter((material) => !selectedIds.has(material.id));
 }
 
@@ -118,7 +122,11 @@ export function getSelectedMaterial(
   selectedMaterialId: string | null,
   rawMaterialsById: ReadonlyMap<string, RawMaterial>,
 ) {
-  return selectedMaterialId ? (rawMaterialsById.get(selectedMaterialId) ?? null) : null;
+  if (!selectedMaterialId) {
+    return null;
+  }
+  const material = rawMaterialsById.get(selectedMaterialId) ?? null;
+  return material && isSelectableRawMaterial(material) ? material : null;
 }
 
 export function getSelectedMaterialParameters(
@@ -142,5 +150,6 @@ export function buildComparisonMaterials(
 ) {
   return comparisonMaterialIds
     .map((id) => rawMaterialsById.get(id))
-    .filter((material): material is RawMaterial => Boolean(material));
+    .filter((material): material is RawMaterial => Boolean(material))
+    .filter(isSelectableRawMaterial);
 }

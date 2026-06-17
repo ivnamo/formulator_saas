@@ -310,6 +310,50 @@ def test_preview_matches_by_code_and_normalized_name() -> None:
     assert preview["rows"][1]["resolved_material_name"] == "Carrier B"
 
 
+def test_preview_does_not_match_obsolete_materials() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    obsolete = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Obsolete A", "code": "OBS-A"},
+    ).json()
+    alias = client.post(
+        f"/api/v1/raw-materials/{obsolete['id']}/aliases",
+        headers=headers,
+        json={"alias": "Old Alpha"},
+    )
+    updated = client.patch(
+        f"/api/v1/raw-materials/{obsolete['id']}",
+        headers=headers,
+        json={"is_obsolete": True},
+    )
+    content = workbook_bytes(
+        [
+            ["Code", "Raw Material", "Percentage"],
+            ["OBS-A", "Obsolete A", 50],
+            ["", "Old Alpha", 50],
+        ]
+    )
+
+    response = client.post(
+        "/api/v1/imports/formulas/excel/preview",
+        headers=headers,
+        files={"file": ("formula.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+
+    assert alias.status_code == 201
+    assert updated.status_code == 200
+    assert response.status_code == 200
+    preview = response.json()
+    assert preview["resolved_rows"] == 0
+    assert preview["pending_rows"] == 2
+    assert [row["status"] for row in preview["rows"]] == ["needs_review", "needs_review"]
+    assert [row["raw_material_id"] for row in preview["rows"]] == [None, None]
+    assert [row["suggested_raw_material_id"] for row in preview["rows"]] == [None, None]
+
+
 def test_preview_exposes_atlantica_template_metadata() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

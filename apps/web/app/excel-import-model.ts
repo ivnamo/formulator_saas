@@ -1,4 +1,4 @@
-import type { RawMaterial } from "./raw-material-model";
+import { isSelectableRawMaterial, type RawMaterial } from "./raw-material-model";
 
 export const ATLANTICA_ID_LAB_PARSER = "atlantica_id_lab";
 export const COMPACT_LAB_TRIAL_PARSER = "compact_lab_trial";
@@ -92,11 +92,12 @@ export function buildPastedRowsImportPreview(
   text: string,
   rawMaterials: RawMaterial[],
 ): ExcelImportPreview {
+  const selectableRawMaterials = rawMaterials.filter(isSelectableRawMaterial);
   const rows = text
     .split(/\r?\n/)
     .map(parsePastedRow)
     .filter((row): row is ParsedPastedRow => row !== null)
-    .map((row) => pastedRowToImportRow(row, rawMaterials));
+    .map((row) => pastedRowToImportRow(row, selectableRawMaterials));
 
   return {
     parser: PASTED_ROWS_PARSER,

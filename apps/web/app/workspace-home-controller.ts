@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormulaBuilderDerivedState } from "./formula-builder-derived";
 import { useFormulaBuilderCatalogState } from "./formula-builder-catalog";
 import { useFormulaLineActions } from "./formula-builder-line-actions";
@@ -36,6 +36,7 @@ import { isoJiraIssueTypeLabels } from "./iso-design-model";
 import type { WorkspaceHomeViewProps } from "./workspace-home-view";
 import { buildWorkspaceHomePanels } from "./workspace-home-panels";
 import { useWorkspaceShellState } from "./workspace-shell-state";
+import { isSelectableRawMaterial } from "./raw-material-model";
 
 export type WorkspaceHomeControllerState =
   | {
@@ -313,6 +314,10 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     result,
     draftReview,
   });
+  const selectableRawMaterials = useMemo(
+    () => workspace.rawMaterials.filter(isSelectableRawMaterial),
+    [workspace.rawMaterials],
+  );
   const {
     comparisonMaterialOptions,
     comparisonConstraintEvaluations,
@@ -827,7 +832,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     },
     compatibility: {
       rules: compatibilityRules,
-      rawMaterials: workspace.rawMaterials,
+      rawMaterials: selectableRawMaterials,
       rawMaterialsById,
       form: compatibilityRuleForm,
       canEditTenantData,
@@ -864,7 +869,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       importFormulaName,
       availableImportSheets,
       selectedImportSheet,
-      rawMaterials: workspace.rawMaterials,
+      rawMaterials: selectableRawMaterials,
       canEditTenantData,
       canSelectImportSheet,
       canSaveImport,

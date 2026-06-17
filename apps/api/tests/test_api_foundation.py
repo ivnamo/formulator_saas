@@ -316,6 +316,41 @@ def test_raw_material_catalog_is_light_and_filterable() -> None:
     assert zero_boron_payload["items"][0]["name"] == "Plain Water"
 
 
+def test_raw_material_catalog_excludes_obsolete_materials() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    active = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active Material", "code": "ACT", "family": "Selectable"},
+    ).json()
+    obsolete = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Obsolete Material", "code": "OBS", "family": "Deprecated"},
+    ).json()
+    updated = client.patch(
+        f"/api/v1/raw-materials/{obsolete['id']}",
+        headers=headers,
+        json={"is_obsolete": True},
+    )
+
+    response = client.get("/api/v1/raw-materials/catalog", headers=headers)
+    full_list = client.get("/api/v1/raw-materials", headers=headers)
+
+    assert updated.status_code == 200
+    assert updated.json()["is_obsolete"] is True
+    assert updated.json()["is_active"] is False
+    assert response.status_code == 200
+    assert full_list.status_code == 200
+    assert {item["id"] for item in full_list.json()} == {active["id"], obsolete["id"]}
+    payload = response.json()
+    assert payload["total"] == 1
+    assert [item["id"] for item in payload["items"]] == [active["id"]]
+    assert payload["families"] == ["Selectable"]
+
+
 def test_raw_material_master_blocks_duplicate_identity() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

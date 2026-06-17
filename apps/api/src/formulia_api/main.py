@@ -335,7 +335,10 @@ def register_routes(app: FastAPI) -> None:
     ) -> dict[str, Any]:
         materials = session.exec(
             select(RawMaterial)
-            .where(RawMaterial.tenant_id == tenant.tenant_id)
+            .where(
+                RawMaterial.tenant_id == tenant.tenant_id,
+                RawMaterial.is_obsolete.is_(False),
+            )
             .order_by(RawMaterial.name)
         ).all()
         return _raw_material_catalog_read(
@@ -1771,7 +1774,10 @@ def _excel_preview(
     parsed: ParsedFormulaImport,
 ) -> dict[str, Any]:
     materials = session.exec(
-        select(RawMaterial).where(RawMaterial.tenant_id == tenant_id)
+        select(RawMaterial).where(
+            RawMaterial.tenant_id == tenant_id,
+            RawMaterial.is_obsolete.is_(False),
+        )
     ).all()
     by_code = {
         _match_key(material.code): material
@@ -1904,6 +1910,7 @@ def _raw_materials_by_alias(
         .where(
             RawMaterialAlias.tenant_id == tenant_id,
             RawMaterial.tenant_id == tenant_id,
+            RawMaterial.is_obsolete.is_(False),
         )
     ).all()
     return {alias.normalized_alias: material for alias, material in rows}

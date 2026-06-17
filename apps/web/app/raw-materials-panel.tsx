@@ -17,6 +17,7 @@ import {
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   buildRawMaterialUpdateForm,
+  isSelectableRawMaterial,
   type MaterialForm,
   type RawMaterial,
   type RawMaterialImportRead,
@@ -897,8 +898,12 @@ export function RawMaterialsPanel({
                       className="iconButton"
                       type="button"
                       onClick={() => void onAddFormulaLine(material.id)}
-                      disabled={isBusy}
-                      title="Add to formula"
+                      disabled={isBusy || !isSelectableRawMaterial(material)}
+                      title={
+                        isSelectableRawMaterial(material)
+                          ? "Add to formula"
+                          : "Obsolete material cannot be added"
+                      }
                       aria-label={`Add ${material.name} to formula`}
                     >
                       <Plus size={16} />

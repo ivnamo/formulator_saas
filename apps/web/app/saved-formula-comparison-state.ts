@@ -6,7 +6,7 @@ import {
   type SavedFormulaComparison,
 } from "./workspace-comparison";
 import type { FormulaRead } from "./formula-model";
-import type { RawMaterial } from "./raw-material-model";
+import { isSelectableRawMaterial, type RawMaterial } from "./raw-material-model";
 import { normalizeCode, parseOptionalNumber } from "./workspace-utils";
 
 export type FormulaCompareSelection = {
@@ -112,7 +112,10 @@ export function useSavedFormulaComparisonDerivedState({
 }: SavedFormulaComparisonDerivedStateOptions) {
   const comparisonMaterialOptions = useMemo<ComparisonMaterialOption[]>(() => {
     const options = new Map<string, string>();
-    rawMaterials.forEach((material) => options.set(material.id, material.name));
+    const rawMaterialsById = new Map(rawMaterials.map((material) => [material.id, material]));
+    rawMaterials
+      .filter(isSelectableRawMaterial)
+      .forEach((material) => options.set(material.id, material.name));
     const selectedFormulaIds = new Set([
       formulaCompareSelection.baselineId,
       formulaCompareSelection.candidateId,
@@ -121,8 +124,15 @@ export function useSavedFormulaComparisonDerivedState({
       .filter((formula) => selectedFormulaIds.has(formula.id))
       .flatMap((formula) => formula.items)
       .forEach((item) => {
+        const material = rawMaterialsById.get(item.raw_material_id);
+        if (material && !isSelectableRawMaterial(material)) {
+          return;
+        }
         if (!options.has(item.raw_material_id)) {
-          options.set(item.raw_material_id, `Material ${item.raw_material_id.slice(0, 8)}`);
+          options.set(
+            item.raw_material_id,
+            material?.name ?? `Material ${item.raw_material_id.slice(0, 8)}`,
+          );
         }
       });
     return Array.from(options, ([id, name]) => ({ id, name })).sort((left, right) =>
