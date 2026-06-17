@@ -447,6 +447,7 @@ def register_routes(app: FastAPI) -> None:
     def create_raw_material_alias(
         raw_material_id: uuid.UUID,
         payload: RawMaterialAliasCreate,
+        response: Response,
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> RawMaterialAlias:
@@ -454,11 +455,26 @@ def register_routes(app: FastAPI) -> None:
         alias = payload.alias.strip()
         if not alias:
             raise HTTPException(status_code=400, detail="Alias cannot be empty.")
+        normalized_alias = _normalize(alias)
+        existing_alias = session.exec(
+            select(RawMaterialAlias).where(
+                RawMaterialAlias.tenant_id == tenant.tenant_id,
+                RawMaterialAlias.normalized_alias == normalized_alias,
+            )
+        ).first()
+        if existing_alias is not None:
+            if existing_alias.raw_material_id != raw_material_id:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Alias already belongs to another raw material.",
+                )
+            response.status_code = 200
+            return existing_alias
         raw_alias = RawMaterialAlias(
             tenant_id=tenant.tenant_id,
             raw_material_id=raw_material_id,
             alias=alias,
-            normalized_alias=_normalize(alias),
+            normalized_alias=normalized_alias,
             source=payload.source,
         )
         session.add(raw_alias)
