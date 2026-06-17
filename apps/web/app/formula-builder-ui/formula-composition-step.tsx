@@ -5,7 +5,6 @@ import type {
   FormulaReviewArtifact,
   FormulaReviewRequest,
 } from "../formula-model";
-import type { IsoDesignProject } from "../iso-design-model";
 import type { JiraConnection } from "../jira-connection-model";
 import type { DraftComparison, DraftReviewState } from "../workspace-comparison";
 import { BuilderStep } from "./builder-step";
@@ -28,12 +27,8 @@ export type FormulaCompositionStepProps = {
   activeJiraConnection: JiraConnection | null;
   formulaReviewRequests: FormulaReviewRequest[];
   formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
-  isoDesignProjects: IsoDesignProject[];
-  formulaJiraProjectId: string;
-  formulaJiraIssueType: string;
   formulaJiraDescription: string;
-  selectedIsoDesignProjectId: string;
-  canPrepareJiraReview: boolean;
+  canSendCurrentFormulaToJira: boolean;
   formulaLineDetails: FormulaLineDetail[];
   visibleParameterCodes: string[];
   showOnlyPositiveParameters: boolean;
@@ -43,9 +38,7 @@ export type FormulaCompositionStepProps = {
   onToggle: (section: BuilderSectionKey) => void;
   onNotesChange: (notes: string) => void;
   onConfirmDraftReview: () => void | Promise<void>;
-  onSelectedIsoDesignProjectChange: (projectId: string) => void;
   onJiraDescriptionChange: (description: string) => void;
-  onPrepareIsoProject: () => void | Promise<void>;
   onSendCurrentFormulaToJira: () => void | Promise<void>;
   onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
   onDownloadArtifact: (artifact: FormulaReviewArtifact) => void | Promise<void>;
@@ -72,12 +65,8 @@ export function FormulaCompositionStep({
   activeJiraConnection,
   formulaReviewRequests,
   formulaReviewArtifacts,
-  isoDesignProjects,
-  formulaJiraProjectId,
-  formulaJiraIssueType,
   formulaJiraDescription,
-  selectedIsoDesignProjectId,
-  canPrepareJiraReview,
+  canSendCurrentFormulaToJira,
   formulaLineDetails,
   visibleParameterCodes,
   showOnlyPositiveParameters,
@@ -87,9 +76,7 @@ export function FormulaCompositionStep({
   onToggle,
   onNotesChange,
   onConfirmDraftReview,
-  onSelectedIsoDesignProjectChange,
   onJiraDescriptionChange,
-  onPrepareIsoProject,
   onSendCurrentFormulaToJira,
   onGenerateReviewExcel,
   onDownloadArtifact,
@@ -115,6 +102,16 @@ export function FormulaCompositionStep({
         price={price}
         source={priceSource}
       />
+      <FormulaLineTable
+        lines={formulaLineDetails}
+        visibleParameterCodes={visibleParameterCodes}
+        showOnlyPositiveParameters={showOnlyPositiveParameters}
+        isBusy={isBusy}
+        onMoveLine={onMoveLine}
+        onUpdateLine={onUpdateLine}
+        onDuplicateLine={onDuplicateLine}
+        onRemoveLine={onRemoveLine}
+      />
       <DraftReviewPanel
         draftReview={draftReview}
         draftComparison={draftComparison}
@@ -130,32 +127,16 @@ export function FormulaCompositionStep({
         activeJiraConnection={activeJiraConnection}
         formulaReviewRequests={formulaReviewRequests}
         formulaReviewArtifacts={formulaReviewArtifacts}
-        isoDesignProjects={isoDesignProjects}
-        formulaJiraProjectId={formulaJiraProjectId}
-        formulaJiraIssueType={formulaJiraIssueType}
         formulaJiraDescription={formulaJiraDescription}
-        selectedIsoDesignProjectId={selectedIsoDesignProjectId}
-        canPrepareJiraReview={canPrepareJiraReview}
+        canSendCurrentFormulaToJira={canSendCurrentFormulaToJira}
         isBusy={isBusy}
-        onSelectedIsoDesignProjectChange={onSelectedIsoDesignProjectChange}
         onJiraDescriptionChange={onJiraDescriptionChange}
-        onPrepareIsoProject={onPrepareIsoProject}
         onSendCurrentFormulaToJira={onSendCurrentFormulaToJira}
         onGenerateReviewExcel={onGenerateReviewExcel}
         onDownloadArtifact={onDownloadArtifact}
         onSendReviewToJira={onSendReviewToJira}
         onSyncReviewStatus={onSyncReviewStatus}
         onRetryReviewAttachment={onRetryReviewAttachment}
-      />
-      <FormulaLineTable
-        lines={formulaLineDetails}
-        visibleParameterCodes={visibleParameterCodes}
-        showOnlyPositiveParameters={showOnlyPositiveParameters}
-        isBusy={isBusy}
-        onMoveLine={onMoveLine}
-        onUpdateLine={onUpdateLine}
-        onDuplicateLine={onDuplicateLine}
-        onRemoveLine={onRemoveLine}
       />
     </BuilderStep>
   );

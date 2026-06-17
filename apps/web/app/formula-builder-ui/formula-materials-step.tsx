@@ -140,16 +140,6 @@ export function FormulaMaterialsStep({
       bodyClassName="builderSearch"
       onToggle={onToggle}
     >
-      <ParameterViewPanel
-        selectedPresetHelper={selectedPresetHelper}
-        showOnlyPositiveParameters={showOnlyPositiveParameters}
-        parameterViewPreset={parameterViewPreset}
-        parameterCatalog={parameterCatalog}
-        customParameterCodes={customParameterCodes}
-        onShowOnlyPositiveChange={onShowOnlyPositiveChange}
-        onSelectParameterView={onSelectParameterView}
-        onToggleCustomParameterCode={onToggleCustomParameterCode}
-      />
       <MaterialCatalogControls
         query={formulaMaterialQuery}
         canSearch={canSearch}
@@ -177,6 +167,16 @@ export function FormulaMaterialsStep({
         onRemoveCondition={onRemoveCondition}
         onLoadMore={onLoadMoreMaterials}
         onResetFilters={onResetFilters}
+      />
+      <ParameterViewPanel
+        selectedPresetHelper={selectedPresetHelper}
+        showOnlyPositiveParameters={showOnlyPositiveParameters}
+        parameterViewPreset={parameterViewPreset}
+        parameterCatalog={parameterCatalog}
+        customParameterCodes={customParameterCodes}
+        onShowOnlyPositiveChange={onShowOnlyPositiveChange}
+        onSelectParameterView={onSelectParameterView}
+        onToggleCustomParameterCode={onToggleCustomParameterCode}
       />
       <MaterialCatalogWorkspace
         catalogLoading={catalogLoading}

@@ -945,8 +945,6 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       formulaReviewArtifacts,
       isoDesignProjects,
       jiraIssueTypeOptions: isoJiraIssueTypeLabels(isoSettings),
-      formulaJiraProjectId: workspace.formulaJiraProjectId,
-      formulaJiraIssueType: workspace.formulaJiraIssueType,
       formulaJiraDescription: workspace.formulaJiraDescription,
       selectedIsoDesignProjectId: selectedJiraIsoDesignProjectId,
       canPrepareJiraReview,

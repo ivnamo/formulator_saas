@@ -1,6 +1,8 @@
 import type { BuilderSectionKey } from "../formula-builder-model";
+import type { IsoDesignProject } from "../iso-design-model";
 import type { WorkspaceState } from "../workspace-state-model";
 import { BuilderStep } from "./builder-step";
+import { FormulaIsoLinkPanel } from "./formula-iso-link-panel";
 
 export type FormulaBasicsValue = Pick<
   WorkspaceState,
@@ -18,8 +20,12 @@ export type FormulaBasicsStepProps = {
   jiraProjectIdOptions: Array<{ value: string; label: string }>;
   jiraIssueTypeOptions: string[];
   jiraProductTypeOptions: string[];
+  isoDesignProjects: IsoDesignProject[];
+  selectedIsoDesignProjectId: string;
   onToggle: (section: BuilderSectionKey) => void;
   onChange: (patch: Partial<FormulaBasicsValue>) => void;
+  onSelectedIsoDesignProjectChange: (projectId: string) => void;
+  onPrepareIsoProject: () => void | Promise<void>;
 };
 
 export function FormulaBasicsStep({
@@ -30,8 +36,12 @@ export function FormulaBasicsStep({
   jiraProjectIdOptions,
   jiraIssueTypeOptions,
   jiraProductTypeOptions,
+  isoDesignProjects,
+  selectedIsoDesignProjectId,
   onToggle,
   onChange,
+  onSelectedIsoDesignProjectChange,
+  onPrepareIsoProject,
 }: FormulaBasicsStepProps) {
   const issueTypeOptions = withCurrentOption(jiraIssueTypeOptions, values.formulaJiraIssueType);
   const productTypeOptions = withCurrentOption(
@@ -102,6 +112,17 @@ export function FormulaBasicsStep({
             ))}
           </datalist>
         </div>
+      ) : null}
+      {hasActiveJiraConnection ? (
+        <FormulaIsoLinkPanel
+          formulaJiraProjectId={values.formulaJiraProjectId}
+          formulaJiraIssueType={values.formulaJiraIssueType}
+          isoDesignProjects={isoDesignProjects}
+          selectedIsoDesignProjectId={selectedIsoDesignProjectId}
+          isBusy={isBusy}
+          onSelectedIsoDesignProjectChange={onSelectedIsoDesignProjectChange}
+          onPrepareIsoProject={onPrepareIsoProject}
+        />
       ) : null}
     </BuilderStep>
   );
