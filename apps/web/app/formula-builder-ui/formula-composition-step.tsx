@@ -31,6 +31,7 @@ export type FormulaCompositionStepProps = {
   isoDesignProjects: IsoDesignProject[];
   formulaJiraProjectId: string;
   formulaJiraIssueType: string;
+  formulaJiraDescription: string;
   selectedIsoDesignProjectId: string;
   canPrepareJiraReview: boolean;
   formulaLineDetails: FormulaLineDetail[];
@@ -43,6 +44,7 @@ export type FormulaCompositionStepProps = {
   onNotesChange: (notes: string) => void;
   onConfirmDraftReview: () => void | Promise<void>;
   onSelectedIsoDesignProjectChange: (projectId: string) => void;
+  onJiraDescriptionChange: (description: string) => void;
   onPrepareIsoProject: () => void | Promise<void>;
   onSendCurrentFormulaToJira: () => void | Promise<void>;
   onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
@@ -73,6 +75,7 @@ export function FormulaCompositionStep({
   isoDesignProjects,
   formulaJiraProjectId,
   formulaJiraIssueType,
+  formulaJiraDescription,
   selectedIsoDesignProjectId,
   canPrepareJiraReview,
   formulaLineDetails,
@@ -85,6 +88,7 @@ export function FormulaCompositionStep({
   onNotesChange,
   onConfirmDraftReview,
   onSelectedIsoDesignProjectChange,
+  onJiraDescriptionChange,
   onPrepareIsoProject,
   onSendCurrentFormulaToJira,
   onGenerateReviewExcel,
@@ -129,10 +133,12 @@ export function FormulaCompositionStep({
         isoDesignProjects={isoDesignProjects}
         formulaJiraProjectId={formulaJiraProjectId}
         formulaJiraIssueType={formulaJiraIssueType}
+        formulaJiraDescription={formulaJiraDescription}
         selectedIsoDesignProjectId={selectedIsoDesignProjectId}
         canPrepareJiraReview={canPrepareJiraReview}
         isBusy={isBusy}
         onSelectedIsoDesignProjectChange={onSelectedIsoDesignProjectChange}
+        onJiraDescriptionChange={onJiraDescriptionChange}
         onPrepareIsoProject={onPrepareIsoProject}
         onSendCurrentFormulaToJira={onSendCurrentFormulaToJira}
         onGenerateReviewExcel={onGenerateReviewExcel}

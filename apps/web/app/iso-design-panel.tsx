@@ -14,6 +14,7 @@ import {
   Upload,
 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
+import { FileDropzone } from "./file-dropzone";
 import {
   isoFormatLabel,
   isoJiraIssueTypeLabels,
@@ -224,17 +225,14 @@ export function IsoDesignPanel({
                   ))}
                 </select>
               </label>
-              <label>
-                <span>Excel</span>
-                <input
-                  type="file"
-                  accept=".xlsx"
-                  onChange={(event) =>
-                    void onSelectLegacyImportFile(event.target.files?.[0] ?? null)
-                  }
-                  disabled={!canEditTenantData || isBusy}
-                />
-              </label>
+              <FileDropzone
+                accept=".xlsx"
+                disabled={!canEditTenantData || isBusy}
+                fileName={legacyImportFileName}
+                helper="Solo .xlsx"
+                label="Excel"
+                onFile={onSelectLegacyImportFile}
+              />
               <label>
                 <span>Hoja</span>
                 <select

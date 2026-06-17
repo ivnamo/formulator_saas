@@ -1,4 +1,4 @@
-import { AlertTriangle, Beaker, Loader2, Save } from "lucide-react";
+import { AlertTriangle, Beaker, Download, Loader2, Save } from "lucide-react";
 import type { CalculationParameterRow } from "../formula-builder-derived";
 import {
   parameterDisplayCode,
@@ -23,6 +23,7 @@ type FormulaCalculationPanelProps = {
   onShowOnlyPositiveChange: (value: boolean) => void;
   onSelectParameterView: (value: ParameterViewPresetKey) => void;
   onSaveFormula: () => void | Promise<void>;
+  onExportExcel: () => void | Promise<void>;
 };
 
 export function FormulaCalculationPanel({
@@ -40,6 +41,7 @@ export function FormulaCalculationPanel({
   onShowOnlyPositiveChange,
   onSelectParameterView,
   onSaveFormula,
+  onExportExcel,
 }: FormulaCalculationPanelProps) {
   return (
     <>
@@ -124,15 +126,26 @@ export function FormulaCalculationPanel({
               : "El guardado queda bloqueado hasta que la formula sume 100.0%."}
           </small>
         </div>
-        <button
-          className="primaryButton"
-          type="button"
-          onClick={() => void onSaveFormula()}
-          disabled={!canSaveFormula}
-        >
-          {isBusy ? <Loader2 className="spin" size={17} /> : <Save size={17} />}
-          Guardar formula
-        </button>
+        <div className="formulaSaveActions">
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={() => void onExportExcel()}
+            disabled={isBusy}
+          >
+            <Download size={17} />
+            Exportar Excel I+D
+          </button>
+          <button
+            className="primaryButton"
+            type="button"
+            onClick={() => void onSaveFormula()}
+            disabled={!canSaveFormula}
+          >
+            {isBusy ? <Loader2 className="spin" size={17} /> : <Save size={17} />}
+            Guardar formula
+          </button>
+        </div>
       </div>
     </>
   );

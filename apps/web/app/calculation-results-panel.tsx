@@ -4,6 +4,7 @@ import {
   normalizeWarningSeverity,
 } from "./formula-formatters";
 import type { CalculationResult } from "./formula-model";
+import { sortByParameterCode } from "./parameter-order";
 
 type CalculationResultsPanelProps = {
   active: boolean;
@@ -33,7 +34,7 @@ export function CalculationResultsPanel({ active, result }: CalculationResultsPa
       </div>
       <div className="parameterList">
         {result?.parameters.length ? (
-          result.parameters.map((parameter) => (
+          sortByParameterCode(result.parameters, (parameter) => parameter.code).map((parameter) => (
             <div key={parameter.code}>
               <Beaker size={18} />
               <span>{parameter.code}</span>

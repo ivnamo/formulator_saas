@@ -31,7 +31,12 @@ from .models import (
     IntegrationEvent,
     JiraConnection,
     RawMaterial,
+    RawMaterialPrice,
     utc_now,
+)
+from .raw_material_snapshot import (
+    active_parameter_value_dicts_by_material_id,
+    current_prices_by_material_id,
 )
 from .schemas import (
     FormulaJiraReviewCreate,
@@ -281,6 +286,7 @@ def register_jira_routes(app: FastAPI) -> None:
                 items,
                 connection,
                 notes=payload.notes,
+                description=payload.description,
                 design_project_id=payload.design_project_id,
                 iso_trial_number=payload.iso_trial_number,
                 iso_reason_comment=payload.iso_reason_comment,
@@ -334,7 +340,8 @@ def register_jira_routes(app: FastAPI) -> None:
         existing = _existing_review_artifact(session, tenant.tenant_id, review.id)
         if existing is not None:
             response.status_code = 200
-            return _formula_review_artifact_read(existing)
+            artifact = _update_review_excel_artifact_if_needed(session, existing, review)
+            return _formula_review_artifact_read(artifact)
 
         artifact = _create_review_excel_artifact(session, tenant.tenant_id, review)
         return _formula_review_artifact_read(artifact)
@@ -1410,7 +1417,7 @@ def _ensure_review_excel_artifact(
 ) -> FormulaReviewArtifact:
     existing = _existing_review_artifact(session, tenant_id, review.id)
     if existing is not None:
-        return existing
+        return _update_review_excel_artifact_if_needed(session, existing, review)
     return _create_review_excel_artifact(session, tenant_id, review)
 
 
@@ -1430,6 +1437,29 @@ def _create_review_excel_artifact(
         size_bytes=excel.size_bytes,
         content=excel.content,
     )
+    session.add(artifact)
+    session.commit()
+    session.refresh(artifact)
+    return artifact
+
+
+def _update_review_excel_artifact_if_needed(
+    session: Session,
+    artifact: FormulaReviewArtifact,
+    review: FormulaReviewRequest,
+) -> FormulaReviewArtifact:
+    excel = build_jira_review_excel(review.snapshot_json, review.id)
+    if (
+        artifact.file_name == excel.file_name
+        and artifact.checksum_sha256 == excel.checksum_sha256
+        and artifact.size_bytes == excel.size_bytes
+    ):
+        return artifact
+    artifact.file_name = excel.file_name
+    artifact.content_type = excel.content_type
+    artifact.checksum_sha256 = excel.checksum_sha256
+    artifact.size_bytes = excel.size_bytes
+    artifact.content = excel.content
     session.add(artifact)
     session.commit()
     session.refresh(artifact)
@@ -1487,13 +1517,21 @@ def _formula_jira_snapshot(
     connection: JiraConnection,
     *,
     notes: str | None,
+    description: str | None,
     design_project_id: uuid.UUID | None = None,
     iso_trial_number: int | None = None,
     iso_reason_comment: str | None = None,
 ) -> dict[str, Any]:
-    materials_by_id = _materials_by_id(session, tenant_id, [item.raw_material_id for item in items])
+    material_ids = [item.raw_material_id for item in items]
+    materials_by_id = _materials_by_id(session, tenant_id, material_ids)
+    prices_by_material_id = current_prices_by_material_id(session, tenant_id, material_ids)
+    parameter_values_by_material_id = active_parameter_value_dicts_by_material_id(
+        session,
+        tenant_id,
+        material_ids,
+    )
     latest_calculation = _latest_calculation(session, tenant_id, formula.id)
-    issue_summary = f"{formula.jira_issue_type.upper()} - {formula.jira_project_id or str(formula.id)[:8]} - {formula.name}"
+    issue_summary = formula.name
     snapshot: dict[str, Any] = {
         "formula": {
             "id": str(formula.id),
@@ -1508,7 +1546,12 @@ def _formula_jira_snapshot(
             "currency": formula.currency,
         },
         "items": [
-            _snapshot_item(item, materials_by_id.get(item.raw_material_id))
+            _snapshot_item(
+                item,
+                materials_by_id.get(item.raw_material_id),
+                prices_by_material_id.get(item.raw_material_id),
+                parameter_values_by_material_id.get(item.raw_material_id, []),
+            )
             for item in items
         ],
         "latest_calculation": latest_calculation.result_json if latest_calculation else None,
@@ -1519,6 +1562,7 @@ def _formula_jira_snapshot(
             "issue_type": formula.jira_issue_type or connection.default_issue_type,
             "assignee": connection.default_assignee,
             "issue_summary": issue_summary,
+            "issue_description": _clean_optional(description),
         },
         "notes": _clean_optional(notes),
         "snapshot_type": "jira_formula_review_v1",
@@ -1564,7 +1608,12 @@ def _latest_calculation(
     ).first()
 
 
-def _snapshot_item(item: FormulaItem, material: RawMaterial | None) -> dict[str, Any]:
+def _snapshot_item(
+    item: FormulaItem,
+    material: RawMaterial | None,
+    price: RawMaterialPrice | None,
+    parameters: list[dict[str, Any]],
+) -> dict[str, Any]:
     return {
         "raw_material_id": str(item.raw_material_id),
         "code": material.code if material else None,
@@ -1573,6 +1622,9 @@ def _snapshot_item(item: FormulaItem, material: RawMaterial | None) -> dict[str,
         "quantity": item.quantity,
         "unit": item.unit,
         "order_index": item.order_index,
+        "price": price.price if price else None,
+        "currency": price.currency if price else None,
+        "parameters": parameters,
     }
 
 

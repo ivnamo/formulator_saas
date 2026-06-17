@@ -20,6 +20,7 @@ type BuildWorkspaceLibraryPanelPropsArgs = {
   selectFormulaForComparison: LibraryPanelProps["onSelectFormula"];
   refreshFormulaLibrary: LibraryPanelProps["onRefreshLibrary"];
   compareSavedFormulas: LibraryPanelProps["onCompareSavedFormulas"];
+  exportSavedFormulaIdLabExcel: LibraryPanelProps["onExportFormula"];
   openFormula: LibraryPanelProps["onOpenFormula"];
   updateComparisonConstraint: LibraryPanelProps["onUpdateConstraint"];
   setShowOnlyConstraintIssues: LibraryPanelProps["onShowOnlyConstraintIssuesChange"];
@@ -46,6 +47,7 @@ export function buildWorkspaceLibraryPanelProps(
     onSelectFormula: args.selectFormulaForComparison,
     onRefreshLibrary: args.refreshFormulaLibrary,
     onCompareSavedFormulas: args.compareSavedFormulas,
+    onExportFormula: args.exportSavedFormulaIdLabExcel,
     onOpenFormula: args.openFormula,
     onUpdateConstraint: args.updateComparisonConstraint,
     onShowOnlyConstraintIssuesChange: args.setShowOnlyConstraintIssues,

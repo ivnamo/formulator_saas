@@ -5,6 +5,9 @@
   --text: #18201d;
   --muted: #68736d;
   --border: #dfe5e1;
+  --control-border: #a8b5ae;
+  --control-border-strong: #65756d;
+  --control-ring: rgba(15, 118, 110, 0.18);
   --teal: #0f766e;
   --teal-dark: #115e59;
   --blue: #1d4ed8;
@@ -42,16 +45,38 @@ select,
 textarea {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: 6px;
-  background: white;
+  background: #ffffff;
   color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(24, 32, 29, 0.02);
 }
 
 input,
 select {
   height: 34px;
   padding: 0 9px;
+}
+
+select {
+  background-color: #ffffff;
+  border-color: var(--control-border-strong);
+  color: #111816;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+select option {
+  background: #ffffff;
+  color: var(--text);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--control-ring);
+  outline: none;
 }
 
 textarea {
@@ -65,6 +90,89 @@ input:disabled,
 select:disabled,
 textarea:disabled {
   background: #f6f8f6;
+  border-color: #d3dcd6;
+  box-shadow: none;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.fileDropzone {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.fileDropzone[data-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.fileDropzoneInput {
+  display: none;
+}
+
+.fileDropzoneLabel {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fileDropzoneBox {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 2px 9px;
+  align-items: center;
+  border: 1px dashed var(--control-border-strong);
+  border-radius: 8px;
+  background: #fbfcfb;
+  padding: 9px 10px;
+  color: var(--text);
+}
+
+.fileDropzoneBox svg {
+  grid-row: span 2;
+  color: var(--teal-dark);
+}
+
+.fileDropzoneBox strong,
+.fileDropzoneBox small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileDropzoneBox strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.fileDropzoneBox small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.fileDropzone:hover .fileDropzoneBox,
+.fileDropzone:focus-within .fileDropzoneBox,
+.fileDropzone[data-dragging="true"] .fileDropzoneBox {
+  border-color: var(--teal);
+  background: rgba(15, 118, 110, 0.07);
+  box-shadow: 0 0 0 3px var(--control-ring);
+}
+
+.fileDropzone[data-disabled="true"] .fileDropzoneBox {
+  border-color: #d3dcd6;
+  background: #f6f8f6;
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.fileDropzone[data-disabled="true"] .fileDropzoneBox svg,
+.fileDropzone[data-disabled="true"] .fileDropzoneBox strong {
   color: var(--muted);
 }
 
@@ -2388,7 +2496,7 @@ label span {
 
 .importActions {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px) auto;
+  grid-template-columns: minmax(250px, 1.25fr) minmax(150px, 220px) minmax(180px, 0.9fr) auto;
   gap: 10px;
   align-items: end;
   margin-bottom: 14px;
@@ -2398,9 +2506,26 @@ label span {
   min-width: 0;
 }
 
+.pasteImportBox {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin: -4px 0 14px;
+}
+
+.pasteImportBox label {
+  min-width: 0;
+}
+
+.pasteImportBox textarea {
+  min-height: 74px;
+  font-size: 12px;
+}
+
 .importSummary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
   gap: 8px;
   margin-bottom: 14px;
 }
@@ -2426,6 +2551,44 @@ label span {
   min-width: 0;
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+
+.importTemplateNotice {
+  min-height: 46px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(13, 148, 136, 0.22);
+  border-radius: 8px;
+  background: rgba(13, 148, 136, 0.06);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.importTemplateNotice > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.importTemplateNotice strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.importTemplateNotice span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.importTemplateWarnings {
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--danger);
 }
 
 .importHead,
@@ -2455,23 +2618,25 @@ label span {
   font-weight: 800;
 }
 
+.importRow > span:nth-child(2),
+.importRow > span:nth-child(4) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.importRow small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 .resolveControls {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) 34px;
   gap: 8px;
   align-items: center;
-}
-
-.aliasResolveControls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
-  gap: 8px;
-  align-items: center;
-}
-
-.aliasResolveControls span {
-  color: var(--muted);
-  font-weight: 700;
 }
 
 .suggestionButton {
@@ -2500,6 +2665,99 @@ label span {
 .suggestionButton:disabled {
   cursor: not-allowed;
   opacity: 0.56;
+}
+
+.materialSearchSelect {
+  position: relative;
+  min-width: 0;
+}
+
+.materialSearchInput {
+  min-width: 0;
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.materialSearchInput:focus-within {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+.materialSearchInput svg {
+  justify-self: center;
+}
+
+.materialSearchInput input {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  padding: 0 8px 0 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.materialSearchInput input:focus {
+  box-shadow: none;
+}
+
+.materialSearchMenu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 260px;
+  overflow: auto;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 4px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.materialSearchMenu button {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  border: 0;
+  border-radius: 5px;
+  padding: 7px 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.materialSearchMenu button:hover,
+.materialSearchMenu button:focus,
+.materialSearchMenu button[aria-selected="true"] {
+  background: var(--surface-muted);
+}
+
+.materialSearchMenu strong,
+.materialSearchMenu small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.materialSearchMenu span {
+  padding: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .aiControls {
@@ -2842,7 +3100,7 @@ label span {
 .formulaListHead,
 .formulaListRow {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 120px 58px 48px;
+  grid-template-columns: minmax(180px, 1fr) 120px 58px 48px 48px;
   gap: 10px;
   align-items: center;
 }
@@ -3117,7 +3375,7 @@ label span {
 
 .builderStep {
   display: grid;
-  border: 1px solid var(--border);
+  border: 1px solid #c7d1cb;
   border-radius: 8px;
   background: white;
   overflow: hidden;
@@ -3143,8 +3401,26 @@ label span {
   white-space: normal;
 }
 
+.builderStepHeader:hover {
+  background: #f1f5f3;
+}
+
+.builderStepHeader:focus-visible {
+  box-shadow: 0 0 0 3px var(--control-ring);
+  outline: none;
+}
+
 .builderStep[data-open="true"] .builderStepHeader {
   border-bottom-color: var(--border);
+}
+
+.builderStep[data-open="false"] {
+  border-color: #aebbb4;
+  background: #f7faf8;
+}
+
+.builderStep[data-open="false"] .builderStepHeader {
+  background: #f3f7f5;
 }
 
 .builderStepHeader span {
@@ -3154,11 +3430,13 @@ label span {
 }
 
 .builderStepHeader strong {
+  color: #111816;
   font-size: 14px;
+  font-weight: 800;
 }
 
 .builderStepHeader small {
-  color: var(--muted);
+  color: #4d5b54;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
@@ -3166,7 +3444,7 @@ label span {
 
 .builderStepHeader svg {
   flex: 0 0 auto;
-  color: var(--muted);
+  color: #33443d;
   transition: transform 160ms ease;
 }
 
@@ -3811,7 +4089,7 @@ label span {
 
 .jiraReviewHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
@@ -3836,10 +4114,23 @@ label span {
 
 .jiraReviewHeader .secondaryButton {
   width: auto;
+  margin-top: 18px;
+}
+
+.jiraDescriptionField {
+  display: grid;
+  flex: 1 1 320px;
+  gap: 4px;
+  min-width: min(320px, 100%);
+}
+
+.jiraDescriptionField textarea {
+  min-height: 70px;
 }
 
 .jiraIsoSelector {
   width: min(320px, 100%);
+  margin-top: 0;
 }
 
 .jiraIsoSelector span {
@@ -4123,7 +4414,15 @@ label span {
   font-weight: 700;
 }
 
-.formulaSavePanel .primaryButton {
+.formulaSaveActions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.formulaSaveActions .primaryButton,
+.formulaSaveActions .secondaryButton {
   flex: 0 0 auto;
 }
 
@@ -4299,6 +4598,7 @@ label span {
   .priceForm,
   .sapImportControls,
   .importActions,
+  .pasteImportBox,
   .libraryActions,
   .comparisonConstraintBar,
   .aiControls {
@@ -4491,6 +4791,16 @@ label span {
   }
 
   .formulaSavePanel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formulaSaveActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .importTemplateNotice {
     align-items: stretch;
     flex-direction: column;
   }

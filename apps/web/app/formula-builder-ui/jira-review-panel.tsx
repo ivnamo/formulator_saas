@@ -18,10 +18,12 @@ type JiraReviewPanelProps = {
   isoDesignProjects: IsoDesignProject[];
   formulaJiraProjectId: string;
   formulaJiraIssueType: string;
+  formulaJiraDescription: string;
   selectedIsoDesignProjectId: string;
   canPrepareJiraReview: boolean;
   isBusy: boolean;
   onSelectedIsoDesignProjectChange: (projectId: string) => void;
+  onJiraDescriptionChange: (description: string) => void;
   onPrepareIsoProject: () => void | Promise<void>;
   onSendCurrentFormulaToJira: () => void | Promise<void>;
   onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
@@ -38,10 +40,12 @@ export function JiraReviewPanel({
   isoDesignProjects,
   formulaJiraProjectId,
   formulaJiraIssueType,
+  formulaJiraDescription,
   selectedIsoDesignProjectId,
   canPrepareJiraReview,
   isBusy,
   onSelectedIsoDesignProjectChange,
+  onJiraDescriptionChange,
   onPrepareIsoProject,
   onSendCurrentFormulaToJira,
   onGenerateReviewExcel,
@@ -69,6 +73,14 @@ export function JiraReviewPanel({
           <span>Jira review</span>
           <strong>{activeJiraConnection ? "Configured" : "Not configured"}</strong>
         </div>
+        <label className="jiraDescriptionField">
+          <span>Descripcion Jira</span>
+          <textarea
+            value={formulaJiraDescription}
+            onChange={(event) => onJiraDescriptionChange(event.target.value)}
+            disabled={isBusy}
+          />
+        </label>
         {isoDesignProjects.length ? (
           <label className="jiraIsoSelector">
             <span>Expediente ISO</span>

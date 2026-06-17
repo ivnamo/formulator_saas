@@ -45,6 +45,15 @@ from .excel_import import (
     list_formula_xlsx_sheets,
     parse_formula_xlsx,
 )
+from .formula_excel_template import (
+    FORMULA_ID_LAB_EXCEL_CONTENT_TYPE,
+    FormulaExcelContext,
+    FormulaExcelItem,
+    FormulaExcelMetadata,
+    FormulaExcelParameter,
+    build_formula_id_lab_excel,
+    formula_excel_download_file_name,
+)
 from .iso_design import register_iso_routes
 from .jira_integration import register_jira_routes
 from .local_env import load_local_env
@@ -67,6 +76,7 @@ from .models import (
     User,
     utc_now,
 )
+from .parameter_order import parameter_sort_key, sort_parameters
 from .raw_material_master import (
     clean_raw_material_payload,
     ensure_raw_material_identity_available,
@@ -81,6 +91,10 @@ from .raw_material_import import (
     import_read,
     load_import_rows,
 )
+from .raw_material_snapshot import (
+    active_parameter_value_map_by_material_id,
+    current_prices_by_material_id,
+)
 from .schemas import (
     CalculationRead,
     CompatibilityRuleCreate,
@@ -91,6 +105,7 @@ from .schemas import (
     FormulaCalculationHistoryRead,
     FormulaCalculateRequest,
     FormulaCreate,
+    FormulaExcelExportRequest,
     FormulaRead,
     FormulaUpdate,
     ParameterCreate,
@@ -147,6 +162,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Content-Disposition"],
     )
     register_routes(app)
     register_jira_routes(app)
@@ -268,9 +284,10 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> list[Parameter]:
-        return session.exec(
+        parameters = session.exec(
             select(Parameter).where(Parameter.tenant_id == tenant.tenant_id)
         ).all()
+        return sort_parameters(parameters, key=lambda parameter: parameter.code)
 
     @app.post("/api/v1/parameters", response_model=ParameterRead, status_code=201)
     def create_parameter(
@@ -430,6 +447,7 @@ def register_routes(app: FastAPI) -> None:
     def create_raw_material_alias(
         raw_material_id: uuid.UUID,
         payload: RawMaterialAliasCreate,
+        response: Response,
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> RawMaterialAlias:
@@ -437,11 +455,26 @@ def register_routes(app: FastAPI) -> None:
         alias = payload.alias.strip()
         if not alias:
             raise HTTPException(status_code=400, detail="Alias cannot be empty.")
+        normalized_alias = _normalize(alias)
+        existing_alias = session.exec(
+            select(RawMaterialAlias).where(
+                RawMaterialAlias.tenant_id == tenant.tenant_id,
+                RawMaterialAlias.normalized_alias == normalized_alias,
+            )
+        ).first()
+        if existing_alias is not None:
+            if existing_alias.raw_material_id != raw_material_id:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Alias already belongs to another raw material.",
+                )
+            response.status_code = 200
+            return existing_alias
         raw_alias = RawMaterialAlias(
             tenant_id=tenant.tenant_id,
             raw_material_id=raw_material_id,
             alias=alias,
-            normalized_alias=_normalize(alias),
+            normalized_alias=normalized_alias,
             source=payload.source,
         )
         session.add(raw_alias)
@@ -773,6 +806,61 @@ def register_routes(app: FastAPI) -> None:
             required_parameter_codes=payload.required_parameter_codes,
         )
 
+    @app.get("/api/v1/formulas/{formula_id}/exports/atlantica-id-lab.xlsx")
+    def export_persisted_formula_id_lab_excel(
+        formula_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> Response:
+        formula = _get_formula(session, tenant.tenant_id, formula_id)
+        items = session.exec(
+            select(FormulaItem)
+            .where(
+                FormulaItem.tenant_id == tenant.tenant_id,
+                FormulaItem.formula_id == formula.id,
+            )
+            .order_by(FormulaItem.order_index)
+        ).all()
+        context = _formula_excel_context(
+            session,
+            tenant.tenant_id,
+            name=formula.name,
+            items=items,
+            version=formula.version,
+        )
+        excel = build_formula_id_lab_excel(context)
+        return _excel_download_response(
+            excel.content,
+            formula_excel_download_file_name(formula.name),
+        )
+
+    @app.post("/api/v1/formulas/exports/atlantica-id-lab.xlsx")
+    def export_ad_hoc_formula_id_lab_excel(
+        payload: FormulaExcelExportRequest,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> Response:
+        context = _formula_excel_context(
+            session,
+            tenant.tenant_id,
+            name=payload.name,
+            items=payload.items,
+            version=1,
+            metadata=FormulaExcelMetadata(
+                sample_code=payload.metadata.sample_code,
+                lab_date=payload.metadata.lab_date,
+                experiment_date=payload.metadata.experiment_date,
+                density=payload.metadata.density,
+                ph=payload.metadata.ph,
+                notes=payload.metadata.notes,
+            ),
+        )
+        excel = build_formula_id_lab_excel(context)
+        return _excel_download_response(
+            excel.content,
+            formula_excel_download_file_name(payload.name),
+        )
+
     @app.post("/api/v1/ai/requirements/parse", response_model=RequirementParseRead)
     def parse_requirement(
         payload: RequirementParseRequest,
@@ -962,11 +1050,14 @@ def _active_parameter_context(
     session: Session,
     tenant_id: uuid.UUID,
 ) -> list[dict[str, str]]:
-    parameters = session.exec(
-        select(Parameter)
-        .where(Parameter.tenant_id == tenant_id, Parameter.is_active.is_(True))
-        .order_by(Parameter.code)
-    ).all()
+    parameters = sort_parameters(
+        session.exec(
+            select(Parameter)
+            .where(Parameter.tenant_id == tenant_id, Parameter.is_active.is_(True))
+            .order_by(Parameter.code)
+        ).all(),
+        key=lambda parameter: parameter.code,
+    )
     return [
         {"code": parameter.code, "name": parameter.name, "unit": parameter.unit}
         for parameter in parameters
@@ -1175,7 +1266,7 @@ def _raw_material_parameter_values_read(
         )
     return sorted(
         rows_by_parameter_id.values(),
-        key=lambda row: str(row["code"]).casefold(),
+        key=lambda row: parameter_sort_key(str(row["code"])),
     )
 
 
@@ -1539,7 +1630,10 @@ def _calculate(
         "currency": calculation.currency,
         "parameters": [
             {"code": parameter.code, "value": parameter.value, "unit": parameter.unit}
-            for parameter in calculation.parameters.values()
+            for parameter in sort_parameters(
+                calculation.parameters.values(),
+                key=lambda parameter: parameter.code,
+            )
         ],
         "warnings": [
             {
@@ -1552,6 +1646,88 @@ def _calculate(
         ]
         + compatibility_warnings,
     }
+
+
+def _formula_excel_context(
+    session: Session,
+    tenant_id: uuid.UUID,
+    *,
+    name: str,
+    items: list[Any],
+    version: int,
+    metadata: FormulaExcelMetadata | None = None,
+) -> FormulaExcelContext:
+    material_ids = [item.raw_material_id for item in items]
+    materials = session.exec(
+        select(RawMaterial).where(
+            RawMaterial.tenant_id == tenant_id,
+            RawMaterial.id.in_(material_ids),
+        )
+    ).all()
+    materials_by_id = {material.id: material for material in materials}
+    missing_material_ids = [
+        str(material_id) for material_id in material_ids if material_id not in materials_by_id
+    ]
+    if missing_material_ids:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Raw material not found: {', '.join(missing_material_ids)}",
+        )
+
+    parameters = sort_parameters(
+        session.exec(
+            select(Parameter)
+            .where(Parameter.tenant_id == tenant_id, Parameter.is_active.is_(True))
+            .order_by(Parameter.code)
+        ).all(),
+        key=lambda parameter: parameter.code,
+    )
+    prices_by_material_id = current_prices_by_material_id(session, tenant_id, material_ids)
+    values_by_material_id = active_parameter_value_map_by_material_id(
+        session,
+        tenant_id,
+        material_ids,
+    )
+
+    excel_items = [
+        FormulaExcelItem(
+            name=materials_by_id[item.raw_material_id].name,
+            code=materials_by_id[item.raw_material_id].code,
+            percentage=item.percentage,
+            order_index=getattr(item, "order_index", 0) or 0,
+            price=(
+                prices_by_material_id[item.raw_material_id].price
+                if item.raw_material_id in prices_by_material_id
+                else None
+            ),
+            parameters=values_by_material_id.get(item.raw_material_id, {}),
+        )
+        for item in items
+    ]
+    excel_parameters = [
+        FormulaExcelParameter(
+            code=parameter.code,
+            label=parameter.code,
+            unit=parameter.unit,
+            decimals=parameter.decimals,
+        )
+        for parameter in parameters
+    ]
+    return FormulaExcelContext(
+        name=name,
+        version=version,
+        items=excel_items,
+        parameters=excel_parameters,
+        metadata=metadata or FormulaExcelMetadata(),
+    )
+
+
+def _excel_download_response(content: bytes, file_name: str) -> Response:
+    return Response(
+        content=content,
+        media_type=FORMULA_ID_LAB_EXCEL_CONTENT_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+    )
 
 
 def _compatibility_warnings(
@@ -1619,6 +1795,10 @@ def _excel_preview(
     return {
         "sheet_name": parsed.sheet_name,
         "available_sheets": parsed.available_sheets,
+        "parser": parsed.parser,
+        "formula_name": parsed.formula_name,
+        "parameter_headers": parsed.parameter_headers,
+        "warnings": parsed.warnings,
         "columns": {
             "material_name": parsed.columns.material_name,
             "material_code": parsed.columns.material_code,
@@ -1646,33 +1826,13 @@ def _excel_preview_row(
             "matched_by": None,
         }
     if row.material_code and (material := by_code.get(_match_key(row.material_code))):
-        return {
-            **_parsed_row_dict(row),
-            "raw_material_id": material.id,
-            "matched_by": "code",
-            "status": "matched_exact",
-        }
+        return _matched_excel_preview_row(row, material, matched_by="code")
     if row.material_name and (material := by_name.get(_normalize(row.material_name))):
-        return {
-            **_parsed_row_dict(row),
-            "raw_material_id": material.id,
-            "matched_by": "name",
-            "status": "matched_exact",
-        }
+        return _matched_excel_preview_row(row, material, matched_by="name")
     if row.material_name and (material := by_alias.get(_normalize(row.material_name))):
-        return {
-            **_parsed_row_dict(row),
-            "raw_material_id": material.id,
-            "matched_by": "alias",
-            "status": "matched_exact",
-        }
+        return _matched_excel_preview_row(row, material, matched_by="alias")
     if row.material_code and (material := by_alias.get(_normalize(row.material_code))):
-        return {
-            **_parsed_row_dict(row),
-            "raw_material_id": material.id,
-            "matched_by": "alias",
-            "status": "matched_exact",
-        }
+        return _matched_excel_preview_row(row, material, matched_by="alias")
     suggestion = _fuzzy_material_suggestion(row, materials)
     suggested_fields = (
         {
@@ -1690,6 +1850,23 @@ def _excel_preview_row(
         "matched_by": None,
         "status": "needs_review",
         "message": "No exact raw material match was found.",
+    }
+
+
+def _matched_excel_preview_row(
+    row: ParsedFormulaRow,
+    material: RawMaterial,
+    *,
+    matched_by: str,
+) -> dict[str, Any]:
+    return {
+        **_parsed_row_dict(row),
+        "raw_material_id": material.id,
+        "resolved_material_code": material.code,
+        "resolved_material_name": material.name,
+        "matched_by": matched_by,
+        "status": "matched_exact",
+        "message": None,
     }
 
 
@@ -1738,6 +1915,10 @@ def _parsed_row_dict(row: ParsedFormulaRow) -> dict[str, Any]:
         "material_code": row.material_code,
         "material_name": row.material_name,
         "percentage": row.percentage,
+        "imported_price": row.price,
+        "imported_parameters": row.parameters,
+        "lab_material_name": row.lab_material_name,
+        "lab_observation": row.lab_observation,
         "status": row.status,
         "message": row.message,
     }

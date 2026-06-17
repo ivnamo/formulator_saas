@@ -1,3 +1,4 @@
+from datetime import date
 from io import BytesIO
 import uuid
 
@@ -15,7 +16,12 @@ from formulia_api.jira_client import (
 )
 from formulia_api.jira_oauth import JiraOAuthCallbackResult
 from formulia_api.main import create_app
-from formulia_api.models import IntegrationEvent, IsoDesignTrial, TenantMember
+from formulia_api.models import (
+    FormulaReviewArtifact,
+    IntegrationEvent,
+    IsoDesignTrial,
+    TenantMember,
+)
 
 
 USER_A = "10000000-0000-0000-0000-000000000001"
@@ -636,12 +642,17 @@ def test_formula_jira_review_request_captures_snapshot() -> None:
             "quantity": None,
             "unit": None,
             "order_index": 0,
+            "price": None,
+            "currency": None,
+            "parameters": [],
         }
     ]
     assert review["snapshot"]["jira"]["project_key"] == "LAB"
     assert review["snapshot"]["formula"]["jira_project_id"] == "FLOWER"
     assert review["snapshot"]["formula"]["jira_issue_type"] == "Calidad"
     assert review["snapshot"]["formula"]["jira_product_type"] == "Nuevo"
+    assert review["snapshot"]["jira"]["issue_summary"] == "Review Formula"
+    assert review["snapshot"]["jira"]["issue_description"] is None
     assert review["snapshot"]["notes"] == "Priorizar revision de estabilidad."
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()] == [review["id"]]
@@ -751,7 +762,7 @@ def test_formula_jira_review_excel_artifact_is_generated_and_downloadable() -> N
     artifact = generated.json()
     assert artifact["id"] == repeated.json()["id"]
     assert artifact["artifact_type"] == "jira_review_xlsx"
-    assert artifact["file_name"].endswith(".xlsx")
+    assert artifact["file_name"] == f"DT_Review_Formula_{date.today().isoformat()}.xlsx"
     assert artifact["size_bytes"] > 0
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()] == [artifact["id"]]
@@ -764,26 +775,70 @@ def test_formula_jira_review_excel_artifact_is_generated_and_downloadable() -> N
     assert downloaded.status_code == 200
     assert artifact["file_name"] in downloaded.headers["content-disposition"]
 
-    workbook = load_workbook(BytesIO(downloaded.content), data_only=True)
-    assert workbook.sheetnames == ["Resumen", "Composicion", "Calculo", "Metadatos"]
+    workbook = load_workbook(BytesIO(downloaded.content), data_only=False)
+    assert workbook.sheetnames == ["Calculadora", "Hoja Lab", "Composición"]
 
-    summary = {
-        row[0].value: row[1].value
-        for row in workbook["Resumen"].iter_rows(min_row=2, max_col=2)
-    }
-    assert summary["Formula name"] == "Review Formula"
-    assert summary["Jira project"] == "LAB"
-    assert summary["Notes"] == "Preparar paquete Excel."
+    calculator = workbook["Calculadora"]
+    assert calculator["A1"].value == "Materia Prima"
+    assert calculator["A2"].value == "Material A"
+    assert calculator["B2"].value == 100
+    assert calculator["A4"].value == "TOTAL"
+    assert calculator["B4"].value == "=SUM(B2:B3)"
+    assert calculator["C4"].value == "=SUMPRODUCT($B$2:$B$2,C2:C2)/100"
 
-    composition = workbook["Composicion"]
-    assert composition["C2"].value == "Material A"
-    assert composition["D2"].value == 100
+    lab = workbook["Hoja Lab"]
+    assert lab["C3"].value == "Review Formula"
+    assert lab["C6"].value == "Material A"
+    assert lab["D6"].value == 100
+    assert lab["E6"].value == "=D6*10/2"
+    assert lab["F6"].value == "=D6*10*2"
+    assert lab["D8"].value == "=SUM(D6:D6)"
 
-    calculation_rows = [
-        [cell.value for cell in row]
-        for row in workbook["Calculo"].iter_rows(min_row=2, max_col=7)
-    ]
-    assert any(row[0] == "Validation" and row[1] == "missing_price" for row in calculation_rows)
+    composition = workbook["Composición"]
+    assert composition["A2"].value == "Parámetro"
+    assert composition["A3"].value == "Precio"
+    assert composition["B3"].value == "='Calculadora'!C4"
+
+
+def test_formula_jira_review_excel_artifact_updates_legacy_filename() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_jira_connection(client, tenant_id)
+    formula = create_formula(client, tenant_id)
+    request_headers = headers(USER_A, tenant_id)
+    review = client.post(
+        f"/api/v1/formulas/{formula['id']}/reviews/jira",
+        headers=request_headers,
+        json={},
+    ).json()
+
+    with Session(client.app.state.engine) as session:
+        artifact = FormulaReviewArtifact(
+            tenant_id=uuid.UUID(tenant_id),
+            review_request_id=uuid.UUID(review["id"]),
+            artifact_type="jira_review_xlsx",
+            file_name="formulia_id_lab_Review_Formula_v1_legacy.xlsx",
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            checksum_sha256="legacy",
+            size_bytes=3,
+            content=b"old",
+        )
+        session.add(artifact)
+        session.commit()
+        session.refresh(artifact)
+        artifact_id = str(artifact.id)
+
+    generated = client.post(
+        f"/api/v1/formula-reviews/{review['id']}/artifacts/excel",
+        headers=request_headers,
+    )
+
+    assert generated.status_code == 200
+    updated = generated.json()
+    assert updated["id"] == artifact_id
+    assert updated["file_name"] == f"DT_Review_Formula_{date.today().isoformat()}.xlsx"
+    assert updated["checksum_sha256"] != "legacy"
+    assert updated["size_bytes"] > 3
 
 
 def test_formula_jira_review_can_be_sent_to_jira_with_excel_attachment(monkeypatch) -> None:
@@ -802,7 +857,7 @@ def test_formula_jira_review_can_be_sent_to_jira_with_excel_attachment(monkeypat
     review = client.post(
         f"/api/v1/formulas/{formula['id']}/reviews/jira",
         headers=request_headers,
-        json={"notes": "Enviar con OAuth."},
+        json={"description": "Descripcion redactada por I+D."},
     ).json()
 
     sent = client.post(
@@ -829,10 +884,11 @@ def test_formula_jira_review_can_be_sent_to_jira_with_excel_attachment(monkeypat
     fields = fake_jira.created_payloads[0]["fields"]
     assert fields["project"] == {"key": "LAB"}
     assert fields["issuetype"] == {"name": "Calidad"}
-    assert fields["summary"] == review["snapshot"]["jira"]["issue_summary"]
+    assert fields["summary"] == "Review Formula"
     assert "reporter" not in fields
     assert fields["description"]["type"] == "doc"
-    assert fields["labels"] == ["formulia", "formula-review"]
+    assert fields["description"]["content"][0]["content"][0]["text"] == "Descripcion redactada por I+D."
+    assert "labels" not in fields
     assert fields["customfield_10010"] == "Review Formula"
     assert fields["customfield_20010"] == "FLOWER"
     assert fields["customfield_20011"] == {"value": "Nuevo"}
@@ -867,9 +923,9 @@ def test_formula_jira_review_filters_fields_not_available_for_issue_type(monkeyp
     assert sent.status_code == 200
     fields = fake_jira.created_payloads[0]["fields"]
     assert fields["issuetype"] == {"name": "PoC"}
-    assert fields["summary"] == review["snapshot"]["jira"]["issue_summary"]
-    assert fields["description"]["type"] == "doc"
-    assert fields["labels"] == ["formulia", "formula-review"]
+    assert fields["summary"] == "Review Formula"
+    assert "description" not in fields
+    assert "labels" not in fields
     assert "customfield_10010" not in fields
     assert "customfield_20010" not in fields
     assert "customfield_20011" not in fields

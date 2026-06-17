@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "FormulIA Cloud",
   description: "Technical formulation workspace",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

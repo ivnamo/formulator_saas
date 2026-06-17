@@ -1,4 +1,9 @@
 import type { RawMaterial } from "./raw-material-model";
+import {
+  compareParameterCodes,
+  normalizeParameterKey,
+  PARAMETER_ORDER,
+} from "./parameter-order";
 
 export const PARAMETER_FAMILIES: Record<string, string[]> = {
   Macronutriente: ["Ntotal", "Norg", "Nnitr", "Nure", "Namo", "K2O", "P2O5"],
@@ -10,7 +15,7 @@ export const PARAMETER_FAMILIES: Record<string, string[]> = {
     "Corg",
     "Extracto Humico total",
     "Acidos fulvicos",
-    "Acidos humicos",
+    "Acidos húmicos",
     "Extracto de Algas",
     "Polisacaridos",
   ],
@@ -122,18 +127,13 @@ export const PARAMETER_VIEW_PRESETS: Array<{
 
 export const DEFAULT_BUILDER_SECTIONS: Record<BuilderSectionKey, boolean> = {
   basics: true,
-  materials: true,
+  materials: false,
   formula: false,
   calculation: false,
 };
 
 export function normalizeParameterLookup(value: string | null | undefined) {
-  return (value ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
+  return normalizeParameterKey(value ?? "");
 }
 
 export function parameterFamilyForCode(code: string) {
@@ -148,13 +148,11 @@ export function parameterFamilyForCode(code: string) {
 
 export function parameterDisplayCode(code: string) {
   const normalizedCode = normalizeParameterLookup(code);
-  for (const codes of Object.values(PARAMETER_FAMILIES)) {
-    const canonical = codes.find(
-      (candidate) => normalizeParameterLookup(candidate) === normalizedCode,
-    );
-    if (canonical) {
-      return canonical;
-    }
+  const canonical = PARAMETER_ORDER.find(
+    (candidate) => normalizeParameterLookup(candidate) === normalizedCode,
+  );
+  if (canonical) {
+    return canonical;
   }
   return code;
 }
@@ -187,7 +185,9 @@ export function materialParametersForView(
   limit = 5,
 ) {
   const requestedCodes =
-    visibleParameterCodes.length > 0 ? visibleParameterCodes : Object.keys(material.parameters);
+    visibleParameterCodes.length > 0
+      ? visibleParameterCodes
+      : Object.keys(material.parameters).sort(compareParameterCodes);
   return requestedCodes
     .map((code) => material.parameters[code])
     .filter((parameter): parameter is NonNullable<typeof parameter> => Boolean(parameter))
@@ -199,7 +199,7 @@ export function materialParametersForView(
       if (familyDelta !== 0) {
         return familyDelta;
       }
-      return left.code.localeCompare(right.code);
+      return compareParameterCodes(left.code, right.code);
     })
     .slice(0, limit);
 }

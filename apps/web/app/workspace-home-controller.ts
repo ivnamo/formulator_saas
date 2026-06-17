@@ -19,6 +19,7 @@ import { useRawMaterialActions } from "./raw-material-actions";
 import { useWorkspaceSettingsActions } from "./workspace-settings-actions";
 import { useDraftReviewActions } from "./draft-review-actions";
 import { useFormulaBuilderLocalActions } from "./formula-builder-local-actions";
+import { DEFAULT_BUILDER_SECTIONS } from "./formula-builder-model";
 import {
   useAuthenticatedWorkspaceLoad,
   useWorkspaceAuthSession,
@@ -190,11 +191,14 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     importPreview,
     importFile,
     importFileName,
+    importFormulaName,
     availableImportSheets,
     selectedImportSheet,
     resetImportState,
     setPendingFile,
     setPreview: setImportPreview,
+    setPastedPreview: setPastedImportPreview,
+    setImportFormulaName,
     setSelectedImportSheet,
     resolveImportRow: resolveImportRowState,
   } = useExcelImportState();
@@ -206,6 +210,13 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   useEffect(() => {
     setIsoProjectPreparedFromFormulaBuilder(false);
   }, [workspace.tenant?.id]);
+
+  useEffect(() => {
+    if (activeView === "formula") {
+      setBuilderSections(DEFAULT_BUILDER_SECTIONS);
+    }
+  }, [activeView, setBuilderSections]);
+
   const {
     catalogMaterialIds,
     catalogTotal,
@@ -350,7 +361,6 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     compatibilityRuleForm,
     jiraConnections,
     jiraConnectionForm,
-    result,
   });
   const {
     ensureRawMaterialDetail,
@@ -546,6 +556,15 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     workspace.formulaJiraIssueType,
     workspace.formulaJiraProjectId,
   ]);
+  const setFormulaJiraDescription = useCallback(
+    (description: string) => {
+      setWorkspace((current) => ({
+        ...current,
+        formulaJiraDescription: description,
+      }));
+    },
+    [setWorkspace],
+  );
   const prepareIsoProjectFromFormula = useCallback(() => {
     if (!isIsoQualityFormula(workspace.formulaJiraIssueType)) {
       setMessage("ISO solo aplica automaticamente a formulas con issue type Jira Calidad.");
@@ -617,6 +636,8 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   const {
     compareSavedFormulas,
     saveFormula,
+    exportCurrentFormulaIdLabExcel,
+    exportSavedFormulaIdLabExcel,
     refreshFormulaLibrary,
     openFormula,
     loadCalculationHistory,
@@ -644,6 +665,14 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setError,
     setMessage,
   });
+
+  useEffect(() => {
+    if (activeView !== "library" || !workspace.tenant || !session?.access_token) {
+      return;
+    }
+    void refreshFormulaLibrary({ silent: true });
+  }, [activeView, refreshFormulaLibrary, session?.access_token, workspace.tenant]);
+
   const {
     sendCurrentFormulaToJira,
     generateJiraReviewExcel,
@@ -654,11 +683,14 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   } = useJiraReviewActions({
     workspace,
     activeJiraConnection,
-    result,
+    isFormulaBalanced,
+    hasPendingDraftReview,
     formulaReviewRequests,
     selectedJiraIsoDesignProjectId,
     headers,
     uploadHeaders,
+    setWorkspace,
+    setResult,
     setFormulaReviewRequests,
     setFormulaReviewArtifacts,
     loadFormulaReviewRequests,
@@ -670,6 +702,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   const {
     selectExcelImportFile,
     previewSelectedImportSheet,
+    parsePastedImportRows,
     saveExcelImport,
     resolveImportRow,
     acceptImportSuggestion,
@@ -679,6 +712,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     workspace,
     importPreview,
     importFile,
+    importFormulaName,
     headers,
     uploadHeaders,
     setWorkspace,
@@ -688,6 +722,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setSavedFormulaComparison,
     setPendingFile,
     setImportPreview,
+    setPastedImportPreview,
     setSelectedImportSheet,
     resolveImportRowState,
     refreshCatalog,
@@ -818,6 +853,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       selectFormulaForComparison,
       refreshFormulaLibrary,
       compareSavedFormulas,
+      exportSavedFormulaIdLabExcel,
       openFormula,
       updateComparisonConstraint,
       setShowOnlyConstraintIssues,
@@ -825,6 +861,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     excelImport: {
       importPreview,
       importFileName,
+      importFormulaName,
       availableImportSheets,
       selectedImportSheet,
       rawMaterials: workspace.rawMaterials,
@@ -832,8 +869,10 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       canSelectImportSheet,
       canSaveImport,
       isBusy,
+      setImportFormulaName,
       selectExcelImportFile,
       previewSelectedImportSheet,
+      parsePastedImportRows,
       saveExcelImport,
       resolveImportRow,
       createMaterialFromImportRow,
@@ -903,6 +942,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       jiraIssueTypeOptions: isoJiraIssueTypeLabels(isoSettings),
       formulaJiraProjectId: workspace.formulaJiraProjectId,
       formulaJiraIssueType: workspace.formulaJiraIssueType,
+      formulaJiraDescription: workspace.formulaJiraDescription,
       selectedIsoDesignProjectId: selectedJiraIsoDesignProjectId,
       canPrepareJiraReview,
       formulaLineDetails,
@@ -934,6 +974,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       updateDraftReviewNotes,
       confirmDraftReview,
       setSelectedIsoDesignProjectId: setSelectedJiraIsoDesignProjectId,
+      setFormulaJiraDescription,
       prepareIsoProjectFromFormula,
       sendCurrentFormulaToJira,
       generateJiraReviewExcel,
@@ -946,6 +987,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       duplicateFormulaLine,
       removeFormulaLine,
       saveFormula,
+      exportCurrentFormulaIdLabExcel,
     },
     results: { result },
   });

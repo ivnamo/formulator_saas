@@ -13,7 +13,11 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "e2e:raw-materials": "node scripts/verify_raw_materials_e2e.mjs",
     "check:legacy": "python scripts/legacy_formula_parity.py --limit 20",
+    "dev:api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-api.ps1",
     "dev:web": "npm --workspace apps/web run dev -- -H 127.0.0.1 -p 3000",
+    "dev:docker": "docker compose up",
+    "dev:docker:build": "docker compose up --build",
+    "dev:docker:down": "docker compose down",
     "build:web": "npm --workspace apps/web run build"
   },
   "engines": {

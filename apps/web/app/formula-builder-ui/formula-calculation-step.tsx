@@ -24,6 +24,7 @@ export type FormulaCalculationStepProps = {
   onShowOnlyPositiveChange: (value: boolean) => void;
   onSelectParameterView: (value: ParameterViewPresetKey) => void;
   onSaveFormula: () => void | Promise<void>;
+  onExportExcel: () => void | Promise<void>;
 };
 
 export function FormulaCalculationStep({
@@ -43,6 +44,7 @@ export function FormulaCalculationStep({
   onShowOnlyPositiveChange,
   onSelectParameterView,
   onSaveFormula,
+  onExportExcel,
 }: FormulaCalculationStepProps) {
   return (
     <BuilderStep
@@ -72,6 +74,7 @@ export function FormulaCalculationStep({
         onShowOnlyPositiveChange={onShowOnlyPositiveChange}
         onSelectParameterView={onSelectParameterView}
         onSaveFormula={onSaveFormula}
+        onExportExcel={onExportExcel}
       />
     </BuilderStep>
   );

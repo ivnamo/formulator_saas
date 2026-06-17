@@ -4,6 +4,7 @@ import {
   parameterMatchesPositiveFilter,
 } from "./formula-builder-model";
 import type { CalculationResult } from "./formula-model";
+import { compareParameterCodes } from "./parameter-order";
 import type { RawMaterial } from "./raw-material-model";
 import type { FormulaLine } from "./workspace-base-model";
 
@@ -114,14 +115,16 @@ export function buildCalculationParameterRows(
       }))
     : localPreview.parameters;
 
-  return rows.filter((parameter) => {
-    const visibleSelected = visibleParameterCodeSet.has(parameter.code);
-    const positiveSelected = parameterMatchesPositiveFilter(
-      parameter.value,
-      showOnlyPositiveParameters,
-    );
-    return visibleSelected && positiveSelected;
-  });
+  return rows
+    .filter((parameter) => {
+      const visibleSelected = visibleParameterCodeSet.has(parameter.code);
+      const positiveSelected = parameterMatchesPositiveFilter(
+        parameter.value,
+        showOnlyPositiveParameters,
+      );
+      return visibleSelected && positiveSelected;
+    })
+    .sort(compareParameterRows);
 }
 
 export function calculateFormulaTotalPercentage(formulaLines: FormulaLine[]) {
@@ -140,5 +143,5 @@ export function compareParameterRows(
   if (familyDelta !== 0) {
     return familyDelta;
   }
-  return left.code.localeCompare(right.code);
+  return compareParameterCodes(left.code, right.code);
 }

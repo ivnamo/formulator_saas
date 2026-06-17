@@ -4,6 +4,7 @@ import {
 } from "./workspace-utils";
 import type { ParameterRead } from "./workspace-base-model";
 import type { WorkspaceState } from "./workspace-state-model";
+import { sortByParameterCode } from "./parameter-order";
 
 export type InvitationForm = {
   email: string;
@@ -58,5 +59,5 @@ export function mergeParameters(
     parameters.map((item) => [item.id, item]),
   );
   next.set(parameter.id, parameter);
-  return Array.from(next.values()).sort((left, right) => left.code.localeCompare(right.code));
+  return sortByParameterCode(Array.from(next.values()), (parameter) => parameter.code);
 }

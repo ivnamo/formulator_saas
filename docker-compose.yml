@@ -1,0 +1,74 @@
+name: formulia-cloud
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - .env.local
+    environment:
+      FORMULIA_DISABLE_LOCAL_ENV: "1"
+      FORMULIA_DB_POOL_SIZE: "4"
+      FORMULIA_DB_MAX_OVERFLOW: "2"
+      FORMULIA_DB_POOL_TIMEOUT: "30"
+      FORMULIA_DB_POOL_RECYCLE: "300"
+    command:
+      - python
+      - -m
+      - uvicorn
+      - formulia_api.main:app
+      - --reload
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8010"
+    ports:
+      - "8010:8010"
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages/core:/app/packages/core
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health', timeout=2).read()"
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    env_file:
+      - .env.local
+    environment:
+      NEXT_PUBLIC_API_URL: "http://127.0.0.1:8010"
+      NEXT_TELEMETRY_DISABLED: "1"
+      WATCHPACK_POLLING: "true"
+    command:
+      - npm
+      - --workspace
+      - apps/web
+      - run
+      - dev
+      - --
+      - -H
+      - 0.0.0.0
+      - -p
+      - "3000"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - web_next_cache:/app/apps/web/.next
+
+volumes:
+  web_next_cache:

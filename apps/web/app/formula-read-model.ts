@@ -12,6 +12,7 @@ export type EditableFormulaMetadata = Pick<
   | "formulaJiraProjectId"
   | "formulaJiraIssueType"
   | "formulaJiraProductType"
+  | "formulaJiraDescription"
 >;
 
 export type EditableFormulaState = EditableFormulaMetadata &
@@ -36,6 +37,7 @@ export function toEditableFormulaMetadata(
       formula.jira_product_type,
       emptyWorkspace.formulaJiraProductType,
     ),
+    formulaJiraDescription: "",
   };
 }
 

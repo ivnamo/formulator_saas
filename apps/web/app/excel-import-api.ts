@@ -44,12 +44,15 @@ export function saveExcelImportedFormula(
   headers: HeadersInit,
   tenantName: string | null | undefined,
   metadata: ImportedFormulaMetadata,
+  formulaName: string | null | undefined,
   rows: ExcelImportPreviewRow[],
 ): Promise<FormulaRead> {
   return request<FormulaRead>("/api/v1/imports/formulas/excel/save", {
     method: "POST",
     headers,
-    body: JSON.stringify(buildImportedFormulaSavePayload(tenantName, metadata, rows)),
+    body: JSON.stringify(
+      buildImportedFormulaSavePayload(tenantName, metadata, rows, formulaName),
+    ),
   });
 }
 

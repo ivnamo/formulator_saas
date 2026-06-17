@@ -9,6 +9,7 @@ import {
 import { toEditableFormulaState } from "./formula-read-model";
 import {
   aliasFromImportRow,
+  buildPastedRowsImportPreview,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
   type ExcelImportSheets,
@@ -26,6 +27,7 @@ type ExcelImportActionsOptions = {
   workspace: WorkspaceState;
   importPreview: ExcelImportPreview | null;
   importFile: File | null;
+  importFormulaName: string;
   headers: HeadersInit;
   uploadHeaders: HeadersInit;
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
@@ -35,6 +37,7 @@ type ExcelImportActionsOptions = {
   setSavedFormulaComparison: Dispatch<SetStateAction<SavedFormulaComparison | null>>;
   setPendingFile: (file: File, sheets: ExcelImportSheets, selectedSheet: string) => void;
   setImportPreview: (preview: ExcelImportPreview) => void;
+  setPastedImportPreview: (preview: ExcelImportPreview) => void;
   setSelectedImportSheet: (sheetName: string) => void;
   resolveImportRowState: (rowNumber: number, rawMaterialId: string) => boolean;
   refreshCatalog: () => void;
@@ -49,6 +52,7 @@ export function useExcelImportActions({
   workspace,
   importPreview,
   importFile,
+  importFormulaName,
   headers,
   uploadHeaders,
   setWorkspace,
@@ -58,6 +62,7 @@ export function useExcelImportActions({
   setSavedFormulaComparison,
   setPendingFile,
   setImportPreview,
+  setPastedImportPreview,
   setSelectedImportSheet,
   resolveImportRowState,
   refreshCatalog,
@@ -137,6 +142,33 @@ export function useExcelImportActions({
     ],
   );
 
+  const parsePastedImportRows = useCallback(
+    (text: string) => {
+      if (!workspace.tenant) {
+        setError("Create a workspace first");
+        return;
+      }
+      const preview = buildPastedRowsImportPreview(text, workspace.rawMaterials);
+      if (preview.rows.length === 0) {
+        setError("Paste material and percentage rows first");
+        return;
+      }
+      setPastedImportPreview(preview);
+      setResult(null);
+      setMessage(
+        `Pasted rows parsed: ${preview.resolved_rows} resolved, ${preview.pending_rows} pending`,
+      );
+    },
+    [
+      setError,
+      setMessage,
+      setPastedImportPreview,
+      setResult,
+      workspace.rawMaterials,
+      workspace.tenant,
+    ],
+  );
+
   const saveExcelImport = useCallback(async () => {
     if (!workspace.tenant || !importPreview) {
       setError("Preview an Excel file first");
@@ -152,6 +184,7 @@ export function useExcelImportActions({
         headers,
         workspace.tenant?.name,
         workspace,
+        importFormulaName || importPreview.formula_name,
         importPreview.rows,
       );
       setWorkspace((current) => ({
@@ -167,6 +200,7 @@ export function useExcelImportActions({
     });
   }, [
     headers,
+    importFormulaName,
     importPreview,
     loadCalculationHistory,
     refreshFormulaLibrary,
@@ -281,6 +315,7 @@ export function useExcelImportActions({
   return {
     selectExcelImportFile,
     previewSelectedImportSheet,
+    parsePastedImportRows,
     saveExcelImport,
     resolveImportRow,
     acceptImportSuggestion,

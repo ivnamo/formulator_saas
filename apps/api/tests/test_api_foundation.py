@@ -122,6 +122,67 @@ def test_raw_material_aliases_are_tenant_scoped() -> None:
     assert forbidden.status_code == 404
 
 
+def test_raw_material_alias_creation_is_idempotent_for_same_material() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    alias_path = f"/api/v1/raw-materials/{raw_material['id']}/aliases"
+
+    created = client.post(
+        alias_path,
+        headers=headers,
+        json={"alias": "Active Alpha", "source": "excel_import"},
+    )
+    repeated = client.post(
+        alias_path,
+        headers=headers,
+        json={"alias": " active   alpha ", "source": "excel_import"},
+    )
+    listed = client.get(alias_path, headers=headers)
+
+    assert created.status_code == 201
+    assert repeated.status_code == 200
+    assert repeated.json()["id"] == created.json()["id"]
+    assert listed.status_code == 200
+    assert [alias["alias"] for alias in listed.json()] == ["Active Alpha"]
+
+
+def test_raw_material_alias_creation_rejects_cross_material_conflict() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    material_a = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Active A", "code": "ACT-A"},
+    ).json()
+    material_b = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Carrier B", "code": "CAR-B"},
+    ).json()
+
+    created = client.post(
+        f"/api/v1/raw-materials/{material_a['id']}/aliases",
+        headers=headers,
+        json={"alias": "Shared Alias", "source": "excel_import"},
+    )
+    conflict = client.post(
+        f"/api/v1/raw-materials/{material_b['id']}/aliases",
+        headers=headers,
+        json={"alias": "shared alias", "source": "excel_import"},
+    )
+
+    assert created.status_code == 201
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"] == "Alias already belongs to another raw material."
+
+
 def test_raw_material_list_includes_current_price_parameters_and_aliases() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

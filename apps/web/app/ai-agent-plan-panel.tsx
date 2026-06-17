@@ -4,6 +4,7 @@ import type {
   AgentFormulaCandidate,
   AgentPlan,
 } from "./ai-workflow-model";
+import { sortByParameterCode } from "./parameter-order";
 
 type AiAgentPlanPanelProps = {
   agentPlan: AgentPlan | null;
@@ -20,7 +21,10 @@ function formatCandidatePrice(candidate: AgentCandidate): string {
 }
 
 function formatCandidateParameters(candidate: AgentCandidate): string {
-  const values = Object.entries(candidate.parameters);
+  const values = sortByParameterCode(
+    Object.entries(candidate.parameters),
+    ([code]) => code,
+  );
   if (!values.length) {
     return "-";
   }
@@ -170,7 +174,7 @@ export function AiAgentPlanPanel({
                     <div>
                       <span>Parameters</span>
                       <strong>
-                        {candidate.parameters
+                        {sortByParameterCode(candidate.parameters, (parameter) => parameter.code)
                           .map(
                             (parameter) =>
                               `${parameter.code}: ${parameter.value.toFixed(2)}${parameter.unit ? ` ${parameter.unit}` : ""}`,

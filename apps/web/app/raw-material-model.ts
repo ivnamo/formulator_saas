@@ -1,4 +1,5 @@
 import type { Parameter } from "./workspace-base-model";
+import { sortByParameterCode } from "./parameter-order";
 
 export type RawMaterial = {
   id: string;
@@ -283,18 +284,23 @@ export function withManualParameterValue(
   parameter: Parameter,
   value: number,
 ): RawMaterial {
-  const parameters = {
-    ...material.parameters,
-    [parameter.code]: {
-      parameterId: parameter.id,
-      code: parameter.code,
-      name: parameter.name,
-      value,
-      unit: parameter.unit,
-      source: "manual",
-      confidence: null,
-    },
-  };
+  const parameters = Object.fromEntries(
+    sortByParameterCode(
+      [
+        ...Object.values(material.parameters).filter((item) => item.code !== parameter.code),
+        {
+          parameterId: parameter.id,
+          code: parameter.code,
+          name: parameter.name,
+          value,
+          unit: parameter.unit,
+          source: "manual",
+          confidence: null,
+        },
+      ],
+      (item) => item.code,
+    ).map((item) => [item.code, item]),
+  );
   return {
     ...material,
     parameters,
@@ -334,7 +340,11 @@ export function toWorkspaceRawMaterial(
       });
     }
   }
-  const parameters = Object.fromEntries(parameterMap);
+  const parameters = Object.fromEntries(
+    sortByParameterCode(Array.from(parameterMap.values()), (parameter) => parameter.code).map(
+      (parameter) => [parameter.code, parameter],
+    ),
+  );
 
   return {
     id: material.id,
