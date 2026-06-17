@@ -162,6 +162,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Content-Disposition"],
     )
     register_routes(app)
     register_jira_routes(app)

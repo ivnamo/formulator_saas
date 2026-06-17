@@ -149,7 +149,7 @@ def test_saved_formula_exports_atlantica_id_lab_template() -> None:
 
     response = client.get(
         f"/api/v1/formulas/{formula['id']}/exports/atlantica-id-lab.xlsx",
-        headers=headers,
+        headers={**headers, "Origin": "http://127.0.0.1:3000"},
     )
 
     assert response.status_code == 200
@@ -162,6 +162,7 @@ def test_saved_formula_exports_atlantica_id_lab_template() -> None:
     assert response.headers["content-disposition"] == (
         f'attachment; filename="{expected_file_name}"'
     )
+    assert response.headers["access-control-expose-headers"] == "Content-Disposition"
     workbook = load_workbook(BytesIO(response.content), data_only=False)
     assert workbook.sheetnames == ["Calculadora", "Hoja Lab", "Composición"]
 
