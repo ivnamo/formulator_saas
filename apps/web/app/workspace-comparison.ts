@@ -1,4 +1,5 @@
 import type { CalculationResult, FormulaRead } from "./formula-model";
+import { compareParameterCodes } from "./parameter-order";
 import type { FormulaLine } from "./workspace-base-model";
 
 export {
@@ -198,7 +199,7 @@ export function buildSavedFormulaComparison(
   const parameterCodes = Array.from(
     new Set([...baselineParameters.keys(), ...candidateParameters.keys()]),
   );
-  const parameterChanges = parameterCodes.sort().map((code) => {
+  const parameterChanges = parameterCodes.sort(compareParameterCodes).map((code) => {
     const baselineParameter = baselineParameters.get(code);
     const candidateParameter = candidateParameters.get(code);
     const baselineValue = baselineParameter?.value ?? null;

@@ -26,6 +26,7 @@ type ExcelImportActionsOptions = {
   workspace: WorkspaceState;
   importPreview: ExcelImportPreview | null;
   importFile: File | null;
+  importFormulaName: string;
   headers: HeadersInit;
   uploadHeaders: HeadersInit;
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
@@ -49,6 +50,7 @@ export function useExcelImportActions({
   workspace,
   importPreview,
   importFile,
+  importFormulaName,
   headers,
   uploadHeaders,
   setWorkspace,
@@ -152,6 +154,7 @@ export function useExcelImportActions({
         headers,
         workspace.tenant?.name,
         workspace,
+        importFormulaName || importPreview.formula_name,
         importPreview.rows,
       );
       setWorkspace((current) => ({
@@ -167,6 +170,7 @@ export function useExcelImportActions({
     });
   }, [
     headers,
+    importFormulaName,
     importPreview,
     loadCalculationHistory,
     refreshFormulaLibrary,

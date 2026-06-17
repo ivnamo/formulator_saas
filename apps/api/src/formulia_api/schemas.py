@@ -249,6 +249,24 @@ class FormulaCalculateRequest(BaseModel):
     required_parameter_codes: set[str] = Field(default_factory=set)
 
 
+class FormulaExcelMetadataCreate(BaseModel):
+    sample_code: str | None = None
+    lab_date: date | None = None
+    experiment_date: date | None = None
+    density: float | None = None
+    ph: float | None = None
+    notes: str | None = None
+
+
+class FormulaExcelExportRequest(BaseModel):
+    name: str
+    items: list[FormulaItemCreate]
+    jira_project_id: str | None = None
+    jira_issue_type: str = "Calidad"
+    jira_product_type: str = "Nuevo"
+    metadata: FormulaExcelMetadataCreate = Field(default_factory=FormulaExcelMetadataCreate)
+
+
 class CalculationRead(BaseModel):
     total_percentage: float
     price_total: float | None
@@ -692,7 +710,13 @@ class ExcelImportPreviewRowRead(BaseModel):
     row_number: int
     material_code: str | None
     material_name: str | None
+    resolved_material_code: str | None = None
+    resolved_material_name: str | None = None
     percentage: float | None
+    imported_price: float | None = None
+    imported_parameters: dict[str, float] = Field(default_factory=dict)
+    lab_material_name: str | None = None
+    lab_observation: str | None = None
     raw_material_id: uuid.UUID | None
     matched_by: str | None
     status: str
@@ -705,6 +729,10 @@ class ExcelImportPreviewRowRead(BaseModel):
 class ExcelImportPreviewRead(BaseModel):
     sheet_name: str
     available_sheets: list[str]
+    parser: str = "generic_table"
+    formula_name: str | None = None
+    parameter_headers: list[str] = Field(default_factory=list)
+    warnings: list[dict[str, Any]] = Field(default_factory=list)
     columns: dict[str, str | None]
     rows: list[ExcelImportPreviewRowRead]
     total_percentage: float

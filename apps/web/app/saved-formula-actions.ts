@@ -6,6 +6,11 @@ import {
 } from "./formula-read-model";
 import { buildManualFormulaSavePayload } from "./formula-save-model";
 import {
+  downloadBlob,
+  downloadDraftFormulaIdLabExcel,
+  downloadSavedFormulaIdLabExcel,
+} from "./formula-excel-export-api";
+import {
   calculateSavedFormula,
   fetchFormulaCalculationHistory,
   fetchFormulaReviewArtifactsByReview,
@@ -242,6 +247,44 @@ export function useSavedFormulaActions({
     workspace.tenant,
   ]);
 
+  const exportCurrentFormulaIdLabExcel = useCallback(async () => {
+    if (!workspace.tenant) {
+      setError("Create a workspace first");
+      return;
+    }
+    if (workspace.formulaLines.length === 0) {
+      setError("Add at least one material before exporting");
+      return;
+    }
+
+    await runAction("Exporting Excel I+D", async () => {
+      const download =
+        workspace.formulaId && !hasPendingDraftReview
+          ? await downloadSavedFormulaIdLabExcel(headers, workspace.formulaId)
+          : await downloadDraftFormulaIdLabExcel(headers, workspace);
+      downloadBlob(download);
+      setMessage("Excel I+D downloaded");
+    });
+  }, [
+    hasPendingDraftReview,
+    headers,
+    runAction,
+    setError,
+    setMessage,
+    workspace,
+  ]);
+
+  const exportSavedFormulaIdLabExcel = useCallback(
+    async (formula: FormulaRead) => {
+      await runAction("Exporting saved Excel I+D", async () => {
+        const download = await downloadSavedFormulaIdLabExcel(headers, formula.id);
+        downloadBlob(download);
+        setMessage("Saved Excel I+D downloaded");
+      });
+    },
+    [headers, runAction, setMessage],
+  );
+
   const openFormula = useCallback(
     async (formula: FormulaRead) => {
       await runAction("Opening formula", async () => {
@@ -284,6 +327,8 @@ export function useSavedFormulaActions({
   return {
     compareSavedFormulas,
     saveFormula,
+    exportCurrentFormulaIdLabExcel,
+    exportSavedFormulaIdLabExcel,
     refreshFormulaLibrary,
     openFormula,
     loadCalculationHistory,

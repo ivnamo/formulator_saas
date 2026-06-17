@@ -636,6 +636,9 @@ def test_formula_jira_review_request_captures_snapshot() -> None:
             "quantity": None,
             "unit": None,
             "order_index": 0,
+            "price": None,
+            "currency": None,
+            "parameters": [],
         }
     ]
     assert review["snapshot"]["jira"]["project_key"] == "LAB"
@@ -764,26 +767,29 @@ def test_formula_jira_review_excel_artifact_is_generated_and_downloadable() -> N
     assert downloaded.status_code == 200
     assert artifact["file_name"] in downloaded.headers["content-disposition"]
 
-    workbook = load_workbook(BytesIO(downloaded.content), data_only=True)
-    assert workbook.sheetnames == ["Resumen", "Composicion", "Calculo", "Metadatos"]
+    workbook = load_workbook(BytesIO(downloaded.content), data_only=False)
+    assert workbook.sheetnames == ["Calculadora", "Hoja Lab", "Composición"]
 
-    summary = {
-        row[0].value: row[1].value
-        for row in workbook["Resumen"].iter_rows(min_row=2, max_col=2)
-    }
-    assert summary["Formula name"] == "Review Formula"
-    assert summary["Jira project"] == "LAB"
-    assert summary["Notes"] == "Preparar paquete Excel."
+    calculator = workbook["Calculadora"]
+    assert calculator["A1"].value == "Materia Prima"
+    assert calculator["A2"].value == "Material A"
+    assert calculator["B2"].value == 100
+    assert calculator["A4"].value == "TOTAL"
+    assert calculator["B4"].value == "=SUM(B2:B3)"
+    assert calculator["C4"].value == "=SUMPRODUCT($B$2:$B$2,C2:C2)/100"
 
-    composition = workbook["Composicion"]
-    assert composition["C2"].value == "Material A"
-    assert composition["D2"].value == 100
+    lab = workbook["Hoja Lab"]
+    assert lab["C3"].value == "Review Formula"
+    assert lab["C6"].value == "Material A"
+    assert lab["D6"].value == 100
+    assert lab["E6"].value == "=D6*10/2"
+    assert lab["F6"].value == "=D6*10*2"
+    assert lab["D8"].value == "=SUM(D6:D6)"
 
-    calculation_rows = [
-        [cell.value for cell in row]
-        for row in workbook["Calculo"].iter_rows(min_row=2, max_col=7)
-    ]
-    assert any(row[0] == "Validation" and row[1] == "missing_price" for row in calculation_rows)
+    composition = workbook["Composición"]
+    assert composition["A2"].value == "Parámetro"
+    assert composition["A3"].value == "Precio"
+    assert composition["B3"].value == "='Calculadora'!C4"
 
 
 def test_formula_jira_review_can_be_sent_to_jira_with_excel_attachment(monkeypatch) -> None:

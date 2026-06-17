@@ -31,7 +31,12 @@ from .models import (
     IntegrationEvent,
     JiraConnection,
     RawMaterial,
+    RawMaterialPrice,
     utc_now,
+)
+from .raw_material_snapshot import (
+    active_parameter_value_dicts_by_material_id,
+    current_prices_by_material_id,
 )
 from .schemas import (
     FormulaJiraReviewCreate,
@@ -1491,7 +1496,14 @@ def _formula_jira_snapshot(
     iso_trial_number: int | None = None,
     iso_reason_comment: str | None = None,
 ) -> dict[str, Any]:
-    materials_by_id = _materials_by_id(session, tenant_id, [item.raw_material_id for item in items])
+    material_ids = [item.raw_material_id for item in items]
+    materials_by_id = _materials_by_id(session, tenant_id, material_ids)
+    prices_by_material_id = current_prices_by_material_id(session, tenant_id, material_ids)
+    parameter_values_by_material_id = active_parameter_value_dicts_by_material_id(
+        session,
+        tenant_id,
+        material_ids,
+    )
     latest_calculation = _latest_calculation(session, tenant_id, formula.id)
     issue_summary = f"{formula.jira_issue_type.upper()} - {formula.jira_project_id or str(formula.id)[:8]} - {formula.name}"
     snapshot: dict[str, Any] = {
@@ -1508,7 +1520,12 @@ def _formula_jira_snapshot(
             "currency": formula.currency,
         },
         "items": [
-            _snapshot_item(item, materials_by_id.get(item.raw_material_id))
+            _snapshot_item(
+                item,
+                materials_by_id.get(item.raw_material_id),
+                prices_by_material_id.get(item.raw_material_id),
+                parameter_values_by_material_id.get(item.raw_material_id, []),
+            )
             for item in items
         ],
         "latest_calculation": latest_calculation.result_json if latest_calculation else None,
@@ -1564,7 +1581,12 @@ def _latest_calculation(
     ).first()
 
 
-def _snapshot_item(item: FormulaItem, material: RawMaterial | None) -> dict[str, Any]:
+def _snapshot_item(
+    item: FormulaItem,
+    material: RawMaterial | None,
+    price: RawMaterialPrice | None,
+    parameters: list[dict[str, Any]],
+) -> dict[str, Any]:
     return {
         "raw_material_id": str(item.raw_material_id),
         "code": material.code if material else None,
@@ -1573,6 +1595,9 @@ def _snapshot_item(item: FormulaItem, material: RawMaterial | None) -> dict[str,
         "quantity": item.quantity,
         "unit": item.unit,
         "order_index": item.order_index,
+        "price": price.price if price else None,
+        "currency": price.currency if price else None,
+        "parameters": parameters,
     }
 
 

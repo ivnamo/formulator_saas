@@ -3,6 +3,8 @@ import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "./supabase-client";
 import type { WorkspaceState } from "./workspace-state-model";
 
+const SESSION_CHECK_TIMEOUT_MS = 8000;
+
 type AuthenticatedWorkspaceLoadOptions = {
   session: Session | null;
   tenant: WorkspaceState["tenant"];
@@ -16,24 +18,52 @@ export function useWorkspaceAuthSession(tenant: WorkspaceState["tenant"]) {
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
     let mounted = true;
+    let redirected = false;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) {
+    const redirectToLogin = () => {
+      if (!mounted || redirected) {
         return;
       }
-      if (!data.session) {
-        window.location.href = "/login";
-        return;
-      }
-      setSession(data.session);
+      redirected = true;
       setAuthChecked(true);
-    });
+      window.location.assign("/login");
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      redirectToLogin();
+    }, SESSION_CHECK_TIMEOUT_MS);
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted || redirected) {
+          return;
+        }
+        window.clearTimeout(timeoutId);
+        if (!data.session) {
+          redirectToLogin();
+          return;
+        }
+        setSession(data.session);
+        setAuthChecked(true);
+      })
+      .catch(() => {
+        if (!mounted || redirected) {
+          return;
+        }
+        window.clearTimeout(timeoutId);
+        redirectToLogin();
+      });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted || redirected) {
+        return;
+      }
+      window.clearTimeout(timeoutId);
       if (!nextSession) {
-        window.location.href = "/login";
+        redirectToLogin();
         return;
       }
       setSession(nextSession);
@@ -42,6 +72,7 @@ export function useWorkspaceAuthSession(tenant: WorkspaceState["tenant"]) {
 
     return () => {
       mounted = false;
+      window.clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);

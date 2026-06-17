@@ -9,6 +9,7 @@ export function useExcelImportState() {
   const [importPreview, setImportPreview] = useState<ExcelImportPreview | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importFileName, setImportFileName] = useState("");
+  const [importFormulaName, setImportFormulaName] = useState("");
   const [availableImportSheets, setAvailableImportSheets] = useState<string[]>([]);
   const [selectedImportSheet, setSelectedImportSheet] = useState("");
 
@@ -16,6 +17,7 @@ export function useExcelImportState() {
     setImportPreview(null);
     setImportFile(null);
     setImportFileName("");
+    setImportFormulaName("");
     setAvailableImportSheets([]);
     setSelectedImportSheet("");
   }, []);
@@ -24,6 +26,7 @@ export function useExcelImportState() {
     (file: File, sheets: ExcelImportSheets, selectedSheet: string) => {
       setImportFile(file);
       setImportFileName(file.name);
+      setImportFormulaName(defaultImportFormulaName(file.name));
       setAvailableImportSheets(sheets.sheets);
       setSelectedImportSheet(selectedSheet);
       setImportPreview(null);
@@ -33,6 +36,7 @@ export function useExcelImportState() {
 
   const setPreview = useCallback((preview: ExcelImportPreview) => {
     setImportPreview(preview);
+    setImportFormulaName((current) => preview.formula_name?.trim() || current);
     setAvailableImportSheets(preview.available_sheets);
     setSelectedImportSheet(preview.sheet_name);
   }, []);
@@ -51,12 +55,18 @@ export function useExcelImportState() {
     importPreview,
     importFile,
     importFileName,
+    importFormulaName,
     availableImportSheets,
     selectedImportSheet,
     resetImportState,
     setPendingFile,
     setPreview,
+    setImportFormulaName,
     setSelectedImportSheet,
     resolveImportRow,
   };
+}
+
+function defaultImportFormulaName(fileName: string): string {
+  return fileName.replace(/\.[^.]+$/, "").trim();
 }

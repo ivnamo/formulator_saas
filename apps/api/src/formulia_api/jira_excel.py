@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import hashlib
 import re
 import uuid
 from dataclasses import dataclass
-from io import BytesIO
 from typing import Any
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
+
+from .formula_excel_template import build_formula_id_lab_excel_from_snapshot
 
 
 JIRA_REVIEW_EXCEL_TYPE = "jira_review_xlsx"
@@ -31,25 +31,13 @@ def build_jira_review_excel(
     snapshot: dict[str, Any],
     review_id: uuid.UUID,
 ) -> JiraReviewExcel:
-    workbook = Workbook()
-    summary_sheet = workbook.active
-    summary_sheet.title = "Resumen"
-
-    _write_summary_sheet(summary_sheet, snapshot, review_id)
-    _write_composition_sheet(workbook.create_sheet("Composicion"), snapshot)
-    _write_calculation_sheet(workbook.create_sheet("Calculo"), snapshot)
-    _write_metadata_sheet(workbook.create_sheet("Metadatos"), snapshot, review_id)
-
-    stream = BytesIO()
-    workbook.save(stream)
-    content = stream.getvalue()
-    file_name = _file_name(snapshot, review_id)
+    excel = build_formula_id_lab_excel_from_snapshot(snapshot, review_id)
     return JiraReviewExcel(
-        file_name=file_name,
+        file_name=excel.file_name,
         content_type=JIRA_REVIEW_EXCEL_CONTENT_TYPE,
-        checksum_sha256=hashlib.sha256(content).hexdigest(),
-        size_bytes=len(content),
-        content=content,
+        checksum_sha256=excel.checksum_sha256,
+        size_bytes=excel.size_bytes,
+        content=excel.content,
     )
 
 

@@ -36,9 +36,12 @@ export function buildImportedFormulaSavePayload(
   tenantName: string | null | undefined,
   metadata: Omit<FormulaSaveMetadata, "formulaName">,
   rows: FormulaImportRow[],
+  formulaName?: string | null,
 ) {
+  const fallbackName = `${tenantName ?? "Imported"} Excel Formula`;
+
   return {
-    name: `${tenantName ?? "Imported"} Excel Formula`,
+    name: formulaName?.trim() || fallbackName,
     jira_project_id: metadata.formulaJiraProjectId.trim() || null,
     jira_issue_type: metadata.formulaJiraIssueType,
     jira_product_type: metadata.formulaJiraProductType,

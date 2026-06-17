@@ -1,4 +1,6 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { toEditableFormulaMetadata } from "./formula-read-model";
+import { buildManualFormulaSavePayload } from "./formula-save-model";
 import {
   createJiraFormulaReview,
   downloadFormulaReviewArtifactBlob,
@@ -7,6 +9,11 @@ import {
   sendFormulaReviewToJira,
   syncFormulaReviewJiraStatus,
 } from "./jira-review-api";
+import {
+  calculateSavedFormula,
+  persistSavedFormula,
+} from "./saved-formula-api";
+import { getFormulaSaveBlocker } from "./saved-formula-action-guards";
 import type {
   CalculationResult,
   FormulaReviewArtifact,
@@ -18,11 +25,14 @@ import type { WorkspaceState } from "./workspace-state-model";
 type JiraReviewActionsOptions = {
   workspace: WorkspaceState;
   activeJiraConnection: JiraConnection | null;
-  result: CalculationResult | null;
+  isFormulaBalanced: boolean;
+  hasPendingDraftReview: boolean;
   formulaReviewRequests: FormulaReviewRequest[];
   selectedJiraIsoDesignProjectId: string;
   headers: HeadersInit;
   uploadHeaders: HeadersInit;
+  setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
+  setResult: Dispatch<SetStateAction<CalculationResult | null>>;
   setFormulaReviewRequests: Dispatch<SetStateAction<FormulaReviewRequest[]>>;
   setFormulaReviewArtifacts: Dispatch<
     SetStateAction<Record<string, FormulaReviewArtifact[]>>
@@ -43,11 +53,14 @@ function jiraSendMessage(review: FormulaReviewRequest) {
 export function useJiraReviewActions({
   workspace,
   activeJiraConnection,
-  result,
+  isFormulaBalanced,
+  hasPendingDraftReview,
   formulaReviewRequests,
   selectedJiraIsoDesignProjectId,
   headers,
   uploadHeaders,
+  setWorkspace,
+  setResult,
   setFormulaReviewRequests,
   setFormulaReviewArtifacts,
   loadFormulaReviewRequests,
@@ -57,42 +70,48 @@ export function useJiraReviewActions({
   setMessage,
 }: JiraReviewActionsOptions) {
   const sendCurrentFormulaToJira = useCallback(async () => {
-    if (!workspace.tenant || !workspace.formulaId) {
-      setError("Save and calculate the formula before sending to Jira");
+    const blocker = getFormulaSaveBlocker({
+      workspace,
+      isFormulaBalanced,
+      hasPendingDraftReview,
+    });
+    if (blocker) {
+      setError(blocker.message);
       return;
     }
     if (!activeJiraConnection) {
       setError("Configure Jira before sending");
       return;
     }
-    if (result === null) {
-      setError("Calculate before sending to Jira");
+    const isQualityJiraIssueType =
+      workspace.formulaJiraIssueType.trim().toLowerCase() === "calidad";
+    if (!workspace.formulaJiraProjectId.trim() && isQualityJiraIssueType) {
+      setError(
+        "Crea o selecciona un F10-01 para generar ProyectoID antes de enviar la formula de Calidad a Jira.",
+      );
       return;
     }
-    if (!workspace.formulaJiraProjectId.trim()) {
-      if (workspace.formulaJiraIssueType.trim().toLowerCase() === "calidad") {
-        setError(
-          "Crea o selecciona un F10-01 para generar ProyectoID antes de enviar la formula de Calidad a Jira.",
-        );
-      } else {
-        setError("ProyectoID is required before sending to Jira");
-      }
-      return;
-    }
-    if (
-      workspace.formulaJiraIssueType.trim().toLowerCase() === "calidad" &&
-      !selectedJiraIsoDesignProjectId
-    ) {
+    if (isQualityJiraIssueType && !selectedJiraIsoDesignProjectId) {
       setError(
         "No existe F10-01 para este ProyectoID. Crea el expediente ISO antes de enviar la formula de Calidad a Jira.",
       );
       return;
     }
-    const formulaId = workspace.formulaId;
     const isoProjectId = selectedJiraIsoDesignProjectId || null;
 
     await runAction("Sending formula to Jira", async () => {
-      const existingDraftReview = formulaReviewRequests.find(
+      const payload = buildManualFormulaSavePayload(workspace, workspace.formulaLines);
+      const formula = await persistSavedFormula(headers, workspace.formulaId, payload);
+      const calculation = await calculateSavedFormula(headers, formula.id);
+      setWorkspace((current) => ({
+        ...current,
+        ...toEditableFormulaMetadata(formula),
+      }));
+      setResult(calculation);
+
+      const candidateReviews =
+        workspace.formulaId === formula.id ? formulaReviewRequests : [];
+      const existingDraftReview = candidateReviews.find(
         (review) =>
           !review.jira_issue_key &&
           (isoProjectId
@@ -101,7 +120,7 @@ export function useJiraReviewActions({
       );
       const review =
         existingDraftReview ??
-        (await createJiraFormulaReview(headers, formulaId, {
+        (await createJiraFormulaReview(headers, formula.id, {
           design_project_id: isoProjectId,
         }));
       const sentReview = await sendFormulaReviewToJira(headers, review.id);
@@ -116,18 +135,24 @@ export function useJiraReviewActions({
   }, [
     activeJiraConnection,
     formulaReviewRequests,
+    hasPendingDraftReview,
     headers,
+    isFormulaBalanced,
     loadFormulaReviewRequests,
     onIsoModuleRefresh,
-    result,
     runAction,
     selectedJiraIsoDesignProjectId,
     setError,
     setFormulaReviewRequests,
+    setResult,
     setMessage,
+    setWorkspace,
     workspace.formulaId,
     workspace.formulaJiraIssueType,
     workspace.formulaJiraProjectId,
+    workspace.formulaJiraProductType,
+    workspace.formulaLines,
+    workspace.formulaName,
     workspace.tenant,
   ]);
 

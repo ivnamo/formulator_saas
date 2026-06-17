@@ -1,7 +1,17 @@
+export const ATLANTICA_ID_LAB_PARSER = "atlantica_id_lab";
+export const COMPACT_LAB_TRIAL_PARSER = "compact_lab_trial";
+
+export type ExcelImportWarning = {
+  code?: string | null;
+  message?: string | null;
+} | string;
+
 export type ExcelImportPreviewRow = {
   row_number: number;
   material_code: string | null;
   material_name: string | null;
+  resolved_material_code: string | null;
+  resolved_material_name: string | null;
   percentage: number | null;
   raw_material_id: string | null;
   matched_by: string | null;
@@ -10,11 +20,19 @@ export type ExcelImportPreviewRow = {
   suggested_raw_material_id: string | null;
   suggested_material_name: string | null;
   suggested_match_score: number | null;
+  imported_price: number | null;
+  imported_parameters: Record<string, number>;
+  lab_material_name: string | null;
+  lab_observation: string | null;
 };
 
 export type ExcelImportPreview = {
+  parser: string;
+  formula_name: string | null;
   sheet_name: string;
   available_sheets: string[];
+  parameter_headers: string[];
+  warnings: ExcelImportWarning[];
   columns: {
     material_name: string | null;
     material_code: string | null;
@@ -41,6 +59,8 @@ export function withResolvedImportRow(
       ? {
           ...row,
           raw_material_id: rawMaterialId,
+          resolved_material_code: null,
+          resolved_material_name: null,
           matched_by: "manual",
           status: "matched_exact",
           message: null,

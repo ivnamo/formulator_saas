@@ -5,6 +5,7 @@ type ExcelImportPanelProps = WorkspaceHomePanels["excelImport"];
 type BuildWorkspaceExcelImportPanelPropsArgs = {
   importPreview: ExcelImportPanelProps["importPreview"];
   importFileName: ExcelImportPanelProps["importFileName"];
+  importFormulaName: ExcelImportPanelProps["importFormulaName"];
   availableImportSheets: ExcelImportPanelProps["availableImportSheets"];
   selectedImportSheet: ExcelImportPanelProps["selectedImportSheet"];
   rawMaterials: ExcelImportPanelProps["rawMaterials"];
@@ -12,6 +13,7 @@ type BuildWorkspaceExcelImportPanelPropsArgs = {
   canSelectImportSheet: ExcelImportPanelProps["canSelectImportSheet"];
   canSaveImport: ExcelImportPanelProps["canSaveImport"];
   isBusy: ExcelImportPanelProps["isBusy"];
+  setImportFormulaName: ExcelImportPanelProps["onFormulaNameChange"];
   selectExcelImportFile: ExcelImportPanelProps["onSelectFile"];
   previewSelectedImportSheet: ExcelImportPanelProps["onPreviewSheet"];
   saveExcelImport: ExcelImportPanelProps["onSaveImport"];
@@ -27,6 +29,7 @@ export function buildWorkspaceExcelImportPanelProps(
   return {
     importPreview: args.importPreview,
     importFileName: args.importFileName,
+    importFormulaName: args.importFormulaName,
     availableImportSheets: args.availableImportSheets,
     selectedImportSheet: args.selectedImportSheet,
     rawMaterials: args.rawMaterials,
@@ -34,6 +37,7 @@ export function buildWorkspaceExcelImportPanelProps(
     canSelectImportSheet: args.canSelectImportSheet,
     canSaveImport: args.canSaveImport,
     isBusy: args.isBusy,
+    onFormulaNameChange: args.setImportFormulaName,
     onSelectFile: args.selectExcelImportFile,
     onPreviewSheet: args.previewSelectedImportSheet,
     onSaveImport: args.saveExcelImport,

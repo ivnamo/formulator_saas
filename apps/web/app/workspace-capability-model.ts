@@ -1,6 +1,5 @@
 import type { CompatibilityRuleForm } from "./compatibility-state";
 import type { ExcelImportPreview } from "./excel-import-model";
-import type { CalculationResult } from "./formula-model";
 import type { JiraConnection, JiraConnectionForm } from "./jira-connection-model";
 import type { FormulaCompareSelection } from "./saved-formula-comparison-state";
 import { isTenantAdminRole } from "./tenant-roles";
@@ -21,7 +20,6 @@ export type WorkspaceCapabilitiesOptions = {
   compatibilityRuleForm: CompatibilityRuleForm;
   jiraConnections: JiraConnection[];
   jiraConnectionForm: JiraConnectionForm;
-  result: CalculationResult | null;
 };
 
 export type WorkspaceCapabilities = {
@@ -67,7 +65,6 @@ export function buildWorkspaceCapabilities({
   compatibilityRuleForm,
   jiraConnections,
   jiraConnectionForm,
-  result,
 }: WorkspaceCapabilitiesOptions): WorkspaceCapabilities {
   const isBusy = status === "working";
   const canEditTenantData = Boolean(workspace.tenant) && !isBusy;
@@ -118,12 +115,15 @@ export function buildWorkspaceCapabilities({
   const canLoadJiraMetadata = Boolean(activeJiraConnection) && canEditTenantData;
   const canAuthorizeJiraOAuth =
     Boolean(workspace.tenant) && jiraConnectionForm.authType === "oauth" && !isBusy;
+  const isQualityJiraIssueType =
+    workspace.formulaJiraIssueType.trim().toLowerCase() === "calidad";
   const canPrepareJiraReview =
     Boolean(workspace.tenant) &&
-    Boolean(workspace.formulaId) &&
-    workspace.formulaJiraProjectId.trim().length > 0 &&
+    workspace.formulaLines.length > 0 &&
+    isFormulaBalanced &&
+    !hasPendingDraftReview &&
+    (!isQualityJiraIssueType || workspace.formulaJiraProjectId.trim().length > 0) &&
     Boolean(activeJiraConnection) &&
-    result !== null &&
     !isBusy;
   const canSearchCatalog = Boolean(workspace.tenant) && !isBusy;
 

@@ -104,6 +104,7 @@ type BuildFormulaBuilderPanelPropsArgs = {
   duplicateFormulaLine: FormulaBuilderCompositionProps["onDuplicateLine"];
   removeFormulaLine: FormulaBuilderCompositionProps["onRemoveLine"];
   saveFormula: FormulaBuilderCalculationProps["onSaveFormula"];
+  exportCurrentFormulaIdLabExcel: FormulaBuilderCalculationProps["onExportExcel"];
 };
 
 function buildFormulaBuilderBasicsProps(
@@ -246,6 +247,7 @@ function buildFormulaBuilderCalculationProps(
     onShowOnlyPositiveChange: args.setShowOnlyPositiveParameters,
     onSelectParameterView: args.selectCurrentParameterView,
     onSaveFormula: args.saveFormula,
+    onExportExcel: args.exportCurrentFormulaIdLabExcel,
   };
 }
 

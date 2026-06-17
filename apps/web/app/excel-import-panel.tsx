@@ -1,15 +1,19 @@
-import { Check, Plus, Save } from "lucide-react";
+import { AlertTriangle, Check, Plus, Save } from "lucide-react";
 import {
+  ATLANTICA_ID_LAB_PARSER,
+  COMPACT_LAB_TRIAL_PARSER,
   aliasFromImportRow,
   type ExcelImportPreview,
   type ExcelImportPreviewRow,
 } from "./excel-import-model";
+import { FileDropzone } from "./file-dropzone";
 import type { RawMaterial } from "./raw-material-model";
 
 type ExcelImportPanelProps = {
   active: boolean;
   importPreview: ExcelImportPreview | null;
   importFileName: string;
+  importFormulaName: string;
   availableImportSheets: string[];
   selectedImportSheet: string;
   rawMaterials: RawMaterial[];
@@ -17,6 +21,7 @@ type ExcelImportPanelProps = {
   canSelectImportSheet: boolean;
   canSaveImport: boolean;
   isBusy: boolean;
+  onFormulaNameChange: (value: string) => void;
   onSelectFile: (file: File | null) => void | Promise<void>;
   onPreviewSheet: (sheetName: string) => void | Promise<void>;
   onSaveImport: () => void | Promise<void>;
@@ -30,6 +35,7 @@ export function ExcelImportPanel({
   active,
   importPreview,
   importFileName,
+  importFormulaName,
   availableImportSheets,
   selectedImportSheet,
   rawMaterials,
@@ -37,6 +43,7 @@ export function ExcelImportPanel({
   canSelectImportSheet,
   canSaveImport,
   isBusy,
+  onFormulaNameChange,
   onSelectFile,
   onPreviewSheet,
   onSaveImport,
@@ -45,22 +52,25 @@ export function ExcelImportPanel({
   onAcceptSuggestion,
   onCreateAliasFromRow,
 }: ExcelImportPanelProps) {
+  const isAtlanticaTemplate = importPreview?.parser === ATLANTICA_ID_LAB_PARSER;
+  const parserLabel = importPreview ? importParserLabel(importPreview.parser) : "Generic";
+  const heading = importPreview ? importPreviewHeading(importPreview) : "No file";
+
   return (
     <section id="import" className="panel importPanel" hidden={!active}>
       <div className="panelHeader">
         <h2>Excel import</h2>
-        <span>{importPreview ? importPreview.sheet_name : "No file"}</span>
+        <span>{heading}</span>
       </div>
       <div className="importActions">
-        <label>
-          <span>Upload .xlsx</span>
-          <input
-            type="file"
-            accept=".xlsx"
-            onChange={(event) => void onSelectFile(event.target.files?.[0] ?? null)}
-            disabled={!canEditTenantData}
-          />
-        </label>
+        <FileDropzone
+          accept=".xlsx"
+          disabled={!canEditTenantData}
+          fileName={importFileName}
+          helper="Solo .xlsx"
+          label="Excel"
+          onFile={onSelectFile}
+        />
         <label className="sheetSelector">
           <span>Sheet</span>
           <select
@@ -86,6 +96,15 @@ export function ExcelImportPanel({
               </>
             )}
           </select>
+        </label>
+        <label>
+          <span>Formula name</span>
+          <input
+            aria-label="Imported formula name"
+            value={importFormulaName}
+            onChange={(event) => onFormulaNameChange(event.target.value)}
+            disabled={!importPreview || isBusy}
+          />
         </label>
         <button
           className="secondaryButton"
@@ -114,7 +133,22 @@ export function ExcelImportPanel({
           <span>Pending</span>
           <strong>{importPreview ? importPreview.pending_rows : "-"}</strong>
         </div>
+        {importPreview ? (
+          <div>
+            <span>Parser</span>
+            <strong>{parserLabel}</strong>
+          </div>
+        ) : null}
+        {importPreview ? (
+          <div>
+            <span>Parameters</span>
+            <strong>{importPreview.parameter_headers.length}</strong>
+          </div>
+        ) : null}
       </div>
+      {isAtlanticaTemplate && importPreview ? (
+        <ImportTemplateNotice importPreview={importPreview} />
+      ) : null}
       <div className="importTable">
         <div className="importHead">
           <span>Row</span>
@@ -127,9 +161,9 @@ export function ExcelImportPanel({
           importPreview.rows.map((row) => (
             <div className="importRow" key={row.row_number}>
               <code>{row.row_number}</code>
-              <span>{row.material_code || row.material_name || "-"}</span>
+              <ImportMaterialCell rawMaterials={rawMaterials} row={row} />
               <span>{row.percentage === null ? "-" : `${row.percentage.toFixed(2)}%`}</span>
-              <span data-state={row.status}>{row.status}</span>
+              <ImportStatusCell row={row} />
               {row.status === "needs_review" ? (
                 <div className="resolveControls">
                   <select
@@ -191,7 +225,7 @@ export function ExcelImportPanel({
                   </button>
                 </div>
               ) : (
-                <span>{row.matched_by ?? "-"}</span>
+                <span>{importMatchLabel(row)}</span>
               )}
             </div>
           ))
@@ -201,4 +235,102 @@ export function ExcelImportPanel({
       </div>
     </section>
   );
+}
+
+function ImportTemplateNotice({
+  importPreview,
+}: {
+  importPreview: ExcelImportPreview;
+}) {
+  return (
+    <div className="importTemplateNotice">
+      <div>
+        <strong>{importPreview.formula_name || "Formula I+D detectada"}</strong>
+        <span>
+          {importPreview.parameter_headers.length} parametros desde Calculadora
+        </span>
+      </div>
+      {importPreview.warnings.length ? (
+        <div className="importTemplateWarnings">
+          <AlertTriangle size={16} />
+          <span>{importPreview.warnings.map(importWarningText).join(" ")}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ImportMaterialCell({
+  rawMaterials,
+  row,
+}: {
+  rawMaterials: RawMaterial[];
+  row: ExcelImportPreviewRow;
+}) {
+  const resolvedMaterial =
+    row.raw_material_id === null
+      ? null
+      : rawMaterials.find((material) => material.id === row.raw_material_id) ?? null;
+  const resolvedName = row.resolved_material_name ?? resolvedMaterial?.name ?? null;
+  const resolvedCode = row.resolved_material_code ?? resolvedMaterial?.code ?? null;
+
+  return (
+    <span>
+      {resolvedName ?? row.material_name ?? row.material_code ?? "-"}
+      {resolvedCode ? <small>{resolvedCode}</small> : null}
+      {row.imported_price === null ? null : (
+        <small>{row.imported_price.toFixed(4)} EUR/kg</small>
+      )}
+      {row.lab_observation ? <small>{row.lab_observation}</small> : null}
+    </span>
+  );
+}
+
+function importMatchLabel(row: ExcelImportPreviewRow): string {
+  if (row.matched_by === "alias") {
+    return "mapped";
+  }
+  return row.matched_by ?? "-";
+}
+
+function ImportStatusCell({ row }: { row: ExcelImportPreviewRow }) {
+  const count = importParameterCount(row);
+
+  return (
+    <span data-state={row.status}>
+      {row.status}
+      {count ? <small>{count} params</small> : null}
+    </span>
+  );
+}
+
+function importPreviewHeading(importPreview: ExcelImportPreview): string {
+  if (importPreview.parser === ATLANTICA_ID_LAB_PARSER) {
+    return "Plantilla I+D";
+  }
+  if (importPreview.parser === COMPACT_LAB_TRIAL_PARSER) {
+    return "Ensayo compacto";
+  }
+  return importPreview.sheet_name;
+}
+
+function importParserLabel(parser: string): string {
+  if (parser === ATLANTICA_ID_LAB_PARSER) {
+    return "Atlántica I+D";
+  }
+  if (parser === COMPACT_LAB_TRIAL_PARSER) {
+    return "Ensayo compacto";
+  }
+  return "Generic";
+}
+
+function importParameterCount(row: ExcelImportPreviewRow): number {
+  return Object.keys(row.imported_parameters).length;
+}
+
+function importWarningText(warning: ExcelImportPreview["warnings"][number]): string {
+  if (typeof warning === "string") {
+    return warning;
+  }
+  return warning.message ?? warning.code ?? "Import warning";
 }

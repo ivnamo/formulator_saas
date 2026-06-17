@@ -47,8 +47,10 @@ npm install
 Run the API:
 
 ```powershell
-.\.venv\Scripts\python -m uvicorn formulia_api.main:app --reload --host 127.0.0.1 --port 8000
+npm run dev:api
 ```
+
+This starts FastAPI on `http://127.0.0.1:8010` and applies the small local database pool settings used during authenticated QA.
 
 Configure the OpenAI-backed requirement parser:
 
@@ -72,6 +74,65 @@ npm run dev:web
 ```
 
 Then open `http://127.0.0.1:3000`.
+
+For the authenticated real flow, keep `.env.local` configured with Supabase and the API URL:
+
+```text
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8010
+```
+
+If Supabase returns `EMAXCONNSESSION max clients reached` while loading the app, use the Supabase transaction pooler URL in `DATABASE_URL` (`:6543`) and keep the local pool small with:
+
+```text
+FORMULIA_DB_POOL_SIZE=4
+FORMULIA_DB_MAX_OVERFLOW=2
+FORMULIA_DB_POOL_TIMEOUT=30
+```
+
+## Docker Development
+
+Docker is available for the same real authenticated flow. It runs the FastAPI API on `8010`, the Next.js web app on `3000`, and reads secrets from ignored `.env.local`.
+
+Start Docker Desktop first, then run:
+
+Start:
+
+```powershell
+npm run dev:docker
+```
+
+Rebuild the Docker images only when dependencies or Docker files change:
+
+```powershell
+npm run dev:docker:build
+```
+
+Open:
+
+```text
+http://127.0.0.1:3000
+```
+
+Healthcheck:
+
+```text
+http://127.0.0.1:8010/health
+```
+
+Stop:
+
+```powershell
+npm run dev:docker:down
+```
+
+The Docker setup intentionally does not copy `.env.local` into images. It is passed at runtime through Compose.
+
+During normal development, source files are mounted into the containers and both dev servers reload automatically:
+
+- Python/API changes reload through `uvicorn --reload`.
+- Next.js/web changes reload through `next dev`.
+- `.env.local` changes need a service restart, not an image rebuild.
+- `package.json`, `package-lock.json`, `pyproject.toml`, `Dockerfile` or `docker-compose.yml` changes usually need `npm run dev:docker:build`.
 
 Checks:
 

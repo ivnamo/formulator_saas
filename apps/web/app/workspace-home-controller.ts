@@ -19,6 +19,7 @@ import { useRawMaterialActions } from "./raw-material-actions";
 import { useWorkspaceSettingsActions } from "./workspace-settings-actions";
 import { useDraftReviewActions } from "./draft-review-actions";
 import { useFormulaBuilderLocalActions } from "./formula-builder-local-actions";
+import { DEFAULT_BUILDER_SECTIONS } from "./formula-builder-model";
 import {
   useAuthenticatedWorkspaceLoad,
   useWorkspaceAuthSession,
@@ -190,11 +191,13 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     importPreview,
     importFile,
     importFileName,
+    importFormulaName,
     availableImportSheets,
     selectedImportSheet,
     resetImportState,
     setPendingFile,
     setPreview: setImportPreview,
+    setImportFormulaName,
     setSelectedImportSheet,
     resolveImportRow: resolveImportRowState,
   } = useExcelImportState();
@@ -206,6 +209,13 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   useEffect(() => {
     setIsoProjectPreparedFromFormulaBuilder(false);
   }, [workspace.tenant?.id]);
+
+  useEffect(() => {
+    if (activeView === "formula") {
+      setBuilderSections(DEFAULT_BUILDER_SECTIONS);
+    }
+  }, [activeView, setBuilderSections]);
+
   const {
     catalogMaterialIds,
     catalogTotal,
@@ -350,7 +360,6 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     compatibilityRuleForm,
     jiraConnections,
     jiraConnectionForm,
-    result,
   });
   const {
     ensureRawMaterialDetail,
@@ -617,6 +626,8 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   const {
     compareSavedFormulas,
     saveFormula,
+    exportCurrentFormulaIdLabExcel,
+    exportSavedFormulaIdLabExcel,
     refreshFormulaLibrary,
     openFormula,
     loadCalculationHistory,
@@ -644,6 +655,14 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setError,
     setMessage,
   });
+
+  useEffect(() => {
+    if (activeView !== "library" || !workspace.tenant || !session?.access_token) {
+      return;
+    }
+    void refreshFormulaLibrary({ silent: true });
+  }, [activeView, refreshFormulaLibrary, session?.access_token, workspace.tenant]);
+
   const {
     sendCurrentFormulaToJira,
     generateJiraReviewExcel,
@@ -654,11 +673,14 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   } = useJiraReviewActions({
     workspace,
     activeJiraConnection,
-    result,
+    isFormulaBalanced,
+    hasPendingDraftReview,
     formulaReviewRequests,
     selectedJiraIsoDesignProjectId,
     headers,
     uploadHeaders,
+    setWorkspace,
+    setResult,
     setFormulaReviewRequests,
     setFormulaReviewArtifacts,
     loadFormulaReviewRequests,
@@ -679,6 +701,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     workspace,
     importPreview,
     importFile,
+    importFormulaName,
     headers,
     uploadHeaders,
     setWorkspace,
@@ -818,6 +841,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       selectFormulaForComparison,
       refreshFormulaLibrary,
       compareSavedFormulas,
+      exportSavedFormulaIdLabExcel,
       openFormula,
       updateComparisonConstraint,
       setShowOnlyConstraintIssues,
@@ -825,6 +849,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     excelImport: {
       importPreview,
       importFileName,
+      importFormulaName,
       availableImportSheets,
       selectedImportSheet,
       rawMaterials: workspace.rawMaterials,
@@ -832,6 +857,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       canSelectImportSheet,
       canSaveImport,
       isBusy,
+      setImportFormulaName,
       selectExcelImportFile,
       previewSelectedImportSheet,
       saveExcelImport,
@@ -946,6 +972,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       duplicateFormulaLine,
       removeFormulaLine,
       saveFormula,
+      exportCurrentFormulaIdLabExcel,
     },
     results: { result },
   });

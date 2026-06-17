@@ -25,7 +25,9 @@ import {
   type RawMaterialUpdateForm,
   type SapRawMaterialImportForm,
 } from "./raw-material-model";
+import { compareParameterCodes, sortByParameterCode } from "./parameter-order";
 import type { Parameter } from "./workspace-base-model";
+import { FileDropzone } from "./file-dropzone";
 
 type RawMaterialsPanelProps = {
   active: boolean;
@@ -374,11 +376,7 @@ export function RawMaterialsPanel({
         }
         return true;
       })
-      .sort((left, right) => {
-        const leftValue = Math.abs(selectedMaterial.parameters[left.code]?.value ?? 0);
-        const rightValue = Math.abs(selectedMaterial.parameters[right.code]?.value ?? 0);
-        return Number(rightValue > 0.0001) - Number(leftValue > 0.0001);
-      });
+      .sort((left, right) => compareParameterCodes(left.code, right.code));
   }, [
     compositionFamilyFilter,
     compositionQuery,
@@ -1425,19 +1423,18 @@ export function RawMaterialsPanel({
           <ChevronDown size={16} />
         </summary>
         <div className="sapImportControls">
-          <label>
-            <span>Excel or CSV</span>
-            <input
-              type="file"
-              accept=".xlsx,.xlsm,.csv"
-              onChange={(event) => {
-                setSapFile(event.target.files?.[0] ?? null);
-                setSapPreview(null);
-                setSapNotice("");
-              }}
-              disabled={!canEditTenantData}
-            />
-          </label>
+          <FileDropzone
+            accept=".xlsx,.xlsm,.csv"
+            disabled={!canEditTenantData}
+            fileName={sapFile?.name}
+            helper=".xlsx, .xlsm o .csv"
+            label="Excel o CSV"
+            onFile={(file) => {
+              setSapFile(file);
+              setSapPreview(null);
+              setSapNotice("");
+            }}
+          />
           <label>
             <span>Source</span>
             <input
@@ -1647,12 +1644,18 @@ function buildPriceBounds(rawMaterials: RawMaterial[]) {
 function buildParameterFamilyOptions(parameters: Parameter[]) {
   const familyOptions = LEGACY_PARAMETER_FAMILIES.map((family) => ({
     name: family.name,
-    parameters: parameters.filter((candidate) => parameterBelongsToFamily(candidate, family.name)),
+    parameters: sortByParameterCode(
+      parameters.filter((candidate) => parameterBelongsToFamily(candidate, family.name)),
+      (parameter) => parameter.code,
+    ),
   })).filter((family) => family.parameters.length > 0);
   const groupedParameterIds = new Set(
     familyOptions.flatMap((family) => family.parameters.map((candidate) => candidate.id)),
   );
-  const otherParameters = parameters.filter((candidate) => !groupedParameterIds.has(candidate.id));
+  const otherParameters = sortByParameterCode(
+    parameters.filter((candidate) => !groupedParameterIds.has(candidate.id)),
+    (parameter) => parameter.code,
+  );
 
   if (otherParameters.length > 0) {
     return [...familyOptions, { name: "Otros", parameters: otherParameters }];

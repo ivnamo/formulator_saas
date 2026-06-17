@@ -1,4 +1,4 @@
-import { FolderOpen, History, ListChecks, RefreshCw } from "lucide-react";
+import { Download, FolderOpen, History, ListChecks, RefreshCw } from "lucide-react";
 import type {
   ComparisonConstraintField,
   ComparisonConstraintForm,
@@ -38,6 +38,7 @@ type SavedFormulaComparisonPanelProps = {
   onSelectFormula: (field: FormulaCompareSelectionField, formulaId: string) => void;
   onRefreshLibrary: () => void | Promise<void>;
   onCompareSavedFormulas: () => void | Promise<void>;
+  onExportFormula: (formula: FormulaRead) => void | Promise<void>;
   onOpenFormula: (formula: FormulaRead) => void | Promise<void>;
   onUpdateConstraint: (field: ComparisonConstraintField, value: string) => void;
   onShowOnlyConstraintIssuesChange: (checked: boolean) => void;
@@ -62,6 +63,7 @@ export function SavedFormulaComparisonPanel({
   onSelectFormula,
   onRefreshLibrary,
   onCompareSavedFormulas,
+  onExportFormula,
   onOpenFormula,
   onUpdateConstraint,
   onShowOnlyConstraintIssuesChange,
@@ -196,6 +198,7 @@ export function SavedFormulaComparisonPanel({
             <span>Name</span>
             <span>Price</span>
             <span>Lines</span>
+            <span>Excel</span>
             <span>Open</span>
           </div>
           {formulas.length === 0 ? (
@@ -210,6 +213,16 @@ export function SavedFormulaComparisonPanel({
                     : `${formula.total_price.toFixed(2)} ${formula.currency}/kg`}
                 </span>
                 <span>{formula.items.length}</span>
+                <button
+                  className="iconButton"
+                  type="button"
+                  onClick={() => void onExportFormula(formula)}
+                  disabled={isBusy}
+                  title="Export Excel I+D"
+                  aria-label={`Export ${formula.name} as Excel I+D`}
+                >
+                  <Download size={16} />
+                </button>
                 <button
                   className="iconButton"
                   type="button"
