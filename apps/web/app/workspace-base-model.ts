@@ -41,4 +41,4 @@ export type ParameterRead = Parameter & {
   is_active: boolean;
 };
 
-export type Status = "idle" | "working" | "error";
+export type Status = "idle" | "working" | "success" | "error";

@@ -321,7 +321,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-019 - Filosofia global de feedback, foco y confirmacion de acciones
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P1
 - Area: UX | QA | Frontend
 - Origen: Usuario
@@ -335,7 +335,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Se define un patron reutilizable de feedback para toda la app.
   - Se evitan mensajes genericos tipo `Done` cuando se pueda decir exactamente que ocurrio.
 - Validacion beta: Beta tester ejecuta flujos principales y puede entender siempre si la accion funciono, fallo o necesita siguiente paso.
-- Notas: BL-018 es un caso concreto dentro de esta filosofia. Conviene crear inventario de acciones sin feedback antes de implementar.
+- Notas: BL-018 es un caso concreto dentro de esta filosofia. Implementado primer patron global: la linea de estado distingue working/success/error/idle, usa iconos y aria-live, permite descartar mensajes y auto-limpia exitos. Pendiente inventario completo de acciones sin feedback.
 
 ### BL-020 - Accion Completar porcentaje en Formula editable
 

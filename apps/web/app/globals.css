@@ -578,15 +578,53 @@ label span {
   font-size: 13px;
 }
 
+.statusLine span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.statusLine[data-state="working"] svg {
+  animation: statusSpin 1s linear infinite;
+}
+
+.statusLine[data-state="success"] {
+  color: var(--teal-dark);
+  border-color: rgba(27, 148, 130, 0.34);
+  background: rgba(27, 148, 130, 0.08);
+}
+
 .statusLine[data-state="error"] {
   color: var(--danger);
   border-color: var(--danger-soft);
+  background: rgba(196, 74, 62, 0.07);
 }
 
 .statusLine code {
   margin-left: auto;
   color: var(--muted);
   font-size: 12px;
+}
+
+.statusDismiss {
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+}
+
+.statusDismiss:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@keyframes statusSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .grid {

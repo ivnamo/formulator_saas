@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   BrainCircuit,
+  CheckCircle2,
   ChevronDown,
   ClipboardCheck,
   Database,
@@ -12,6 +13,7 @@ import {
   Settings2,
   Upload,
   UserCircle,
+  X,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Status } from "./workspace-base-model";
@@ -61,6 +63,7 @@ type AppShellProps = {
   isBusy: boolean;
   children: ReactNode;
   onViewChange: (view: WorkspaceView) => void;
+  onClearStatus: () => void;
   onSignOut: () => void | Promise<void>;
 };
 
@@ -92,6 +95,7 @@ export function AppShell({
   isBusy,
   children,
   onViewChange,
+  onClearStatus,
   onSignOut,
 }: AppShellProps) {
   const formulaContext = workspace.formulaName.trim();
@@ -183,9 +187,30 @@ export function AppShell({
           </details>
         </header>
 
-        <div className="statusLine" data-state={status}>
-          {status === "error" ? <AlertTriangle size={16} /> : <RefreshCw size={16} />}
+        <div
+          className="statusLine"
+          data-state={status}
+          role={status === "error" ? "alert" : "status"}
+          aria-live={status === "error" ? "assertive" : "polite"}
+        >
+          {status === "error" ? (
+            <AlertTriangle size={16} />
+          ) : status === "working" ? (
+            <RefreshCw size={16} />
+          ) : (
+            <CheckCircle2 size={16} />
+          )}
           <span>{message}</span>
+          {status !== "working" && message !== "Ready" ? (
+            <button
+              className="statusDismiss"
+              type="button"
+              onClick={onClearStatus}
+              aria-label="Descartar mensaje"
+            >
+              <X size={14} />
+            </button>
+          ) : null}
         </div>
 
         {children}

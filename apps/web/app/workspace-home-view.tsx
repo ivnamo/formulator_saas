@@ -14,6 +14,7 @@ export type WorkspaceHomeViewProps = {
   message: string;
   isBusy: boolean;
   onViewChange: (view: WorkspaceView) => void;
+  onClearStatus: () => void;
   onSignOut: () => void | Promise<void>;
   panels: WorkspaceHomePanels;
 };
@@ -26,6 +27,7 @@ export function WorkspaceHomeView({
   message,
   isBusy,
   onViewChange,
+  onClearStatus,
   onSignOut,
   panels,
 }: WorkspaceHomeViewProps) {
@@ -38,6 +40,7 @@ export function WorkspaceHomeView({
       message={message}
       isBusy={isBusy}
       onViewChange={onViewChange}
+      onClearStatus={onClearStatus}
       onSignOut={onSignOut}
     >
       <div className="grid">

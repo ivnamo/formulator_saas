@@ -205,8 +205,17 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setSelectedImportSheet,
     resolveImportRow: resolveImportRowState,
   } = useExcelImportState();
-  const { activeView, setActiveView, status, message, setStatus, setMessage, setError, runAction } =
-    useWorkspaceShellState();
+  const {
+    activeView,
+    setActiveView,
+    status,
+    message,
+    setStatus,
+    setMessage,
+    setError,
+    clearStatus,
+    runAction,
+  } = useWorkspaceShellState();
   const { session, authChecked, authHeaders, headers, uploadHeaders } =
     useWorkspaceAuthSession(workspace.tenant);
 
@@ -1011,6 +1020,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       message,
       isBusy,
       onViewChange: setActiveView,
+      onClearStatus: clearStatus,
       onSignOut: signOut,
       panels,
     },
