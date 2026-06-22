@@ -102,7 +102,9 @@ export function useJiraReviewActions({
 
     await runAction("Sending formula to Jira", async () => {
       const payload = buildManualFormulaSavePayload(workspace, workspace.formulaLines);
-      const formula = await persistSavedFormula(headers, workspace.formulaId, payload);
+      const formulaId =
+        workspace.formulaBuilderMode === "editing" ? workspace.formulaId : null;
+      const formula = await persistSavedFormula(headers, formulaId, payload);
       const calculation = await calculateSavedFormula(headers, formula.id);
       setWorkspace((current) => ({
         ...current,
@@ -111,7 +113,9 @@ export function useJiraReviewActions({
       setResult(calculation);
 
       const candidateReviews =
-        workspace.formulaId === formula.id ? formulaReviewRequests : [];
+        workspace.formulaId === formula.id && workspace.formulaBuilderMode === "editing"
+          ? formulaReviewRequests
+          : [];
       const existingDraftReview = candidateReviews.find(
         (review) =>
           !review.jira_issue_key &&
@@ -151,6 +155,7 @@ export function useJiraReviewActions({
     setMessage,
     setWorkspace,
     workspace.formulaId,
+    workspace.formulaBuilderMode,
     workspace.formulaJiraDescription,
     workspace.formulaJiraIssueType,
     workspace.formulaJiraProjectId,

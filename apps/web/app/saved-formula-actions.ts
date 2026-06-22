@@ -204,7 +204,9 @@ export function useSavedFormulaActions({
 
     await runAction("Saving formula", async () => {
       const payload = buildManualFormulaSavePayload(workspace, workspace.formulaLines);
-      const formula = await persistSavedFormula(headers, workspace.formulaId, payload);
+      const formulaId =
+        workspace.formulaBuilderMode === "editing" ? workspace.formulaId : null;
+      const formula = await persistSavedFormula(headers, formulaId, payload);
       const calculation = await calculatePersistedFormula(formula.id);
       setWorkspace((current) => ({
         ...current,
@@ -239,6 +241,7 @@ export function useSavedFormulaActions({
     setSavedFormulaComparison,
     setWorkspace,
     workspace.formulaId,
+    workspace.formulaBuilderMode,
     workspace.formulaJiraIssueType,
     workspace.formulaJiraProductType,
     workspace.formulaJiraProjectId,
@@ -259,7 +262,7 @@ export function useSavedFormulaActions({
 
     await runAction("Exporting Excel I+D", async () => {
       const download =
-        workspace.formulaId && !hasPendingDraftReview
+        workspace.formulaId && workspace.formulaBuilderMode === "editing" && !hasPendingDraftReview
           ? await downloadSavedFormulaIdLabExcel(headers, workspace.formulaId)
           : await downloadDraftFormulaIdLabExcel(headers, workspace);
       downloadBlob(download);

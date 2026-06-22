@@ -87,12 +87,16 @@ export function useFormulaBuilderDerivedState({
     PARAMETER_VIEW_PRESETS[0];
   const formulaBasicsValue = useMemo(
     () => ({
+      formulaId: workspace.formulaId,
+      formulaBuilderMode: workspace.formulaBuilderMode,
       formulaName: workspace.formulaName,
       formulaJiraProjectId: workspace.formulaJiraProjectId,
       formulaJiraIssueType: workspace.formulaJiraIssueType,
       formulaJiraProductType: workspace.formulaJiraProductType,
     }),
     [
+      workspace.formulaId,
+      workspace.formulaBuilderMode,
       workspace.formulaJiraIssueType,
       workspace.formulaJiraProductType,
       workspace.formulaJiraProjectId,

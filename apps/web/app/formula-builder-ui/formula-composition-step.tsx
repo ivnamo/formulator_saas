@@ -31,6 +31,7 @@ export type FormulaCompositionStepProps = {
   onConfirmDraftReview: () => void | Promise<void>;
   onMoveLine: (localId: string, direction: -1 | 1) => void;
   onUpdateLine: (localId: string, percentage: number) => void;
+  onCompleteLine: (localId: string) => void;
   onDuplicateLine: (localId: string) => void;
   onRemoveLine: (localId: string) => void;
 };
@@ -57,6 +58,7 @@ export function FormulaCompositionStep({
   onConfirmDraftReview,
   onMoveLine,
   onUpdateLine,
+  onCompleteLine,
   onDuplicateLine,
   onRemoveLine,
 }: FormulaCompositionStepProps) {
@@ -78,9 +80,11 @@ export function FormulaCompositionStep({
         lines={formulaLineDetails}
         visibleParameterCodes={visibleParameterCodes}
         showOnlyPositiveParameters={showOnlyPositiveParameters}
+        totalPercentage={totalPercentage}
         isBusy={isBusy}
         onMoveLine={onMoveLine}
         onUpdateLine={onUpdateLine}
+        onCompleteLine={onCompleteLine}
         onDuplicateLine={onDuplicateLine}
         onRemoveLine={onRemoveLine}
       />

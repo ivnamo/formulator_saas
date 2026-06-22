@@ -29,7 +29,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-001 - Owner puede borrar y archivar entidades gestionables
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P1
 - Area: Materias primas | Biblioteca | Backend | UX
 - Origen: Usuario
@@ -58,11 +58,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Jira recibe/refleja la version correcta de la formula.
   - ISO puede asociar F10-02/revision a la version correcta cuando aplique.
 - Validacion beta: Abrir F2 desde biblioteca, crear F3, guardar y comprobar biblioteca/Jira.
-- Notas: Revisar modelo de datos antes de implementar para evitar duplicados sueltos.
+- Notas: Revisar modelo de datos antes de implementar para evitar duplicados sueltos. Rama `codex/backlog-builder-basics`: anadido modo visible nueva/editar/version y guardado como nuevo registro cuando el modo no es editar; pendiente versionado ligado real en backend/biblioteca/Jira.
 
 ### BL-003 - Precios de formulas no actualizados en biblioteca
 
-- Estado: Inbox
+- Estado: Done
 - Prioridad: P0
 - Area: Biblioteca | Backend | QA
 - Origen: Usuario
@@ -119,11 +119,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - La navegacion lateral muestra Formula Builder.
   - No quedan textos antiguos confusos en cabeceras o rutas visibles.
 - Validacion beta: Revisar sidebar tras iniciar sesion.
-- Notas: Cambio pequeno y seguro.
+- Notas: Implementado en `codex/backlog-builder-basics`; validado con `npm run check`.
 
 ### BL-007 - Marcar campos obligatorios con asterisco rojo
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P1
 - Area: Formula Builder | UX
 - Origen: Usuario
@@ -134,11 +134,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - La validacion del formulario coincide con los campos marcados.
   - Los mensajes de bloqueo explican que falta completar.
 - Validacion beta: Intentar guardar/enviar sin campos requeridos y comprobar feedback.
-- Notas: Aplicar el patron despues al resto de app si funciona.
+- Notas: Implementado asterisco y bloqueo de nombre en Datos basicos de Formula Builder; pendiente extender descripcion obligatoria y revisar otros modulos/campos.
 
 ### BL-008 - ProyectoID debe mostrar etiqueta completa y ordenar naturalmente
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P1
 - Area: Formula Builder | ISO | Jira | UX
 - Origen: Usuario
@@ -150,11 +150,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - El valor guardado sigue siendo el identificador correcto para Jira/ISO.
   - La UI evita confundir ProyectoID con un numero simple.
 - Validacion beta: Crear proyectos 1/2026, 2/2026 y 10/2026 y verificar orden.
-- Notas: Revisar datalist/select actual y origen de `project_code`.
+- Notas: Sustituido datalist por select que muestra etiqueta completa y orden natural con `Intl.Collator`; pendiente validacion beta con proyectos 1/2026, 2/2026 y 10/2026.
 
 ### BL-009 - Evitar nombre por defecto Atlantica Agricola Formula
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P1
 - Area: Formula Builder | Biblioteca | UX
 - Origen: Usuario
@@ -165,11 +165,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - El campo de nombre obliga al usuario a escribir un nombre propio si es requerido.
   - Importaciones y formulas nuevas usan nombre propuesto solo si el usuario lo confirma.
 - Validacion beta: Crear formula nueva y comprobar que no se guarda con nombre generico.
-- Notas: Revisar imports Excel, builder y biblioteca.
+- Notas: Eliminado nombre generico al crear/cargar workspace y bloqueado guardado sin nombre; pendiente revisar importaciones Excel y nombres propuestos.
 
 ### BL-010 - Mover guardar y exportar a Revision y salidas
 
-- Estado: Inbox
+- Estado: Done
 - Prioridad: P1
 - Area: Formula Builder | UX
 - Origen: Usuario
@@ -181,11 +181,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - El estado de bloqueo de guardado/exportacion es claro.
   - No se duplican acciones principales en varias secciones.
 - Validacion beta: Formular, revisar avisos, guardar, exportar y enviar a Jira siguiendo el flujo final.
-- Notas: Coordinar con el paso 5 ya creado para Jira.
+- Notas: Implementado en `codex/backlog-builder-basics`; Calculo vivo conserva parametros/avisos y Revision y salidas agrupa guardar/exportar/Jira. Validado con `npm run check`.
 
 ### BL-011 - Descripcion obligatoria de formula reutilizable en Jira e ISO
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P0
 - Area: Formula Builder | Jira | ISO | Biblioteca
 - Origen: Usuario
@@ -360,11 +360,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Tras aplicar, se recalculan total, precio, parametros y avisos.
   - Se muestra feedback claro indicando cuanto se ha ajustado y en que materia.
 - Validacion beta: Crear formula que suma 96.5%, pulsar Completar en una linea y comprobar que esa linea sube 3.5 puntos y total queda 100.0%.
-- Notas: No usar Completar para corregir exceso sobre 100%; eso debe resolverse manualmente o con otra accion futura.
+- Notas: Implementado nucleo de Completar, clamp de negativos, porcentaje en blanco temporal, aviso en guardado y normalizacion a 0 en calculo/export/save; pendiente beta y pulir feedback fino si hace falta.
 
 ### BL-021 - Modo de trabajo en Formula Builder: nueva, editar o modificacion/version
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P0
 - Area: Formula Builder | Biblioteca | UX
 - Origen: Usuario
@@ -378,7 +378,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Las acciones de guardar/exportar/Jira usan el modo seleccionado para evitar sobrescrituras accidentales.
   - El modo queda reflejado en biblioteca y en historico/versionado.
 - Validacion beta: Abrir una formula desde biblioteca y comprobar que el usuario entiende si esta editando, duplicando o versionando antes de guardar.
-- Notas: Relacionada con BL-002. Puede implementarse como selector de modo o banner de contexto en Datos basicos/Revision y salidas.
+- Notas: Implementado selector de modo en Datos basicos y semantica de guardar/exportar/Jira segun modo. Pendiente reflejo completo en biblioteca/historico/versionado ligado.
 
 ## Ready
 

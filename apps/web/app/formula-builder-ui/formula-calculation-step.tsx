@@ -11,13 +11,7 @@ export type FormulaCalculationStepProps = {
   visibleWarnings: CalculationResult["warnings"];
   selectedPresetLabel: string;
   visibleParameterSummary: string;
-  isFormulaBalanced: boolean;
-  totalPercentage: number;
-  isBusy: boolean;
-  canSaveFormula: boolean;
   onToggle: (section: BuilderSectionKey) => void;
-  onSaveFormula: () => void | Promise<void>;
-  onExportExcel: () => void | Promise<void>;
 };
 
 export function FormulaCalculationStep({
@@ -27,13 +21,7 @@ export function FormulaCalculationStep({
   visibleWarnings,
   selectedPresetLabel,
   visibleParameterSummary,
-  isFormulaBalanced,
-  totalPercentage,
-  isBusy,
-  canSaveFormula,
   onToggle,
-  onSaveFormula,
-  onExportExcel,
 }: FormulaCalculationStepProps) {
   return (
     <BuilderStep
@@ -54,12 +42,6 @@ export function FormulaCalculationStep({
         visibleWarnings={visibleWarnings}
         selectedPresetLabel={selectedPresetLabel}
         visibleParameterSummary={visibleParameterSummary}
-        isFormulaBalanced={isFormulaBalanced}
-        totalPercentage={totalPercentage}
-        isBusy={isBusy}
-        canSaveFormula={canSaveFormula}
-        onSaveFormula={onSaveFormula}
-        onExportExcel={onExportExcel}
       />
     </BuilderStep>
   );

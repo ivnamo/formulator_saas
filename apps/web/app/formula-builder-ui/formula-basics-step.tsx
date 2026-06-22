@@ -1,4 +1,4 @@
-import type { BuilderSectionKey } from "../formula-builder-model";
+import type { BuilderSectionKey, FormulaBuilderMode } from "../formula-builder-model";
 import type { IsoDesignProject } from "../iso-design-model";
 import type { WorkspaceState } from "../workspace-state-model";
 import { BuilderStep } from "./builder-step";
@@ -6,6 +6,8 @@ import { FormulaIsoLinkPanel } from "./formula-iso-link-panel";
 
 export type FormulaBasicsValue = Pick<
   WorkspaceState,
+  | "formulaId"
+  | "formulaBuilderMode"
   | "formulaName"
   | "formulaJiraProjectId"
   | "formulaJiraIssueType"
@@ -48,6 +50,11 @@ export function FormulaBasicsStep({
     jiraProductTypeOptions,
     values.formulaJiraProductType,
   );
+  const projectIdOptions = withCurrentProjectOption(
+    jiraProjectIdOptions,
+    values.formulaJiraProjectId,
+  );
+  const selectedMode = modeForDisplay(values.formulaBuilderMode, values.formulaId);
 
   return (
     <BuilderStep
@@ -57,9 +64,33 @@ export function FormulaBasicsStep({
       isOpen={isOpen}
       onToggle={onToggle}
     >
+      <div className="formulaModePanel">
+        <div>
+          <span>Modo de trabajo</span>
+          <strong>{modeLabel(selectedMode)}</strong>
+          <small>{modeHelper(selectedMode)}</small>
+        </div>
+        <div className="segmentedControl" aria-label="Modo de Formula Builder">
+          {formulaModeOptions.map((option) => (
+            <button
+              key={option.mode}
+              type="button"
+              aria-pressed={selectedMode === option.mode}
+              onClick={() => onChange({ formulaBuilderMode: option.mode })}
+              disabled={isBusy || (option.requiresLoadedFormula && !values.formulaId)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="fullWidthLabel">
-        <span>Name</span>
+        <span>
+          Nombre <span className="requiredMark">*</span>
+        </span>
         <input
+          aria-required="true"
+          placeholder="Nombre de formula"
           value={values.formulaName}
           onChange={(event) => onChange({ formulaName: event.target.value })}
           disabled={isBusy}
@@ -68,19 +99,29 @@ export function FormulaBasicsStep({
       {hasActiveJiraConnection ? (
         <div className="formulaMetaGrid">
           <label>
-            <span>ProyectoID</span>
-            <input
+            <span>
+              ProyectoID <span className="requiredMark">*</span>
+            </span>
+            <select
               aria-label="ProyectoID"
-              list="jira-project-id-options"
-              placeholder="Selecciona un ProyectoID"
               value={values.formulaJiraProjectId}
               onChange={(event) => onChange({ formulaJiraProjectId: event.target.value })}
               disabled={isBusy}
-            />
+            >
+              <option value="">Sin ProyectoID</option>
+              {projectIdOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
-            <span>Issue type Jira</span>
+            <span>
+              Issue type Jira <span className="requiredMark">*</span>
+            </span>
             <select
+              aria-required="true"
               value={values.formulaJiraIssueType}
               onChange={(event) => onChange({ formulaJiraIssueType: event.target.value })}
               disabled={isBusy}
@@ -93,8 +134,11 @@ export function FormulaBasicsStep({
             </select>
           </label>
           <label>
-            <span>Tipo producto</span>
+            <span>
+              Tipo producto <span className="requiredMark">*</span>
+            </span>
             <select
+              aria-required="true"
               value={values.formulaJiraProductType}
               onChange={(event) => onChange({ formulaJiraProductType: event.target.value })}
               disabled={isBusy}
@@ -106,11 +150,6 @@ export function FormulaBasicsStep({
               ))}
             </select>
           </label>
-          <datalist id="jira-project-id-options">
-            {jiraProjectIdOptions.map((option) => (
-              <option key={option.value} value={option.value} label={option.label} />
-            ))}
-          </datalist>
         </div>
       ) : null}
       {hasActiveJiraConnection ? (
@@ -128,6 +167,43 @@ export function FormulaBasicsStep({
   );
 }
 
+const formulaModeOptions: Array<{
+  mode: FormulaBuilderMode;
+  label: string;
+  requiresLoadedFormula: boolean;
+}> = [
+  { mode: "new", label: "Nueva", requiresLoadedFormula: false },
+  { mode: "editing", label: "Modificar cargada", requiresLoadedFormula: true },
+  { mode: "version", label: "Nueva version", requiresLoadedFormula: true },
+];
+
+function modeForDisplay(mode: FormulaBuilderMode, formulaId: string | null) {
+  if (!formulaId && mode !== "version") {
+    return "new";
+  }
+  return mode;
+}
+
+function modeLabel(mode: FormulaBuilderMode) {
+  if (mode === "editing") {
+    return "Modificacion de formula cargada";
+  }
+  if (mode === "version") {
+    return "Nueva version de formula cargada";
+  }
+  return "Formula nueva";
+}
+
+function modeHelper(mode: FormulaBuilderMode) {
+  if (mode === "editing") {
+    return "Guardar actualizara la formula abierta en biblioteca.";
+  }
+  if (mode === "version") {
+    return "Guardar creara otra formula vinculable por nombre y revision.";
+  }
+  return "Guardar creara una formula nueva en biblioteca.";
+}
+
 function withCurrentOption(options: string[], current: string) {
   const cleanedOptions = options.map((option) => option.trim()).filter(Boolean);
   const cleanedCurrent = current.trim();
@@ -135,4 +211,15 @@ function withCurrentOption(options: string[], current: string) {
     return [cleanedCurrent, ...cleanedOptions];
   }
   return cleanedOptions;
+}
+
+function withCurrentProjectOption(
+  options: Array<{ value: string; label: string }>,
+  current: string,
+) {
+  const cleanedCurrent = current.trim();
+  if (!cleanedCurrent || options.some((option) => option.value === cleanedCurrent)) {
+    return options;
+  }
+  return [{ value: cleanedCurrent, label: cleanedCurrent }, ...options];
 }

@@ -1,3 +1,4 @@
+import { formulaLinePercentageValue } from "./formula-builder-model";
 import { apiUrl } from "./workspace-api";
 import type { WorkspaceState } from "./workspace-state-model";
 
@@ -97,7 +98,7 @@ function formulaExcelExportPayload(
     metadata,
     items: workspace.formulaLines.map((line, index) => ({
       raw_material_id: line.rawMaterialId,
-      percentage: line.percentage,
+      percentage: formulaLinePercentageValue(line.percentage),
       order_index: index,
     })),
   };

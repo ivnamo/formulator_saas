@@ -1,14 +1,21 @@
-import { ArrowDown, ArrowUp, Copy, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckCircle2, Copy, Trash2 } from "lucide-react";
 import type { FormulaLineDetail } from "../formula-builder-derived";
-import { formatParameterValue, materialParametersForView } from "../formula-builder-model";
+import {
+  formulaLinePercentageValue,
+  formatParameterValue,
+  hasBlankFormulaLinePercentage,
+  materialParametersForView,
+} from "../formula-builder-model";
 
 type FormulaLineTableProps = {
   lines: FormulaLineDetail[];
   visibleParameterCodes: string[];
   showOnlyPositiveParameters: boolean;
+  totalPercentage: number;
   isBusy: boolean;
   onMoveLine: (localId: string, direction: -1 | 1) => void;
   onUpdateLine: (localId: string, percentage: number) => void;
+  onCompleteLine: (localId: string) => void;
   onDuplicateLine: (localId: string) => void;
   onRemoveLine: (localId: string) => void;
 };
@@ -17,12 +24,17 @@ export function FormulaLineTable({
   lines,
   visibleParameterCodes,
   showOnlyPositiveParameters,
+  totalPercentage,
   isBusy,
   onMoveLine,
   onUpdateLine,
+  onCompleteLine,
   onDuplicateLine,
   onRemoveLine,
 }: FormulaLineTableProps) {
+  const missingPercentage = 100 - totalPercentage;
+  const canCompleteLine = missingPercentage > 0.0001;
+
   return (
     <div className="formulaLineTable">
       <div className="formulaLineHead">
@@ -92,8 +104,15 @@ export function FormulaLineTable({
                 min={0}
                 max={100}
                 step={0.1}
-                value={line.percentage}
-                onChange={(event) => onUpdateLine(line.localId, Number(event.target.value))}
+                value={
+                  hasBlankFormulaLinePercentage(line.percentage)
+                    ? ""
+                    : formulaLinePercentageValue(line.percentage)
+                }
+                onChange={(event) => {
+                  const nextValue = event.target.value.trim();
+                  onUpdateLine(line.localId, nextValue ? Number(nextValue) : Number.NaN);
+                }}
                 disabled={isBusy}
               />
               <span className="lineParameterPreview">
@@ -107,6 +126,17 @@ export function FormulaLineTable({
                 {lineWarnings.length ? lineWarnings.join(", ") : "OK"}
               </span>
               <div className="lineActions">
+                <button
+                  className="secondaryButton compactButton"
+                  type="button"
+                  onClick={() => onCompleteLine(line.localId)}
+                  disabled={isBusy || !canCompleteLine}
+                  title={`Completar con ${missingPercentage.toFixed(2)}%`}
+                  aria-label={`Completar ${material?.name ?? "linea"} hasta 100%`}
+                >
+                  <CheckCircle2 size={15} />
+                  Completar
+                </button>
                 <button
                   className="iconButton"
                   type="button"

@@ -82,7 +82,7 @@ export function buildWorkspaceCapabilities({
     workspace.formulaLines.length > 0 &&
     !hasPendingDraftReview &&
     !isBusy;
-  const canSaveFormula = canCalculate && isFormulaBalanced;
+  const canSaveFormula = canCalculate && isFormulaBalanced && workspace.formulaName.trim().length > 0;
   const canCompareSavedFormulas =
     Boolean(workspace.tenant) &&
     Boolean(formulaCompareSelection.baselineId) &&

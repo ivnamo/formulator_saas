@@ -1,4 +1,4 @@
-import { AlertTriangle, Beaker, Download, Loader2, Save } from "lucide-react";
+import { AlertTriangle, Beaker } from "lucide-react";
 import type { CalculationParameterRow } from "../formula-builder-derived";
 import {
   parameterDisplayCode,
@@ -12,12 +12,6 @@ type FormulaCalculationPanelProps = {
   visibleWarnings: CalculationResult["warnings"];
   selectedPresetLabel: string;
   visibleParameterSummary: string;
-  isFormulaBalanced: boolean;
-  totalPercentage: number;
-  isBusy: boolean;
-  canSaveFormula: boolean;
-  onSaveFormula: () => void | Promise<void>;
-  onExportExcel: () => void | Promise<void>;
 };
 
 export function FormulaCalculationPanel({
@@ -26,12 +20,6 @@ export function FormulaCalculationPanel({
   visibleWarnings,
   selectedPresetLabel,
   visibleParameterSummary,
-  isFormulaBalanced,
-  totalPercentage,
-  isBusy,
-  canSaveFormula,
-  onSaveFormula,
-  onExportExcel,
 }: FormulaCalculationPanelProps) {
   return (
     <>
@@ -88,41 +76,6 @@ export function FormulaCalculationPanel({
         ) : (
           <div>No warnings</div>
         )}
-      </div>
-      <div className="formulaSavePanel" data-balanced={isFormulaBalanced}>
-        <div>
-          <span>Guardar formula</span>
-          <strong>
-            {isFormulaBalanced
-              ? "Lista para guardar"
-              : `No se puede guardar: suma ${totalPercentage.toFixed(1)}%`}
-          </strong>
-          <small>
-            {isFormulaBalanced
-              ? "Se guardara la formula y se recalculara el precio final oficial."
-              : "El guardado queda bloqueado hasta que la formula sume 100.0%."}
-          </small>
-        </div>
-        <div className="formulaSaveActions">
-          <button
-            className="secondaryButton"
-            type="button"
-            onClick={() => void onExportExcel()}
-            disabled={isBusy}
-          >
-            <Download size={17} />
-            Exportar Excel I+D
-          </button>
-          <button
-            className="primaryButton"
-            type="button"
-            onClick={() => void onSaveFormula()}
-            disabled={!canSaveFormula}
-          >
-            {isBusy ? <Loader2 className="spin" size={17} /> : <Save size={17} />}
-            Guardar formula
-          </button>
-        </div>
       </div>
     </>
   );

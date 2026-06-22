@@ -1,3 +1,5 @@
+import { formulaLinePercentageValue } from "./formula-builder-model";
+
 type FormulaSaveLine = {
   rawMaterialId: string;
   percentage: number;
@@ -20,13 +22,13 @@ export function buildManualFormulaSavePayload(
   formulaLines: FormulaSaveLine[],
 ) {
   return {
-    name: metadata.formulaName.trim() || "Manual Formula",
+    name: metadata.formulaName.trim(),
     jira_project_id: metadata.formulaJiraProjectId.trim() || null,
     jira_issue_type: metadata.formulaJiraIssueType,
     jira_product_type: metadata.formulaJiraProductType,
     items: formulaLines.map((line, index) => ({
       raw_material_id: line.rawMaterialId,
-      percentage: line.percentage,
+      percentage: formulaLinePercentageValue(line.percentage),
       order_index: index,
     })),
   };

@@ -1,4 +1,5 @@
 import {
+  formulaLinePercentageValue,
   parameterFamilyForCode,
   parameterFamilyRank,
   parameterMatchesPositiveFilter,
@@ -35,7 +36,10 @@ export function buildLocalFormulaPreview(
   let hasMissingPrice = false;
   const parameterTotals = new Map<string, CalculationParameterRow>();
   const previewWarnings: CalculationResult["warnings"] = [];
-  const previewTotal = formulaLineDetails.reduce((sum, line) => sum + line.percentage, 0);
+  const previewTotal = formulaLineDetails.reduce(
+    (sum, line) => sum + formulaLinePercentageValue(line.percentage),
+    0,
+  );
 
   if (formulaLineDetails.length > 0 && Math.abs(previewTotal - 100) > 0.01) {
     previewWarnings.push({
@@ -46,7 +50,8 @@ export function buildLocalFormulaPreview(
   }
 
   for (const line of formulaLineDetails) {
-    if (line.percentage <= 0) {
+    const percentage = formulaLinePercentageValue(line.percentage);
+    if (percentage <= 0) {
       continue;
     }
     if (!line.material) {
@@ -65,7 +70,7 @@ export function buildLocalFormulaPreview(
         severity: "warning",
       });
     } else {
-      priceTotal += (line.material.price * line.percentage) / 100;
+      priceTotal += (line.material.price * percentage) / 100;
     }
     if (!line.material.isActive || line.material.isObsolete) {
       previewWarnings.push({
@@ -78,7 +83,7 @@ export function buildLocalFormulaPreview(
       if (!visibleParameterCodeSet.has(parameter.code)) {
         continue;
       }
-      const contribution = (parameter.value * line.percentage) / 100;
+      const contribution = (parameter.value * percentage) / 100;
       const existing = parameterTotals.get(parameter.code);
       if (existing) {
         existing.value += contribution;
@@ -128,7 +133,7 @@ export function buildCalculationParameterRows(
 }
 
 export function calculateFormulaTotalPercentage(formulaLines: FormulaLine[]) {
-  return formulaLines.reduce((sum, line) => sum + line.percentage, 0);
+  return formulaLines.reduce((sum, line) => sum + formulaLinePercentageValue(line.percentage), 0);
 }
 
 export function isFormulaPercentageBalanced(totalPercentage: number) {

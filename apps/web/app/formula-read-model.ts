@@ -8,6 +8,7 @@ import { makeLocalId } from "./workspace-utils";
 export type EditableFormulaMetadata = Pick<
   WorkspaceState,
   | "formulaId"
+  | "formulaBuilderMode"
   | "formulaName"
   | "formulaJiraProjectId"
   | "formulaJiraIssueType"
@@ -27,6 +28,7 @@ export function toEditableFormulaMetadata(
 ): EditableFormulaMetadata {
   return {
     formulaId: formula.id,
+    formulaBuilderMode: "editing",
     formulaName: formula.name,
     formulaJiraProjectId: formula.jira_project_id ?? "",
     formulaJiraIssueType: textOrDefault(

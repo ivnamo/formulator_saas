@@ -55,6 +55,7 @@ export type ParameterViewPresetKey =
   | "custom";
 
 export type BuilderSectionKey = "basics" | "materials" | "formula" | "calculation" | "review";
+export type FormulaBuilderMode = "new" | "editing" | "version";
 
 export type CatalogParameterCondition = {
   id: string;
@@ -160,6 +161,18 @@ export function parameterDisplayCode(code: string) {
 
 export function formatFormulaNumber(value: number | null, suffix = "") {
   return value === null ? "-" : `${value.toFixed(2)}${suffix}`;
+}
+
+export function formulaLinePercentageValue(value: number) {
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+export function normalizeFormulaLinePercentageInput(value: number) {
+  return Number.isFinite(value) ? Math.max(0, value) : Number.NaN;
+}
+
+export function hasBlankFormulaLinePercentage(value: number) {
+  return !Number.isFinite(value);
 }
 
 export function parameterFamilyRank(family: string) {

@@ -425,6 +425,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     addFormulaLine,
     removeFormulaLine,
     updateFormulaLine,
+    completeFormulaLine,
     moveFormulaLine,
     duplicateFormulaLine,
   } = useFormulaLineActions({
@@ -433,6 +434,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setResult,
     ensureRawMaterialDetail,
     markDraftReviewPending,
+    setMessage,
   });
   const {
     updateFormulaBasics,
@@ -987,6 +989,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       retryJiraReviewAttachment,
       moveFormulaLine,
       updateFormulaLine,
+      completeFormulaLine,
       duplicateFormulaLine,
       removeFormulaLine,
       saveFormula,

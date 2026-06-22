@@ -1,4 +1,4 @@
-import type { BuilderSectionKey } from "./formula-builder-model";
+import { hasBlankFormulaLinePercentage, type BuilderSectionKey } from "./formula-builder-model";
 import type { WorkspaceHomePanels } from "./workspace-home-view";
 import type { WorkspaceState } from "./workspace-state-model";
 
@@ -67,7 +67,7 @@ type BuildFormulaBuilderPanelPropsArgs = {
   parameterRows: FormulaBuilderCalculationProps["parameterRows"];
   visibleWarnings: FormulaBuilderCalculationProps["visibleWarnings"];
   hasBackendResult: FormulaBuilderCalculationProps["isBackendResult"];
-  canSaveFormula: FormulaBuilderCalculationProps["canSaveFormula"];
+  canSaveFormula: FormulaBuilderReviewProps["canSaveFormula"];
   toggleBuilderSection: FormulaBuilderBasicsProps["onToggle"];
   updateFormulaBasics: FormulaBuilderBasicsProps["onChange"];
   setShowOnlyPositiveParameters: FormulaBuilderMaterialsProps["onShowOnlyPositiveChange"];
@@ -102,10 +102,11 @@ type BuildFormulaBuilderPanelPropsArgs = {
   retryJiraReviewAttachment: FormulaBuilderReviewProps["onRetryReviewAttachment"];
   moveFormulaLine: FormulaBuilderCompositionProps["onMoveLine"];
   updateFormulaLine: FormulaBuilderCompositionProps["onUpdateLine"];
+  completeFormulaLine: FormulaBuilderCompositionProps["onCompleteLine"];
   duplicateFormulaLine: FormulaBuilderCompositionProps["onDuplicateLine"];
   removeFormulaLine: FormulaBuilderCompositionProps["onRemoveLine"];
-  saveFormula: FormulaBuilderCalculationProps["onSaveFormula"];
-  exportCurrentFormulaIdLabExcel: FormulaBuilderCalculationProps["onExportExcel"];
+  saveFormula: FormulaBuilderReviewProps["onSaveFormula"];
+  exportCurrentFormulaIdLabExcel: FormulaBuilderReviewProps["onExportExcel"];
 };
 
 function buildFormulaBuilderBasicsProps(
@@ -211,6 +212,7 @@ function buildFormulaBuilderCompositionProps(
     onConfirmDraftReview: args.confirmDraftReview,
     onMoveLine: args.moveFormulaLine,
     onUpdateLine: args.updateFormulaLine,
+    onCompleteLine: args.completeFormulaLine,
     onDuplicateLine: args.duplicateFormulaLine,
     onRemoveLine: args.removeFormulaLine,
   };
@@ -221,6 +223,12 @@ function buildFormulaBuilderReviewProps(
 ): FormulaBuilderReviewProps {
   return {
     isOpen: args.builderSections.review,
+    isFormulaBalanced: args.isFormulaBalanced,
+    totalPercentage: args.totalPercentage,
+    canSaveFormula: args.canSaveFormula,
+    blankFormulaLineCount: args.workspace.formulaLines.filter((line) =>
+      hasBlankFormulaLinePercentage(line.percentage),
+    ).length,
     activeJiraConnection: args.activeJiraConnection,
     formulaReviewRequests: args.formulaReviewRequests,
     formulaReviewArtifacts: args.formulaReviewArtifacts,
@@ -228,6 +236,8 @@ function buildFormulaBuilderReviewProps(
     canSendCurrentFormulaToJira: canSendCurrentFormulaToJira(args),
     isBusy: args.isBusy,
     onToggle: args.toggleBuilderSection,
+    onSaveFormula: args.saveFormula,
+    onExportExcel: args.exportCurrentFormulaIdLabExcel,
     onJiraDescriptionChange: args.setFormulaJiraDescription,
     onSendCurrentFormulaToJira: args.sendCurrentFormulaToJira,
     onGenerateReviewExcel: args.generateJiraReviewExcel,
@@ -254,13 +264,7 @@ function buildFormulaBuilderCalculationProps(
     visibleWarnings: args.visibleWarnings,
     selectedPresetLabel: args.selectedParameterPreset.label,
     visibleParameterSummary: args.visibleParameterSummary,
-    isFormulaBalanced: args.isFormulaBalanced,
-    totalPercentage: args.totalPercentage,
-    isBusy: args.isBusy,
-    canSaveFormula: args.canSaveFormula,
     onToggle: args.toggleBuilderSection,
-    onSaveFormula: args.saveFormula,
-    onExportExcel: args.exportCurrentFormulaIdLabExcel,
   };
 }
 
@@ -277,8 +281,13 @@ function buildJiraProjectIdOptions(
   }
   return [...options.entries()]
     .map(([value, label]) => ({ value, label }))
-    .sort((left, right) => left.value.localeCompare(right.value, "es"));
+    .sort((left, right) => jiraProjectCollator.compare(left.label, right.label));
 }
+
+const jiraProjectCollator = new Intl.Collator("es", {
+  numeric: true,
+  sensitivity: "base",
+});
 
 export function buildFormulaBuilderPanelProps(
   args: BuildFormulaBuilderPanelPropsArgs,

@@ -4,6 +4,7 @@ import type { WorkspaceState } from "./workspace-state-model";
 
 export type FormulaSaveBlockerReason =
   | "missing_workspace"
+  | "missing_formula_name"
   | "empty_formula"
   | "unbalanced_formula"
   | "pending_draft_review";
@@ -46,6 +47,12 @@ export function getFormulaSaveBlocker({
     return {
       reason: "missing_workspace",
       message: "Create a workspace first",
+    };
+  }
+  if (!workspace.formulaName.trim()) {
+    return {
+      reason: "missing_formula_name",
+      message: "Indica un nombre de formula antes de guardar.",
     };
   }
   if (!workspace.formulaLines.length) {

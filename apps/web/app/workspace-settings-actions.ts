@@ -93,7 +93,6 @@ export function useWorkspaceSettingsActions({
       setWorkspace({
         ...emptyWorkspace,
         tenant,
-        formulaName: `${name} Formula`,
       });
       resetFormulaBuilderSelection();
       resetRawMaterialWorkspaceState();
@@ -147,7 +146,6 @@ export function useWorkspaceSettingsActions({
           ...emptyWorkspace,
           tenant,
           rawMaterials: [],
-          formulaName: `${tenant.name} Formula`,
         });
         resetFormulaBuilderSelection();
         resetRawMaterialWorkspaceState();

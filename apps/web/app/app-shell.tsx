@@ -71,7 +71,7 @@ type NavigationItem = {
 };
 
 const primaryNavigation: NavigationItem[] = [
-  { view: "formula", label: "Formula actual", icon: <FlaskConical size={18} /> },
+  { view: "formula", label: "Formula Builder", icon: <FlaskConical size={18} /> },
   { view: "iso", label: "ISO 9001", icon: <ClipboardCheck size={18} /> },
   { view: "materials", label: "Materias primas", icon: <Database size={18} /> },
   { view: "import", label: "Importar Excel", icon: <Upload size={18} /> },
@@ -95,6 +95,13 @@ export function AppShell({
   onViewChange,
   onSignOut,
 }: AppShellProps) {
+  const formulaContext = workspace.formulaName.trim();
+  const headerDescription = workspace.tenant
+    ? [formulaContext, VIEW_DESCRIPTIONS[activeView], workspace.tenant.name]
+        .filter(Boolean)
+        .join(" - ")
+    : VIEW_DESCRIPTIONS[activeView];
+
   return (
     <main className="shell">
       <aside className="sidebar" aria-label="Workspace navigation">
@@ -138,11 +145,7 @@ export function AppShell({
         <header className="topbar">
           <div>
             <h1>{VIEW_TITLES[activeView]}</h1>
-            <p>
-              {workspace.tenant
-                ? `${workspace.formulaName} - ${VIEW_DESCRIPTIONS[activeView]} - ${workspace.tenant.name}`
-                : VIEW_DESCRIPTIONS[activeView]}
-            </p>
+            <p>{headerDescription}</p>
           </div>
           <details className="accountMenu">
             <summary>

@@ -1,4 +1,5 @@
 import type { RawMaterial } from "./raw-material-model";
+import type { FormulaBuilderMode } from "./formula-builder-model";
 import type { FormulaLine, Parameter, Tenant } from "./workspace-base-model";
 
 export type WorkspaceState = {
@@ -7,6 +8,7 @@ export type WorkspaceState = {
   parameters: Parameter[];
   rawMaterials: RawMaterial[];
   formulaId: string | null;
+  formulaBuilderMode: FormulaBuilderMode;
   formulaName: string;
   formulaJiraProjectId: string;
   formulaJiraIssueType: string;
@@ -21,7 +23,8 @@ export const emptyWorkspace: WorkspaceState = {
   parameters: [],
   rawMaterials: [],
   formulaId: null,
-  formulaName: "Manual Formula",
+  formulaBuilderMode: "new",
+  formulaName: "",
   formulaJiraProjectId: "",
   formulaJiraIssueType: "Calidad",
   formulaJiraProductType: "Nuevo",
