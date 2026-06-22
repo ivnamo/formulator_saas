@@ -545,6 +545,7 @@ export function RawMaterialsPanel({
         : `${parameterFamilyFilters.length} families selected`;
   const selectedCompositionLabel =
     compositionFamilyFilter === "all" ? "All families" : compositionFamilyFilter;
+  const materialNotesMetadata = parseMaterialNotesMetadata(editForm?.notes ?? "");
 
   return (
     <section id="materials" className="panel materialPanel" hidden={!active}>
@@ -926,9 +927,9 @@ export function RawMaterialsPanel({
                 <StatusPill material={selectedMaterial} />
               </div>
 
-              <details className="materialDisclosure materialDetailSection" open>
+              <details className="materialDisclosure materialDetailSection materialSecondaryDetailSection">
                 <summary>
-                  <span>Master data</span>
+                  <span>Master data secundaria</span>
                   <ChevronDown size={16} />
                 </summary>
                 <div className="materialDetailForm">
@@ -1055,18 +1056,45 @@ export function RawMaterialsPanel({
                       disabled={!canEditTenantData}
                     />
                   </label>
-                  <label className="wide">
-                    <span>Notes</span>
-                    <textarea
-                      value={editForm.notes}
-                      onChange={(event) =>
-                        setEditForm((current) =>
-                          current ? { ...current, notes: event.target.value } : current,
-                        )
-                      }
-                      disabled={!canEditTenantData}
-                    />
-                  </label>
+                  {materialNotesMetadata ? (
+                    <div className="materialMetadataPreview wide">
+                      <span>SAP/source metadata</span>
+                      <dl>
+                        {materialNotesMetadata.map((entry) => (
+                          <div key={entry.key}>
+                            <dt>{entry.label}</dt>
+                            <dd>{entry.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                      <details>
+                        <summary>Edit raw notes</summary>
+                        <textarea
+                          aria-label="Raw material notes"
+                          value={editForm.notes}
+                          onChange={(event) =>
+                            setEditForm((current) =>
+                              current ? { ...current, notes: event.target.value } : current,
+                            )
+                          }
+                          disabled={!canEditTenantData}
+                        />
+                      </details>
+                    </div>
+                  ) : (
+                    <label className="wide">
+                      <span>Notes</span>
+                      <textarea
+                        value={editForm.notes}
+                        onChange={(event) =>
+                          setEditForm((current) =>
+                            current ? { ...current, notes: event.target.value } : current,
+                          )
+                        }
+                        disabled={!canEditTenantData}
+                      />
+                    </label>
+                  )}
                 </div>
 
                 <div className="materialSwitches">
@@ -1120,7 +1148,7 @@ export function RawMaterialsPanel({
                 </div>
               </details>
 
-              <details className="materialDisclosure materialParametersPanel">
+              <details className="materialDisclosure materialParametersPanel" open>
                 <summary>
                   <span>
                     <Atom size={16} />
@@ -1738,6 +1766,44 @@ function formatDate(value: string) {
 
 function formatImportAction(action: string) {
   return action.replace(/_/g, " ");
+}
+
+function parseMaterialNotesMetadata(value: string) {
+  const raw = value.trim();
+  if (!raw || !raw.startsWith("{")) {
+    return null;
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+      return null;
+    }
+    const entries = Object.entries(parsed)
+      .filter(([, entryValue]) => entryValue !== null && entryValue !== "")
+      .map(([key, entryValue]) => ({
+        key,
+        label: formatMetadataKey(key),
+        value: formatMetadataValue(entryValue),
+      }))
+      .filter((entry) => entry.value.length > 0);
+    return entries.length ? entries : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatMetadataKey(value: string) {
+  return value.replace(/_/g, " ");
+}
+
+function formatMetadataValue(value: unknown) {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return JSON.stringify(value);
 }
 
 function buildParameterDrafts(material: RawMaterial, parameters: Parameter[]) {

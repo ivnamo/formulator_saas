@@ -2170,6 +2170,26 @@ label span {
 }
 
 .materialDetailHeader {
+  order: 1;
+}
+
+.materialParametersPanel {
+  order: 2;
+}
+
+.materialSecondaryDetailSection {
+  order: 3;
+}
+
+.materialDetailAliasesDisclosure {
+  order: 4;
+}
+
+.materialDetail .priceHistoryPanel {
+  order: 5;
+}
+
+.materialDetailHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -2207,6 +2227,69 @@ label span {
 
 .materialDetailForm .wide {
   grid-column: 1 / -1;
+}
+
+.materialMetadataPreview {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fbfcfb;
+}
+
+.materialMetadataPreview > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.materialMetadataPreview dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.materialMetadataPreview dl div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.materialMetadataPreview dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.materialMetadataPreview dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.materialMetadataPreview details {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.materialMetadataPreview summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.materialMetadataPreview textarea {
+  width: 100%;
+  min-height: 88px;
+  margin-top: 8px;
 }
 
 .materialSwitches {
