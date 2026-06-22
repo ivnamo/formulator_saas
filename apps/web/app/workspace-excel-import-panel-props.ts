@@ -6,6 +6,7 @@ type BuildWorkspaceExcelImportPanelPropsArgs = {
   importPreview: ExcelImportPanelProps["importPreview"];
   importFileName: ExcelImportPanelProps["importFileName"];
   importFormulaName: ExcelImportPanelProps["importFormulaName"];
+  importFormulaDescription: ExcelImportPanelProps["importFormulaDescription"];
   availableImportSheets: ExcelImportPanelProps["availableImportSheets"];
   selectedImportSheet: ExcelImportPanelProps["selectedImportSheet"];
   rawMaterials: ExcelImportPanelProps["rawMaterials"];
@@ -14,10 +15,12 @@ type BuildWorkspaceExcelImportPanelPropsArgs = {
   canSaveImport: ExcelImportPanelProps["canSaveImport"];
   isBusy: ExcelImportPanelProps["isBusy"];
   setImportFormulaName: ExcelImportPanelProps["onFormulaNameChange"];
+  setImportFormulaDescription: ExcelImportPanelProps["onFormulaDescriptionChange"];
   selectExcelImportFile: ExcelImportPanelProps["onSelectFile"];
   previewSelectedImportSheet: ExcelImportPanelProps["onPreviewSheet"];
   parsePastedImportRows: ExcelImportPanelProps["onParsePastedRows"];
   saveExcelImport: ExcelImportPanelProps["onSaveImport"];
+  openImportInFormulaBuilder: ExcelImportPanelProps["onOpenInFormulaBuilder"];
   resolveImportRow: ExcelImportPanelProps["onResolveRow"];
   createMaterialFromImportRow: ExcelImportPanelProps["onCreateMaterialFromRow"];
   acceptImportSuggestion: ExcelImportPanelProps["onAcceptSuggestion"];
@@ -31,6 +34,7 @@ export function buildWorkspaceExcelImportPanelProps(
     importPreview: args.importPreview,
     importFileName: args.importFileName,
     importFormulaName: args.importFormulaName,
+    importFormulaDescription: args.importFormulaDescription,
     availableImportSheets: args.availableImportSheets,
     selectedImportSheet: args.selectedImportSheet,
     rawMaterials: args.rawMaterials,
@@ -39,10 +43,12 @@ export function buildWorkspaceExcelImportPanelProps(
     canSaveImport: args.canSaveImport,
     isBusy: args.isBusy,
     onFormulaNameChange: args.setImportFormulaName,
+    onFormulaDescriptionChange: args.setImportFormulaDescription,
     onSelectFile: args.selectExcelImportFile,
     onPreviewSheet: args.previewSelectedImportSheet,
     onParsePastedRows: args.parsePastedImportRows,
     onSaveImport: args.saveExcelImport,
+    onOpenInFormulaBuilder: args.openImportInFormulaBuilder,
     onResolveRow: args.resolveImportRow,
     onCreateMaterialFromRow: args.createMaterialFromImportRow,
     onAcceptSuggestion: args.acceptImportSuggestion,

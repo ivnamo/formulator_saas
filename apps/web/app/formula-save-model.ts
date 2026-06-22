@@ -10,6 +10,7 @@ type FormulaSaveMetadata = {
   formulaJiraProjectId: string;
   formulaJiraIssueType: string;
   formulaJiraProductType: string;
+  formulaJiraDescription: string;
 };
 
 type FormulaImportRow = {
@@ -23,6 +24,7 @@ export function buildManualFormulaSavePayload(
 ) {
   return {
     name: metadata.formulaName.trim(),
+    objective: metadata.formulaJiraDescription.trim(),
     jira_project_id: metadata.formulaJiraProjectId.trim() || null,
     jira_issue_type: metadata.formulaJiraIssueType,
     jira_product_type: metadata.formulaJiraProductType,
@@ -44,6 +46,7 @@ export function buildImportedFormulaSavePayload(
 
   return {
     name: formulaName?.trim() || fallbackName,
+    objective: metadata.formulaJiraDescription.trim(),
     jira_project_id: metadata.formulaJiraProjectId.trim() || null,
     jira_issue_type: metadata.formulaJiraIssueType,
     jira_product_type: metadata.formulaJiraProductType,

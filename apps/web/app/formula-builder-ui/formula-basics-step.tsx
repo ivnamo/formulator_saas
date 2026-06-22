@@ -9,6 +9,7 @@ export type FormulaBasicsValue = Pick<
   | "formulaId"
   | "formulaBuilderMode"
   | "formulaName"
+  | "formulaJiraDescription"
   | "formulaJiraProjectId"
   | "formulaJiraIssueType"
   | "formulaJiraProductType"
@@ -93,6 +94,19 @@ export function FormulaBasicsStep({
           placeholder="Nombre de formula"
           value={values.formulaName}
           onChange={(event) => onChange({ formulaName: event.target.value })}
+          disabled={isBusy}
+        />
+      </label>
+      <label className="fullWidthLabel">
+        <span>
+          Descripcion <span className="requiredMark">*</span>
+        </span>
+        <textarea
+          aria-required="true"
+          placeholder="Describe objetivo, cambio, uso previsto o contexto tecnico de la formula."
+          rows={3}
+          value={values.formulaJiraDescription}
+          onChange={(event) => onChange({ formulaJiraDescription: event.target.value })}
           disabled={isBusy}
         />
       </label>

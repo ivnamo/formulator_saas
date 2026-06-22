@@ -8,6 +8,7 @@ export type FormulaReviewStepProps = JiraReviewPanelProps & {
   isFormulaBalanced: boolean;
   totalPercentage: number;
   canSaveFormula: boolean;
+  canExportExcel: boolean;
   blankFormulaLineCount: number;
   onToggle: (section: BuilderSectionKey) => void;
   onSaveFormula: () => void | Promise<void>;
@@ -19,6 +20,7 @@ export function FormulaReviewStep({
   isFormulaBalanced,
   totalPercentage,
   canSaveFormula,
+  canExportExcel,
   blankFormulaLineCount,
   onToggle,
   onSaveFormula,
@@ -65,7 +67,7 @@ export function FormulaReviewStep({
             className="secondaryButton"
             type="button"
             onClick={() => void onExportExcel()}
-            disabled={jiraReviewProps.isBusy}
+            disabled={!canExportExcel}
           >
             <Download size={17} />
             Exportar Excel I+D

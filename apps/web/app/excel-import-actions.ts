@@ -1,4 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import type { WorkspaceView } from "./app-shell";
 import {
   createImportRawMaterial,
   createImportRawMaterialAlias,
@@ -6,6 +7,10 @@ import {
   fetchExcelImportSheets,
   saveExcelImportedFormula,
 } from "./excel-import-api";
+import {
+  DEFAULT_BUILDER_SECTIONS,
+  type BuilderSectionKey,
+} from "./formula-builder-model";
 import { toEditableFormulaState } from "./formula-read-model";
 import {
   aliasFromImportRow,
@@ -22,12 +27,14 @@ import {
 } from "./raw-material-model";
 import type { DraftReviewState, SavedFormulaComparison } from "./workspace-comparison";
 import type { WorkspaceState } from "./workspace-state-model";
+import { makeLocalId } from "./workspace-utils";
 
 type ExcelImportActionsOptions = {
   workspace: WorkspaceState;
   importPreview: ExcelImportPreview | null;
   importFile: File | null;
   importFormulaName: string;
+  importFormulaDescription: string;
   headers: HeadersInit;
   uploadHeaders: HeadersInit;
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
@@ -40,6 +47,9 @@ type ExcelImportActionsOptions = {
   setPastedImportPreview: (preview: ExcelImportPreview) => void;
   setSelectedImportSheet: (sheetName: string) => void;
   resolveImportRowState: (rowNumber: number, rawMaterialId: string) => boolean;
+  resetImportState: () => void;
+  setBuilderSections: Dispatch<SetStateAction<Record<BuilderSectionKey, boolean>>>;
+  setActiveView: (view: WorkspaceView) => void;
   refreshCatalog: () => void;
   refreshFormulaLibrary: (options?: { silent?: boolean }) => Promise<void>;
   loadCalculationHistory: (formulaId: string) => Promise<void>;
@@ -53,6 +63,7 @@ export function useExcelImportActions({
   importPreview,
   importFile,
   importFormulaName,
+  importFormulaDescription,
   headers,
   uploadHeaders,
   setWorkspace,
@@ -65,6 +76,9 @@ export function useExcelImportActions({
   setPastedImportPreview,
   setSelectedImportSheet,
   resolveImportRowState,
+  resetImportState,
+  setBuilderSections,
+  setActiveView,
   refreshCatalog,
   refreshFormulaLibrary,
   loadCalculationHistory,
@@ -178,6 +192,10 @@ export function useExcelImportActions({
       setError("Resolve import rows before saving");
       return;
     }
+    if (!importFormulaDescription.trim()) {
+      setError("Indica una descripcion de formula antes de guardar la importacion.");
+      return;
+    }
 
     await runAction("Saving imported formula", async () => {
       const formula = await saveExcelImportedFormula(
@@ -185,6 +203,7 @@ export function useExcelImportActions({
         workspace.tenant?.name,
         workspace,
         importFormulaName || importPreview.formula_name,
+        importFormulaDescription,
         importPreview.rows,
       );
       setWorkspace((current) => ({
@@ -196,14 +215,17 @@ export function useExcelImportActions({
       setResult(null);
       setDraftReview(null);
       setSavedFormulaComparison(null);
+      resetImportState();
       setMessage("Imported formula saved");
     });
   }, [
     headers,
+    importFormulaDescription,
     importFormulaName,
     importPreview,
     loadCalculationHistory,
     refreshFormulaLibrary,
+    resetImportState,
     runAction,
     setDraftReview,
     setError,
@@ -215,6 +237,67 @@ export function useExcelImportActions({
     workspace.formulaJiraProductType,
     workspace.formulaJiraProjectId,
     workspace.tenant,
+  ]);
+
+  const openImportInFormulaBuilder = useCallback(() => {
+    if (!importPreview) {
+      setError("Preview an Excel file first");
+      return;
+    }
+    if (importPreview.pending_rows > 0) {
+      setError("Resolve import rows before opening in Formula Builder");
+      return;
+    }
+    const formulaLines = importPreview.rows.flatMap((row) =>
+      row.raw_material_id
+        ? [
+            {
+              localId: makeLocalId(),
+              rawMaterialId: row.raw_material_id,
+              percentage: row.percentage ?? 0,
+            },
+          ]
+        : [],
+    );
+    if (formulaLines.length === 0) {
+      setError("Import preview has no resolved formula lines");
+      return;
+    }
+
+    setWorkspace((current) => ({
+      ...current,
+      formulaId: null,
+      formulaBuilderMode: "new",
+      formulaName: importFormulaName || importPreview.formula_name || "",
+      formulaJiraDescription: importFormulaDescription,
+      formulaLines,
+    }));
+    setBuilderSections({
+      ...DEFAULT_BUILDER_SECTIONS,
+      basics: true,
+      formula: true,
+      calculation: true,
+      review: true,
+    });
+    setResult(null);
+    setDraftReview(null);
+    setSavedFormulaComparison(null);
+    resetImportState();
+    setActiveView("formula");
+    setMessage("Importacion abierta en Formula Builder");
+  }, [
+    importFormulaDescription,
+    importFormulaName,
+    importPreview,
+    resetImportState,
+    setActiveView,
+    setBuilderSections,
+    setDraftReview,
+    setError,
+    setMessage,
+    setResult,
+    setSavedFormulaComparison,
+    setWorkspace,
   ]);
 
   const resolveImportRow = useCallback(
@@ -317,6 +400,7 @@ export function useExcelImportActions({
     previewSelectedImportSheet,
     parsePastedImportRows,
     saveExcelImport,
+    openImportInFormulaBuilder,
     resolveImportRow,
     acceptImportSuggestion,
     createMaterialFromImportRow,

@@ -90,6 +90,7 @@ export function useFormulaBuilderDerivedState({
       formulaId: workspace.formulaId,
       formulaBuilderMode: workspace.formulaBuilderMode,
       formulaName: workspace.formulaName,
+      formulaJiraDescription: workspace.formulaJiraDescription,
       formulaJiraProjectId: workspace.formulaJiraProjectId,
       formulaJiraIssueType: workspace.formulaJiraIssueType,
       formulaJiraProductType: workspace.formulaJiraProductType,
@@ -97,6 +98,7 @@ export function useFormulaBuilderDerivedState({
     [
       workspace.formulaId,
       workspace.formulaBuilderMode,
+      workspace.formulaJiraDescription,
       workspace.formulaJiraIssueType,
       workspace.formulaJiraProductType,
       workspace.formulaJiraProjectId,

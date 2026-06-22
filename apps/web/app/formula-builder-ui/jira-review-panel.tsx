@@ -13,10 +13,8 @@ export type JiraReviewPanelProps = {
   activeJiraConnection: JiraConnection | null;
   formulaReviewRequests: FormulaReviewRequest[];
   formulaReviewArtifacts: Record<string, FormulaReviewArtifact[]>;
-  formulaJiraDescription: string;
   canSendCurrentFormulaToJira: boolean;
   isBusy: boolean;
-  onJiraDescriptionChange: (description: string) => void;
   onSendCurrentFormulaToJira: () => void | Promise<void>;
   onGenerateReviewExcel: (reviewId: string) => void | Promise<void>;
   onDownloadArtifact: (artifact: FormulaReviewArtifact) => void | Promise<void>;
@@ -29,10 +27,8 @@ export function JiraReviewPanel({
   activeJiraConnection,
   formulaReviewRequests,
   formulaReviewArtifacts,
-  formulaJiraDescription,
   canSendCurrentFormulaToJira,
   isBusy,
-  onJiraDescriptionChange,
   onSendCurrentFormulaToJira,
   onGenerateReviewExcel,
   onDownloadArtifact,
@@ -47,14 +43,6 @@ export function JiraReviewPanel({
           <span>Jira review</span>
           <strong>{activeJiraConnection ? "Configured" : "Not configured"}</strong>
         </div>
-        <label className="jiraDescriptionField">
-          <span>Descripcion Jira</span>
-          <textarea
-            value={formulaJiraDescription}
-            onChange={(event) => onJiraDescriptionChange(event.target.value)}
-            disabled={isBusy}
-          />
-        </label>
         <button
           className="secondaryButton"
           type="button"

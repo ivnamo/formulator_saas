@@ -206,7 +206,10 @@ export function SavedFormulaComparisonPanel({
           ) : (
             formulas.map((formula) => (
               <div className="formulaListRow" key={formula.id}>
-                <span>{formula.name}</span>
+                <span className="formulaLibraryName">
+                  <strong>{formula.name}</strong>
+                  {formula.objective ? <small>{formula.objective}</small> : null}
+                </span>
                 <span>
                   {formula.total_price === null
                     ? "-"

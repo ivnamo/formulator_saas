@@ -45,7 +45,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-002 - Versionado ligado de formulas
 
-- Estado: Inbox
+- Estado: Done
 - Prioridad: P0
 - Area: Biblioteca | Formula Builder | Jira | ISO
 - Origen: Usuario
@@ -198,11 +198,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - ISO recibe o muestra esa descripcion cuando aplique.
   - La biblioteca conserva y muestra la descripcion.
 - Validacion beta: Crear formula sin descripcion y verificar bloqueo; crear con descripcion y verificar Jira/ISO.
-- Notas: Posible migracion/backfill para formulas existentes.
+- Notas: Implementado usando `objective` como descripcion persistente de formula. Datos basicos la edita, guardar/exportar/Jira la exigen, Jira/ISO/Excel la reutilizan y biblioteca la muestra. Validado con `npm run check`.
 
 ### BL-012 - Limpiar Excel Import despues de guardar formula
 
-- Estado: Inbox
+- Estado: Done
 - Prioridad: P1
 - Area: Import Excel | UX
 - Origen: Usuario
@@ -213,11 +213,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - No queda una importacion anterior lista para guardarse de nuevo por error.
   - La formula guardada permanece accesible en biblioteca.
 - Validacion beta: Importar, guardar, comprobar formulario limpio y biblioteca actualizada.
-- Notas: Cuidado con no borrar mensajes utiles de exito demasiado pronto.
+- Notas: Implementado: tras guardar se resetean archivo, preview, nombre, descripcion, hojas y texto pegado. Validado con `npm run check`.
 
 ### BL-013 - Enviar importacion Excel al Formula Builder
 
-- Estado: Inbox
+- Estado: Done
 - Prioridad: P0
 - Area: Import Excel | Formula Builder | ISO | Jira
 - Origen: Usuario
@@ -229,11 +229,11 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - El usuario puede asociar ProyectoID/ISO/Jira antes de guardar definitivamente.
   - No se pierde trazabilidad de que viene de Excel import.
 - Validacion beta: Importar Excel, abrir en builder, modificar porcentajes, asociar proyecto y guardar.
-- Notas: Definir si esta accion guarda borrador o solo carga estado local.
+- Notas: Implementado como carga local en Formula Builder sin guardar; requiere filas resueltas y mantiene nombre/descripcion importados. Validado con `npm run check`.
 
 ### BL-014 - Mover Configuracion del sidebar al account menu
 
-- Estado: Inbox
+- Estado: Done
 - Prioridad: P1
 - Area: UX | Settings
 - Origen: Usuario
@@ -246,7 +246,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Los permisos de owner/admin siguen respetandose dentro del menu/configuracion.
   - No se rompe la navegacion directa a la pantalla de configuracion si existe ruta/estado interno.
 - Validacion beta: Abrir menu de cuenta, entrar a Configuracion y volver al flujo principal sin perder contexto.
-- Notas: Revisar si conviene separar "Cuenta", "Tenant" e "Integraciones" dentro de Configuracion.
+- Notas: Implementado: Configuracion desaparece del sidebar y queda accesible desde el menu de cuenta. Validado con `npm run check`.
 
 ### BL-015 - Priorizar composicion quimica en Materias primas
 

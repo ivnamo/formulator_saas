@@ -90,12 +90,17 @@ function formulaExcelExportPayload(
   workspace: WorkspaceState,
   metadata: FormulaExcelMetadata,
 ) {
+  const formulaDescription = workspace.formulaJiraDescription.trim();
   return {
     name: workspace.formulaName,
+    objective: formulaDescription || null,
     jira_project_id: workspace.formulaJiraProjectId.trim() || null,
     jira_issue_type: workspace.formulaJiraIssueType,
     jira_product_type: workspace.formulaJiraProductType,
-    metadata,
+    metadata: {
+      ...metadata,
+      notes: metadata.notes ?? (formulaDescription || null),
+    },
     items: workspace.formulaLines.map((line, index) => ({
       raw_material_id: line.rawMaterialId,
       percentage: formulaLinePercentageValue(line.percentage),

@@ -259,6 +259,10 @@ export function useSavedFormulaActions({
       setError("Add at least one material before exporting");
       return;
     }
+    if (!workspace.formulaJiraDescription.trim()) {
+      setError("Indica una descripcion de formula antes de exportar.");
+      return;
+    }
 
     await runAction("Exporting Excel I+D", async () => {
       const download =

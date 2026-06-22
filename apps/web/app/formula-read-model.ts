@@ -39,7 +39,7 @@ export function toEditableFormulaMetadata(
       formula.jira_product_type,
       emptyWorkspace.formulaJiraProductType,
     ),
-    formulaJiraDescription: "",
+    formulaJiraDescription: formula.objective ?? "",
   };
 }
 

@@ -60,7 +60,6 @@ type BuildFormulaBuilderPanelPropsArgs = {
   formulaReviewArtifacts: FormulaBuilderReviewProps["formulaReviewArtifacts"];
   isoDesignProjects: FormulaBuilderBasicsProps["isoDesignProjects"];
   jiraIssueTypeOptions: FormulaBuilderBasicsProps["jiraIssueTypeOptions"];
-  formulaJiraDescription: FormulaBuilderReviewProps["formulaJiraDescription"];
   selectedIsoDesignProjectId: FormulaBuilderBasicsProps["selectedIsoDesignProjectId"];
   canPrepareJiraReview: boolean;
   formulaLineDetails: FormulaBuilderCompositionProps["formulaLineDetails"];
@@ -92,7 +91,6 @@ type BuildFormulaBuilderPanelPropsArgs = {
   updateDraftReviewNotes: FormulaBuilderCompositionProps["onNotesChange"];
   confirmDraftReview: FormulaBuilderCompositionProps["onConfirmDraftReview"];
   setSelectedIsoDesignProjectId: FormulaBuilderBasicsProps["onSelectedIsoDesignProjectChange"];
-  setFormulaJiraDescription: FormulaBuilderReviewProps["onJiraDescriptionChange"];
   prepareIsoProjectFromFormula: FormulaBuilderBasicsProps["onPrepareIsoProject"];
   sendCurrentFormulaToJira: FormulaBuilderReviewProps["onSendCurrentFormulaToJira"];
   generateJiraReviewExcel: FormulaBuilderReviewProps["onGenerateReviewExcel"];
@@ -226,19 +224,21 @@ function buildFormulaBuilderReviewProps(
     isFormulaBalanced: args.isFormulaBalanced,
     totalPercentage: args.totalPercentage,
     canSaveFormula: args.canSaveFormula,
+    canExportExcel:
+      !args.isBusy &&
+      args.workspace.formulaLines.length > 0 &&
+      args.workspace.formulaJiraDescription.trim().length > 0,
     blankFormulaLineCount: args.workspace.formulaLines.filter((line) =>
       hasBlankFormulaLinePercentage(line.percentage),
     ).length,
     activeJiraConnection: args.activeJiraConnection,
     formulaReviewRequests: args.formulaReviewRequests,
     formulaReviewArtifacts: args.formulaReviewArtifacts,
-    formulaJiraDescription: args.formulaJiraDescription,
     canSendCurrentFormulaToJira: canSendCurrentFormulaToJira(args),
     isBusy: args.isBusy,
     onToggle: args.toggleBuilderSection,
     onSaveFormula: args.saveFormula,
     onExportExcel: args.exportCurrentFormulaIdLabExcel,
-    onJiraDescriptionChange: args.setFormulaJiraDescription,
     onSendCurrentFormulaToJira: args.sendCurrentFormulaToJira,
     onGenerateReviewExcel: args.generateJiraReviewExcel,
     onDownloadArtifact: args.downloadJiraReviewArtifact,

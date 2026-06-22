@@ -10,6 +10,7 @@ export function useExcelImportState() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importFileName, setImportFileName] = useState("");
   const [importFormulaName, setImportFormulaName] = useState("");
+  const [importFormulaDescription, setImportFormulaDescription] = useState("");
   const [availableImportSheets, setAvailableImportSheets] = useState<string[]>([]);
   const [selectedImportSheet, setSelectedImportSheet] = useState("");
 
@@ -18,6 +19,7 @@ export function useExcelImportState() {
     setImportFile(null);
     setImportFileName("");
     setImportFormulaName("");
+    setImportFormulaDescription("");
     setAvailableImportSheets([]);
     setSelectedImportSheet("");
   }, []);
@@ -65,6 +67,7 @@ export function useExcelImportState() {
     importFile,
     importFileName,
     importFormulaName,
+    importFormulaDescription,
     availableImportSheets,
     selectedImportSheet,
     resetImportState,
@@ -72,6 +75,7 @@ export function useExcelImportState() {
     setPreview,
     setPastedPreview,
     setImportFormulaName,
+    setImportFormulaDescription,
     setSelectedImportSheet,
     resolveImportRow,
   };

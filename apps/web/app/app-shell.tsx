@@ -75,7 +75,6 @@ const primaryNavigation: NavigationItem[] = [
   { view: "iso", label: "ISO 9001", icon: <ClipboardCheck size={18} /> },
   { view: "materials", label: "Materias primas", icon: <Database size={18} /> },
   { view: "import", label: "Importar Excel", icon: <Upload size={18} /> },
-  { view: "settings", label: "Configuracion", icon: <Settings2 size={18} /> },
 ];
 
 const advancedNavigation: NavigationItem[] = [

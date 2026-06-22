@@ -17,6 +17,7 @@ export type WorkspaceCapabilitiesOptions = {
   availableImportSheets: string[];
   importFile: File | null;
   importPreview: ExcelImportPreview | null;
+  importFormulaDescription: string;
   requirementText: string;
   compatibilityRuleForm: CompatibilityRuleForm;
   jiraConnections: JiraConnection[];
@@ -62,6 +63,7 @@ export function buildWorkspaceCapabilities({
   availableImportSheets,
   importFile,
   importPreview,
+  importFormulaDescription,
   requirementText,
   compatibilityRuleForm,
   jiraConnections,
@@ -82,7 +84,10 @@ export function buildWorkspaceCapabilities({
     workspace.formulaLines.length > 0 &&
     !hasPendingDraftReview &&
     !isBusy;
-  const canSaveFormula = canCalculate && isFormulaBalanced && workspace.formulaName.trim().length > 0;
+  const hasFormulaName = workspace.formulaName.trim().length > 0;
+  const hasFormulaDescription = workspace.formulaJiraDescription.trim().length > 0;
+  const canSaveFormula =
+    canCalculate && isFormulaBalanced && hasFormulaName && hasFormulaDescription;
   const canCompareSavedFormulas =
     Boolean(workspace.tenant) &&
     Boolean(formulaCompareSelection.baselineId) &&
@@ -94,6 +99,7 @@ export function buildWorkspaceCapabilities({
     Boolean(importPreview) &&
     importPreview?.rows.length !== 0 &&
     importPreview?.pending_rows === 0 &&
+    importFormulaDescription.trim().length > 0 &&
     !isBusy;
   const canParseRequirements =
     Boolean(workspace.tenant) && requirementText.trim().length >= 3 && !isBusy;
@@ -127,6 +133,7 @@ export function buildWorkspaceCapabilities({
     Boolean(workspace.tenant) &&
     workspace.formulaLines.length > 0 &&
     isFormulaBalanced &&
+    hasFormulaDescription &&
     !hasPendingDraftReview &&
     (!isQualityJiraIssueType || workspace.formulaJiraProjectId.trim().length > 0) &&
     Boolean(activeJiraConnection) &&

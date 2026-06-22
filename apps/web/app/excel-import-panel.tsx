@@ -1,5 +1,5 @@
-import { AlertTriangle, Check, ClipboardPaste, Plus, Save, Search } from "lucide-react";
-import { useMemo, useState, type FocusEvent, type KeyboardEvent } from "react";
+import { AlertTriangle, Check, ClipboardPaste, FolderOpen, Plus, Save, Search } from "lucide-react";
+import { useEffect, useMemo, useState, type FocusEvent, type KeyboardEvent } from "react";
 import {
   ATLANTICA_ID_LAB_PARSER,
   COMPACT_LAB_TRIAL_PARSER,
@@ -18,6 +18,7 @@ type ExcelImportPanelProps = {
   importPreview: ExcelImportPreview | null;
   importFileName: string;
   importFormulaName: string;
+  importFormulaDescription: string;
   availableImportSheets: string[];
   selectedImportSheet: string;
   rawMaterials: RawMaterial[];
@@ -26,10 +27,12 @@ type ExcelImportPanelProps = {
   canSaveImport: boolean;
   isBusy: boolean;
   onFormulaNameChange: (value: string) => void;
+  onFormulaDescriptionChange: (value: string) => void;
   onSelectFile: (file: File | null) => void | Promise<void>;
   onPreviewSheet: (sheetName: string) => void | Promise<void>;
   onParsePastedRows: (text: string) => void;
   onSaveImport: () => void | Promise<void>;
+  onOpenInFormulaBuilder: () => void;
   onResolveRow: (rowNumber: number, rawMaterialId: string) => void;
   onCreateMaterialFromRow: (row: ExcelImportPreviewRow) => void | Promise<void>;
   onAcceptSuggestion: (row: ExcelImportPreviewRow) => void;
@@ -41,6 +44,7 @@ export function ExcelImportPanel({
   importPreview,
   importFileName,
   importFormulaName,
+  importFormulaDescription,
   availableImportSheets,
   selectedImportSheet,
   rawMaterials,
@@ -49,10 +53,12 @@ export function ExcelImportPanel({
   canSaveImport,
   isBusy,
   onFormulaNameChange,
+  onFormulaDescriptionChange,
   onSelectFile,
   onPreviewSheet,
   onParsePastedRows,
   onSaveImport,
+  onOpenInFormulaBuilder,
   onResolveRow,
   onCreateMaterialFromRow,
   onAcceptSuggestion,
@@ -62,6 +68,12 @@ export function ExcelImportPanel({
   const parserLabel = importPreview ? importParserLabel(importPreview.parser) : "Generic";
   const heading = importPreview ? importPreviewHeading(importPreview) : "No file";
   const [pastedRowsText, setPastedRowsText] = useState("");
+
+  useEffect(() => {
+    if (!importPreview && !importFileName) {
+      setPastedRowsText("");
+    }
+  }, [importFileName, importPreview]);
 
   return (
     <section id="import" className="panel importPanel" hidden={!active}>
@@ -105,7 +117,9 @@ export function ExcelImportPanel({
           </select>
         </label>
         <label>
-          <span>Formula name</span>
+          <span>
+            Formula name <span className="requiredMark">*</span>
+          </span>
           <input
             aria-label="Imported formula name"
             value={importFormulaName}
@@ -113,6 +127,27 @@ export function ExcelImportPanel({
             disabled={!importPreview || isBusy}
           />
         </label>
+        <label>
+          <span>
+            Formula description <span className="requiredMark">*</span>
+          </span>
+          <textarea
+            aria-label="Imported formula description"
+            rows={2}
+            value={importFormulaDescription}
+            onChange={(event) => onFormulaDescriptionChange(event.target.value)}
+            disabled={!importPreview || isBusy}
+          />
+        </label>
+        <button
+          className="secondaryButton"
+          type="button"
+          onClick={onOpenInFormulaBuilder}
+          disabled={!importPreview || importPreview.pending_rows > 0 || isBusy}
+        >
+          <FolderOpen size={17} />
+          Open in Builder
+        </button>
         <button
           className="secondaryButton"
           type="button"

@@ -830,6 +830,7 @@ def register_routes(app: FastAPI) -> None:
             name=formula.name,
             items=items,
             version=formula.version,
+            metadata=FormulaExcelMetadata(notes=formula.objective),
         )
         excel = build_formula_id_lab_excel(context)
         return _excel_download_response(
@@ -855,7 +856,7 @@ def register_routes(app: FastAPI) -> None:
                 experiment_date=payload.metadata.experiment_date,
                 density=payload.metadata.density,
                 ph=payload.metadata.ph,
-                notes=payload.metadata.notes,
+                notes=payload.metadata.notes or payload.objective,
             ),
         )
         excel = build_formula_id_lab_excel(context)
@@ -1037,6 +1038,7 @@ def register_routes(app: FastAPI) -> None:
         formula = Formula(
             tenant_id=tenant.tenant_id,
             name=payload.name,
+            objective=payload.objective,
             jira_project_id=_formula_jira_project_id(payload.jira_project_id, payload.name),
             jira_issue_type=payload.jira_issue_type,
             jira_product_type=payload.jira_product_type,

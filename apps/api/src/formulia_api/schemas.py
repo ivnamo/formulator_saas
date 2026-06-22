@@ -260,6 +260,7 @@ class FormulaExcelMetadataCreate(BaseModel):
 
 class FormulaExcelExportRequest(BaseModel):
     name: str
+    objective: str | None = None
     items: list[FormulaItemCreate]
     jira_project_id: str | None = None
     jira_issue_type: str = "Calidad"
@@ -753,6 +754,7 @@ class ExcelImportSaveRow(BaseModel):
 
 class ExcelImportSaveRequest(BaseModel):
     name: str
+    objective: str | None = None
     jira_project_id: str | None = None
     jira_issue_type: str = "Calidad"
     jira_product_type: str = "Nuevo"

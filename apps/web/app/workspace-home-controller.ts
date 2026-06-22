@@ -193,6 +193,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     importFile,
     importFileName,
     importFormulaName,
+    importFormulaDescription,
     availableImportSheets,
     selectedImportSheet,
     resetImportState,
@@ -200,6 +201,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setPreview: setImportPreview,
     setPastedPreview: setPastedImportPreview,
     setImportFormulaName,
+    setImportFormulaDescription,
     setSelectedImportSheet,
     resolveImportRow: resolveImportRowState,
   } = useExcelImportState();
@@ -362,6 +364,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     availableImportSheets,
     importFile,
     importPreview,
+    importFormulaDescription,
     requirementText,
     compatibilityRuleForm,
     jiraConnections,
@@ -563,15 +566,6 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     workspace.formulaJiraIssueType,
     workspace.formulaJiraProjectId,
   ]);
-  const setFormulaJiraDescription = useCallback(
-    (description: string) => {
-      setWorkspace((current) => ({
-        ...current,
-        formulaJiraDescription: description,
-      }));
-    },
-    [setWorkspace],
-  );
   const prepareIsoProjectFromFormula = useCallback(() => {
     if (!isIsoQualityFormula(workspace.formulaJiraIssueType)) {
       setMessage("ISO solo aplica automaticamente a formulas con issue type Jira Calidad.");
@@ -589,6 +583,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       lifecycleStatus: current.lifecycleStatus || "intake",
       comments:
         current.comments ||
+        workspace.formulaJiraDescription ||
         "Preparado desde Formula Builder. Completa No Solicitud; el ProyectoID se generara automaticamente al crear el F10-01.",
     }));
     setIsoProjectPreparedFromFormulaBuilder(true);
@@ -603,6 +598,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setMessage,
     setSelectedIsoDesignProjectId,
     workspace.formulaJiraIssueType,
+    workspace.formulaJiraDescription,
     workspace.formulaJiraProductType,
     workspace.formulaName,
   ]);
@@ -711,6 +707,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     previewSelectedImportSheet,
     parsePastedImportRows,
     saveExcelImport,
+    openImportInFormulaBuilder,
     resolveImportRow,
     acceptImportSuggestion,
     createMaterialFromImportRow,
@@ -720,6 +717,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     importPreview,
     importFile,
     importFormulaName,
+    importFormulaDescription,
     headers,
     uploadHeaders,
     setWorkspace,
@@ -732,6 +730,9 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setPastedImportPreview,
     setSelectedImportSheet,
     resolveImportRowState,
+    resetImportState,
+    setBuilderSections,
+    setActiveView,
     refreshCatalog,
     refreshFormulaLibrary,
     loadCalculationHistory,
@@ -869,6 +870,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       importPreview,
       importFileName,
       importFormulaName,
+      importFormulaDescription,
       availableImportSheets,
       selectedImportSheet,
       rawMaterials: selectableRawMaterials,
@@ -877,10 +879,12 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       canSaveImport,
       isBusy,
       setImportFormulaName,
+      setImportFormulaDescription,
       selectExcelImportFile,
       previewSelectedImportSheet,
       parsePastedImportRows,
       saveExcelImport,
+      openImportInFormulaBuilder,
       resolveImportRow,
       createMaterialFromImportRow,
       acceptImportSuggestion,
@@ -947,7 +951,6 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       formulaReviewArtifacts,
       isoDesignProjects,
       jiraIssueTypeOptions: isoJiraIssueTypeLabels(isoSettings),
-      formulaJiraDescription: workspace.formulaJiraDescription,
       selectedIsoDesignProjectId: selectedJiraIsoDesignProjectId,
       canPrepareJiraReview,
       formulaLineDetails,
@@ -979,7 +982,6 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       updateDraftReviewNotes,
       confirmDraftReview,
       setSelectedIsoDesignProjectId: setSelectedJiraIsoDesignProjectId,
-      setFormulaJiraDescription,
       prepareIsoProjectFromFormula,
       sendCurrentFormulaToJira,
       generateJiraReviewExcel,
