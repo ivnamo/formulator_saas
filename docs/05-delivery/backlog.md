@@ -378,7 +378,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Las acciones de guardar/exportar/Jira usan el modo seleccionado para evitar sobrescrituras accidentales.
   - El modo queda reflejado en biblioteca y en historico/versionado.
 - Validacion beta: Abrir una formula desde biblioteca y comprobar que el usuario entiende si esta editando, duplicando o versionando antes de guardar.
-- Notas: Implementado selector de modo en Datos basicos y semantica de guardar/exportar/Jira segun modo. Pendiente reflejo completo en biblioteca/historico/versionado ligado.
+- Notas: Implementado selector de modo en Datos basicos y semantica de guardar/exportar/Jira segun modo. Reforzado visualmente como `Decision de guardado`, con contexto de formula cargada/sin cargar y opciones bloqueadas hasta abrir una formula. Pendiente reflejo completo en biblioteca/historico/versionado ligado.
 
 ## Ready
 

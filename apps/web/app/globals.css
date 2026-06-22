@@ -3472,70 +3472,90 @@ label span {
 }
 
 .formulaModePanel {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.2fr);
+  gap: 14px;
+  align-items: stretch;
+  border: 1px solid #9bb6ac;
   border-radius: 8px;
-  background: #fbfcfc;
-  padding: 10px;
+  background: #f4faf8;
+  padding: 12px;
 }
 
-.formulaModePanel > div:first-child {
+.formulaModeCopy {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  align-content: start;
+  gap: 5px;
 }
 
-.formulaModePanel span {
+.formulaModeCopy > span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.formulaModePanel strong {
-  font-size: 14px;
+.formulaModeCopy strong {
+  color: #102c24;
+  font-size: 16px;
 }
 
-.formulaModePanel small {
+.formulaModeCopy small,
+.formulaModeCopy em {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.35;
 }
 
-.segmentedControl {
-  flex: 0 0 auto;
-  display: inline-flex;
-  gap: 2px;
+.formulaModeCopy em {
+  color: #36574c;
+  font-style: normal;
+}
+
+.formulaModeChoices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.formulaModeChoices button {
+  min-height: 62px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-muted);
-  padding: 3px;
-}
-
-.segmentedControl button {
-  min-height: 30px;
-  border: 0;
   border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  padding: 0 10px;
+  background: white;
+  color: #263b34;
+  padding: 8px 10px;
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
+  text-align: left;
+  display: grid;
+  align-content: center;
+  gap: 3px;
 }
 
-.segmentedControl button[aria-pressed="true"] {
-  background: white;
+.formulaModeChoices button span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.formulaModeChoices button small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.formulaModeChoices button[aria-pressed="true"] {
+  border-color: var(--teal);
+  background: #e8f7f2;
   color: var(--teal-dark);
   box-shadow: var(--shadow-soft);
 }
 
-.segmentedControl button:disabled {
+.formulaModeChoices button:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0.55;
 }
 
 .formulaMeter {
@@ -4957,12 +4977,11 @@ label span {
   }
 
   .formulaModePanel {
-    align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
-  .segmentedControl {
-    display: grid;
+  .formulaModeChoices {
+    grid-template-columns: 1fr;
   }
 
   .jiraReviewActions {
