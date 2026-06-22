@@ -3198,6 +3198,52 @@ label span {
   margin-bottom: 14px;
 }
 
+.comparisonConstraintPanel {
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.comparisonConstraintPanel summary {
+  min-height: 40px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 11px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.comparisonConstraintPanel summary::-webkit-details-marker {
+  display: none;
+}
+
+.comparisonConstraintPanel summary span {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.comparisonConstraintPanel summary code {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.comparisonConstraintPanel summary svg:last-child {
+  color: var(--muted);
+  transition: transform 160ms ease;
+}
+
+.comparisonConstraintPanel[open] summary svg:last-child {
+  transform: rotate(180deg);
+}
+
 .libraryGrid {
   display: grid;
   grid-template-columns: minmax(360px, 1fr) minmax(280px, 0.65fr);
@@ -3210,7 +3256,8 @@ label span {
   grid-template-columns: minmax(150px, 0.7fr) minmax(160px, 1fr) minmax(140px, 0.7fr);
   gap: 10px;
   align-items: end;
-  margin-bottom: 14px;
+  padding: 0 11px 11px;
+  border-top: 1px solid var(--border);
 }
 
 .formulaList,

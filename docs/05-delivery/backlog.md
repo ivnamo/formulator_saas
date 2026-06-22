@@ -93,7 +93,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-005 - Revisar utilidad de filtros avanzados en Formula Library
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P2
 - Area: Biblioteca | UX | QA
 - Origen: Usuario
@@ -105,7 +105,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Si no aportan, se ocultan o reemplazan por filtros mas utiles.
   - La biblioteca no muestra controles que no tengan efecto claro.
 - Validacion beta: Usuario filtra formulas por precio, parametro y material entendiendo el resultado.
-- Notas: Primero auditar comportamiento actual antes de tocar UI.
+- Notas: Auditado: los campos no filtran la lista; alimentan restricciones del comparador. Implementado panel plegable `Criterios de comparacion`, sin parametro por defecto confuso, con etiquetas orientadas a evaluacion y contador de criterios activos reales. Pendiente validacion beta.
 
 ### BL-006 - Renombrar Formula actual a Formula Builder en sidebar
 

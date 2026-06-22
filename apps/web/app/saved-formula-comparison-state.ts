@@ -48,7 +48,7 @@ const defaultFormulaCompareSelection: FormulaCompareSelection = {
 
 const defaultComparisonConstraintForm: ComparisonConstraintForm = {
   maxPrice: "",
-  parameterCode: "active_content",
+  parameterCode: "",
   minParameterValue: "",
   materialId: "",
   minMaterialPercentage: "",

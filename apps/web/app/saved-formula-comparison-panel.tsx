@@ -1,4 +1,12 @@
-import { Download, FolderOpen, History, ListChecks, RefreshCw } from "lucide-react";
+import {
+  ChevronDown,
+  Download,
+  FolderOpen,
+  History,
+  ListChecks,
+  RefreshCw,
+  SlidersHorizontal,
+} from "lucide-react";
 import type {
   ComparisonConstraintField,
   ComparisonConstraintForm,
@@ -68,6 +76,25 @@ export function SavedFormulaComparisonPanel({
   onUpdateConstraint,
   onShowOnlyConstraintIssuesChange,
 }: SavedFormulaComparisonPanelProps) {
+  const hasParameterConstraint = Boolean(
+    comparisonConstraintForm.parameterCode.trim() &&
+      comparisonConstraintForm.minParameterValue.trim(),
+  );
+  const hasMaterialMinimumConstraint = Boolean(
+    comparisonConstraintForm.materialId.trim() &&
+      comparisonConstraintForm.minMaterialPercentage.trim(),
+  );
+  const hasMaterialMaximumConstraint = Boolean(
+    comparisonConstraintForm.materialId.trim() &&
+      comparisonConstraintForm.maxMaterialPercentage.trim(),
+  );
+  const activeConstraintCount = [
+    comparisonConstraintForm.maxPrice.trim(),
+    hasParameterConstraint,
+    hasMaterialMinimumConstraint,
+    hasMaterialMaximumConstraint,
+  ].filter(Boolean).length;
+
   return (
     <section id="library" className="panel libraryPanel" hidden={!active}>
       <div className="panelHeader">
@@ -126,72 +153,82 @@ export function SavedFormulaComparisonPanel({
           Compare formulas
         </button>
       </div>
-      <div className="comparisonConstraintBar">
-        <label>
-          <span>Max price EUR/kg</span>
-          <input
-            inputMode="decimal"
-            value={comparisonConstraintForm.maxPrice}
-            onChange={(event) => onUpdateConstraint("maxPrice", event.target.value)}
-            disabled={!canEditTenantData}
-          />
-        </label>
-        <label>
-          <span>Parameter code</span>
-          <input
-            value={comparisonConstraintForm.parameterCode}
-            onChange={(event) => onUpdateConstraint("parameterCode", event.target.value)}
-            disabled={!canEditTenantData}
-          />
-        </label>
-        <label>
-          <span>Parameter min</span>
-          <input
-            inputMode="decimal"
-            value={comparisonConstraintForm.minParameterValue}
-            onChange={(event) => onUpdateConstraint("minParameterValue", event.target.value)}
-            disabled={!canEditTenantData}
-          />
-        </label>
-        <label>
-          <span>Material</span>
-          <select
-            aria-label="Constraint material"
-            value={comparisonConstraintForm.materialId}
-            onChange={(event) => onUpdateConstraint("materialId", event.target.value)}
-            disabled={!canEditTenantData || comparisonMaterialOptions.length === 0}
-          >
-            <option value="">No material limit</option>
-            {comparisonMaterialOptions.map((material) => (
-              <option key={material.id} value={material.id}>
-                {material.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Material min %</span>
-          <input
-            inputMode="decimal"
-            value={comparisonConstraintForm.minMaterialPercentage}
-            onChange={(event) =>
-              onUpdateConstraint("minMaterialPercentage", event.target.value)
-            }
-            disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
-          />
-        </label>
-        <label>
-          <span>Material max %</span>
-          <input
-            inputMode="decimal"
-            value={comparisonConstraintForm.maxMaterialPercentage}
-            onChange={(event) =>
-              onUpdateConstraint("maxMaterialPercentage", event.target.value)
-            }
-            disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
-          />
-        </label>
-      </div>
+      <details className="comparisonConstraintPanel">
+        <summary>
+          <span>
+            <SlidersHorizontal size={16} />
+            Criterios de comparacion
+          </span>
+          <code>{activeConstraintCount} activos</code>
+          <ChevronDown size={16} />
+        </summary>
+        <div className="comparisonConstraintBar">
+          <label>
+            <span>Precio maximo EUR/kg</span>
+            <input
+              inputMode="decimal"
+              value={comparisonConstraintForm.maxPrice}
+              onChange={(event) => onUpdateConstraint("maxPrice", event.target.value)}
+              disabled={!canEditTenantData}
+            />
+          </label>
+          <label>
+            <span>Parametro a evaluar</span>
+            <input
+              value={comparisonConstraintForm.parameterCode}
+              onChange={(event) => onUpdateConstraint("parameterCode", event.target.value)}
+              disabled={!canEditTenantData}
+            />
+          </label>
+          <label>
+            <span>Valor minimo parametro</span>
+            <input
+              inputMode="decimal"
+              value={comparisonConstraintForm.minParameterValue}
+              onChange={(event) => onUpdateConstraint("minParameterValue", event.target.value)}
+              disabled={!canEditTenantData}
+            />
+          </label>
+          <label>
+            <span>Materia prima a limitar</span>
+            <select
+              aria-label="Constraint material"
+              value={comparisonConstraintForm.materialId}
+              onChange={(event) => onUpdateConstraint("materialId", event.target.value)}
+              disabled={!canEditTenantData || comparisonMaterialOptions.length === 0}
+            >
+              <option value="">Sin limite de materia</option>
+              {comparisonMaterialOptions.map((material) => (
+                <option key={material.id} value={material.id}>
+                  {material.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>% minimo materia</span>
+            <input
+              inputMode="decimal"
+              value={comparisonConstraintForm.minMaterialPercentage}
+              onChange={(event) =>
+                onUpdateConstraint("minMaterialPercentage", event.target.value)
+              }
+              disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
+            />
+          </label>
+          <label>
+            <span>% maximo materia</span>
+            <input
+              inputMode="decimal"
+              value={comparisonConstraintForm.maxMaterialPercentage}
+              onChange={(event) =>
+                onUpdateConstraint("maxMaterialPercentage", event.target.value)
+              }
+              disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
+            />
+          </label>
+        </div>
+      </details>
       <div className="libraryGrid">
         <div className="formulaList">
           <div className="formulaListHead">
