@@ -250,7 +250,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-015 - Priorizar composicion quimica en Materias primas
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P1
 - Area: Materias primas | UX
 - Origen: Usuario
@@ -263,7 +263,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Active/Obsolete quedan en una zona administrativa, no mezclados con composicion.
   - La edicion sigue permitiendo modificar todos los campos necesarios.
 - Validacion beta: Abrir una materia prima y confirmar que lo primero que se ve es composicion quimica, no datos administrativos.
-- Notas: Revisar vista detalle y formulario de creacion/edicion si son componentes distintos.
+- Notas: Implementado en detalle de materias primas: composicion quimica abierta y ordenada antes de master data; master data secundaria queda plegada e incluye Active/Obsolete; notas JSON de SAP/source se muestran como metadatos legibles con edicion cruda bajo desplegable. Pendiente verificacion visual beta.
 
 ### BL-016 - Observabilidad de uso para mejorar UI/UX
 
