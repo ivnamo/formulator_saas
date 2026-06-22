@@ -83,35 +83,43 @@ export function MaterialCatalogList({
               data-selected={isSelected || selectedMaterialId === material.id}
               key={material.id}
             >
-              <span className="quickMaterialMain">
-                <strong>{material.name}</strong>
-                <small>
-                  {material.code ?? "-"}
-                  {material.externalCode ? ` - ${material.externalCode}` : ""}
-                  {material.family ? ` - ${material.family}` : ""}
-                </small>
-                {parameterPreview.length ? (
-                  <span className="parameterBadgeList">
-                    {parameterPreview.map((parameter) => (
-                      <em key={parameter.code}>{formatParameterValue(parameter)}</em>
-                    ))}
-                  </span>
-                ) : (
-                  <span className="parameterBadgeList emptyBadges">
-                    <em>
-                      {hasMaterialDetail
-                        ? showOnlyPositiveParameters
-                          ? "Sin valores > 0 en esta vista"
-                          : "Sin parametros en esta vista"
-                        : `${material.positiveParameterCount} valores > 0 de ${material.parameterCount}`}
-                    </em>
-                  </span>
-                )}
-              </span>
-              <span className="quickMaterialMeta">
-                <code>{formatFormulaNumber(material.price, " EUR/kg")}</code>
-                <small>{material.parameterCount} parametros</small>
-              </span>
+              <button
+                className="quickMaterialPick"
+                type="button"
+                onClick={() => void onInspectMaterial(material.id)}
+                aria-pressed={selectedMaterialId === material.id}
+                aria-label={`Seleccionar ${material.name} y ver detalle`}
+              >
+                <span className="quickMaterialMain">
+                  <strong>{material.name}</strong>
+                  <small>
+                    {material.code ?? "-"}
+                    {material.externalCode ? ` - ${material.externalCode}` : ""}
+                    {material.family ? ` - ${material.family}` : ""}
+                  </small>
+                  {parameterPreview.length ? (
+                    <span className="parameterBadgeList">
+                      {parameterPreview.map((parameter) => (
+                        <em key={parameter.code}>{formatParameterValue(parameter)}</em>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="parameterBadgeList emptyBadges">
+                      <em>
+                        {hasMaterialDetail
+                          ? showOnlyPositiveParameters
+                            ? "Sin valores > 0 en esta vista"
+                            : "Sin parametros en esta vista"
+                          : `${material.positiveParameterCount} valores > 0 de ${material.parameterCount}`}
+                      </em>
+                    </span>
+                  )}
+                </span>
+                <span className="quickMaterialMeta">
+                  <code>{formatFormulaNumber(material.price, " EUR/kg")}</code>
+                  <small>{material.parameterCount} parametros</small>
+                </span>
+              </button>
               <div className="quickMaterialActions">
                 <button
                   className="secondaryButton compactButton"

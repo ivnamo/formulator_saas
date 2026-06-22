@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react";
+import { useEffect, useRef } from "react";
 import {
   formatFormulaNumber,
   formatParameterValue,
@@ -25,8 +26,17 @@ export function MaterialInspectorPanel({
   isBusy,
   onAddFormulaLine,
 }: MaterialInspectorPanelProps) {
+  const inspectorRef = useRef<HTMLElement | null>(null);
+  const isSelectedInFormula = formulaLines.some(
+    (line) => line.rawMaterialId === selectedMaterial.id,
+  );
+
+  useEffect(() => {
+    inspectorRef.current?.focus();
+  }, [selectedMaterial.id]);
+
   return (
-    <aside className="materialInspector">
+    <aside className="materialInspector" ref={inspectorRef} tabIndex={-1}>
       <div className="materialInspectorHeader">
         <div>
           <span>Materia seleccionada</span>
@@ -41,12 +51,10 @@ export function MaterialInspectorPanel({
           className="secondaryButton compactButton"
           type="button"
           onClick={() => void onAddFormulaLine(selectedMaterial.id)}
-          disabled={
-            isBusy || formulaLines.some((line) => line.rawMaterialId === selectedMaterial.id)
-          }
+          disabled={isBusy || isSelectedInFormula}
         >
           <Plus size={15} />
-          Anadir
+          {isSelectedInFormula ? "En formula" : "Anadir"}
         </button>
       </div>
       <div className="materialInspectorStats">

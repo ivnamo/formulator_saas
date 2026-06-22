@@ -10,6 +10,7 @@ import type { WorkspaceState } from "./workspace-state-model";
 import { makeLocalId } from "./workspace-utils";
 
 type FormulaLineActionsOptions = {
+  formulaLines: WorkspaceState["formulaLines"];
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
   setBuilderSections: Dispatch<SetStateAction<Record<BuilderSectionKey, boolean>>>;
   setResult: Dispatch<SetStateAction<CalculationResult | null>>;
@@ -19,6 +20,7 @@ type FormulaLineActionsOptions = {
 };
 
 export function useFormulaLineActions({
+  formulaLines,
   setWorkspace,
   setBuilderSections,
   setResult,
@@ -35,14 +37,21 @@ export function useFormulaLineActions({
     async (rawMaterialId: string) => {
       const material = await ensureRawMaterialDetail(rawMaterialId);
       if (material && !isSelectableRawMaterial(material)) {
+        setMessage(`${material.name} esta obsoleta y no se puede anadir.`);
+        return;
+      }
+      if (formulaLines.some((line) => line.rawMaterialId === rawMaterialId)) {
+        setMessage(`${material?.name ?? "Materia prima"} ya estaba en la formula.`);
         return;
       }
       setWorkspace((current) => ({
         ...current,
-        formulaLines: [
-          ...current.formulaLines,
-          { localId: makeLocalId(), rawMaterialId, percentage: 0 },
-        ],
+        formulaLines: current.formulaLines.some((line) => line.rawMaterialId === rawMaterialId)
+          ? current.formulaLines
+          : [
+              ...current.formulaLines,
+              { localId: makeLocalId(), rawMaterialId, percentage: 0 },
+            ],
       }));
       setBuilderSections((current) => ({
         ...current,
@@ -54,6 +63,7 @@ export function useFormulaLineActions({
     },
     [
       ensureRawMaterialDetail,
+      formulaLines,
       invalidateFormulaResult,
       setBuilderSections,
       setMessage,

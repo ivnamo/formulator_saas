@@ -304,7 +304,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-018 - Foco y feedback al seleccionar/anadir materia prima en Formula Builder
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P1
 - Area: Formula Builder | Materias primas | UX
 - Origen: Usuario
@@ -317,7 +317,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Si la materia ya esta en la formula, el feedback explica que ya estaba anadida o mantiene el boton deshabilitado con estado claro.
   - El feedback no bloquea el flujo y desaparece solo o queda en la zona de mensajes existente.
 - Validacion beta: Buscar materia, clickar fila, ver detalle, anadir y confirmar feedback visible.
-- Notas: Revisar si conviene mantener boton Detalle como accion secundaria o hacer toda la fila clicable.
+- Notas: Implementado en Formula Builder: la zona principal de cada materia es clicable/focalizable y selecciona la materia; el inspector recibe foco al cambiar la seleccion; el boton de anadir indica `En formula` cuando ya existe; la accion de anadir avisa si la materia ya estaba o si esta obsoleta. Pendiente validacion beta visual.
 
 ### BL-019 - Filosofia global de feedback, foco y confirmacion de acciones
 

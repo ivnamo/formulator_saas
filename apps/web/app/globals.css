@@ -3982,7 +3982,7 @@ label span {
 
 .quickMaterial {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(108px, auto) minmax(138px, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(138px, auto);
   gap: 10px;
   align-items: center;
   border: 1px solid var(--border);
@@ -3993,6 +3993,21 @@ label span {
   text-align: left;
 }
 
+.quickMaterialPick {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(108px, auto);
+  gap: 10px;
+  align-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
 .quickMaterial:hover,
 .quickMaterial[data-selected="true"] {
   border-color: var(--teal);
@@ -4000,6 +4015,12 @@ label span {
 
 .quickMaterial[data-selected="true"] {
   background: rgba(27, 148, 130, 0.07);
+}
+
+.quickMaterialPick:focus-visible,
+.materialInspector:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
 }
 
 .quickMaterialMain,
@@ -5033,6 +5054,10 @@ label span {
   .aiResultGrid,
   .aiRunHead,
   .aiRunRow {
+    grid-template-columns: 1fr;
+  }
+
+  .quickMaterialPick {
     grid-template-columns: 1fr;
   }
 
