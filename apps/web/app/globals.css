@@ -3198,6 +3198,32 @@ label span {
   margin-bottom: 14px;
 }
 
+.libraryActionsCompact {
+  grid-template-columns: auto;
+  justify-content: start;
+}
+
+.materialComparatorControls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(160px, 0.7fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.materialComparatorPanel .materialComparePanel {
+  border-style: solid;
+  background: #fbfcfc;
+}
+
+.comparatorEmpty {
+  min-height: 84px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
 .comparisonConstraintPanel {
   margin-bottom: 14px;
   border: 1px solid var(--border);
@@ -4965,6 +4991,7 @@ label span {
   .importActions,
   .pasteImportBox,
   .libraryActions,
+  .materialComparatorControls,
   .comparisonConstraintBar,
   .aiControls {
     grid-template-columns: 1fr;

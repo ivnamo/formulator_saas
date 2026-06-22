@@ -77,7 +77,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-004 - Crear herramienta unica de comparador
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P2
 - Area: UX | Biblioteca | Materias primas
 - Origen: Usuario
@@ -89,7 +89,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Las acciones de comparar desde otras pantallas envian elementos al comparador o abren esa herramienta.
   - Se reduce duplicacion visual/funcional de comparadores.
 - Validacion beta: Comparar dos materias primas y dos formulas desde la nueva herramienta.
-- Notas: Decidir si el comparador soporta tabs por tipo o un selector de entidad.
+- Notas: Implementada vista `Comparador` en navegacion avanzada. Agrupa comparacion de formulas guardadas y materias primas; Biblioteca queda para listar/abrir/exportar formulas. Las acciones de comparar materias del builder comparten seleccion con el nuevo comparador. Pendiente validacion beta y posible retirada final de accesos secundarios.
 
 ### BL-005 - Revisar utilidad de filtros avanzados en Formula Library
 

@@ -463,6 +463,23 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     selectParameterView,
     markDraftReviewPending,
   });
+  const selectMaterialForComparison = useCallback(
+    async (slot: 0 | 1, rawMaterialId: string) => {
+      if (rawMaterialId) {
+        await ensureRawMaterialDetail(rawMaterialId);
+      }
+      setComparisonMaterialIds((current) => {
+        const next = current.filter(Boolean).filter((id) => id !== rawMaterialId).slice(0, 2);
+        if (!rawMaterialId) {
+          next.splice(slot, 1);
+          return next;
+        }
+        next[slot] = rawMaterialId;
+        return next.filter(Boolean).slice(0, 2);
+      });
+    },
+    [ensureRawMaterialDetail, setComparisonMaterialIds],
+  );
   const {
     refreshJiraConnections,
     saveJiraConnection,
@@ -680,7 +697,11 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   });
 
   useEffect(() => {
-    if (activeView !== "library" || !workspace.tenant || !session?.access_token) {
+    if (
+      !["library", "comparator"].includes(activeView) ||
+      !workspace.tenant ||
+      !session?.access_token
+    ) {
       return;
     }
     void refreshFormulaLibrary({ silent: true });
@@ -852,6 +873,41 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       canCreateRule: canCreateCompatibilityRule,
       setCompatibilityRuleForm,
       createCompatibilityRule,
+    },
+    comparator: {
+      formulaComparison: {
+        formulas,
+        calculationHistory,
+        formulaCompareSelection,
+        comparisonConstraintForm,
+        comparisonMaterialOptions,
+        canEditTenantData,
+        canCompareSavedFormulas,
+        isBusy,
+        savedFormulaComparison,
+        comparisonComplianceSummary,
+        comparisonConstraintEvaluations,
+        comparisonConstraintIssueCount,
+        visibleComparisonConstraintEvaluations,
+        showOnlyConstraintIssues,
+        onSelectFormula: selectFormulaForComparison,
+        onRefreshLibrary: refreshFormulaLibrary,
+        onCompareSavedFormulas: compareSavedFormulas,
+        onExportFormula: exportSavedFormulaIdLabExcel,
+        onOpenFormula: openFormula,
+        onUpdateConstraint: updateComparisonConstraint,
+        onShowOnlyConstraintIssuesChange: setShowOnlyConstraintIssues,
+      },
+      rawMaterials: selectableRawMaterials,
+      materialComparisonIds: comparisonMaterialIds,
+      materialComparisonMaterials: comparisonMaterials,
+      visibleParameterCodes,
+      showOnlyPositiveParameters,
+      canEditTenantData,
+      isBusy,
+      selectMaterialForComparison,
+      clearComparisonMaterials,
+      setShowOnlyPositiveParameters,
     },
     library: {
       formulas,

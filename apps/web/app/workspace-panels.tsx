@@ -3,6 +3,7 @@ import { AiAssistantPanel } from "./ai-assistant-panel";
 import { type WorkspaceView } from "./app-shell";
 import { CalculationResultsPanel } from "./calculation-results-panel";
 import { CompatibilityPanel } from "./compatibility-panel";
+import { ComparatorPanel } from "./comparator-panel";
 import { ExcelImportPanel } from "./excel-import-panel";
 import { FormulaBuilderWorkspace } from "./formula-builder-workspace";
 import { IsoDesignPanel } from "./iso-design-panel";
@@ -16,6 +17,7 @@ export type WorkspacePanelsProps = {
   isoDesign: Omit<ComponentProps<typeof IsoDesignPanel>, "active">;
   rawMaterials: Omit<ComponentProps<typeof RawMaterialsPanel>, "active">;
   compatibility: Omit<ComponentProps<typeof CompatibilityPanel>, "active">;
+  comparator: Omit<ComponentProps<typeof ComparatorPanel>, "active">;
   library: Omit<ComponentProps<typeof SavedFormulaComparisonPanel>, "active">;
   excelImport: Omit<ComponentProps<typeof ExcelImportPanel>, "active">;
   aiAssistant: Omit<ComponentProps<typeof AiAssistantPanel>, "active">;
@@ -29,6 +31,7 @@ export function WorkspacePanels({
   isoDesign,
   rawMaterials,
   compatibility,
+  comparator,
   library,
   excelImport,
   aiAssistant,
@@ -41,6 +44,7 @@ export function WorkspacePanels({
       <IsoDesignPanel {...isoDesign} active={activeView === "iso"} />
       <RawMaterialsPanel {...rawMaterials} active={activeView === "materials"} />
       <CompatibilityPanel {...compatibility} active={activeView === "compatibility"} />
+      <ComparatorPanel {...comparator} active={activeView === "comparator"} />
       <SavedFormulaComparisonPanel {...library} active={activeView === "library"} />
       <ExcelImportPanel {...excelImport} active={activeView === "import"} />
       <AiAssistantPanel {...aiAssistant} active={activeView === "ai"} />

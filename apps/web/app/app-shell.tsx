@@ -7,6 +7,7 @@ import {
   Database,
   FlaskConical,
   FolderOpen,
+  GitCompareArrows,
   KeyRound,
   LogOut,
   RefreshCw,
@@ -27,6 +28,7 @@ export type WorkspaceView =
   | "results"
   | "settings"
   | "library"
+  | "comparator"
   | "compatibility"
   | "ai";
 
@@ -38,6 +40,7 @@ const VIEW_TITLES: Record<WorkspaceView, string> = {
   results: "Resultados",
   settings: "Configuracion",
   library: "Biblioteca",
+  comparator: "Comparador",
   compatibility: "Compatibilidad",
   ai: "Asistente IA",
 };
@@ -49,7 +52,8 @@ const VIEW_DESCRIPTIONS: Record<WorkspaceView, string> = {
   import: "Sube formulas historicas y resuelve coincidencias.",
   results: "Vista legacy de resultados calculados.",
   settings: "Configura workspace, parametros e integraciones.",
-  library: "Abre formulas guardadas y compara escenarios.",
+  library: "Abre formulas guardadas, exporta documentos y consulta historicos.",
+  comparator: "Compara formulas guardadas y materias primas desde una herramienta unica.",
   compatibility: "Gestiona reglas manuales de compatibilidad.",
   ai: "Convierte requisitos en restricciones y borradores revisables.",
 };
@@ -82,6 +86,7 @@ const primaryNavigation: NavigationItem[] = [
 
 const advancedNavigation: NavigationItem[] = [
   { view: "library", label: "Biblioteca", icon: <FolderOpen size={18} /> },
+  { view: "comparator", label: "Comparador", icon: <GitCompareArrows size={18} /> },
   { view: "compatibility", label: "Compatibilidad", icon: <AlertTriangle size={18} /> },
   { view: "ai", label: "Asistente IA", icon: <BrainCircuit size={18} /> },
 ];

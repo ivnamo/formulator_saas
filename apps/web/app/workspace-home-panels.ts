@@ -1,6 +1,7 @@
 import { buildFormulaBuilderPanelProps } from "./formula-builder-panel-props";
 import { buildWorkspaceAiAssistantPanelProps } from "./workspace-ai-assistant-panel-props";
 import { buildWorkspaceCompatibilityPanelProps } from "./workspace-compatibility-panel-props";
+import { buildWorkspaceComparatorPanelProps } from "./workspace-comparator-panel-props";
 import { buildWorkspaceExcelImportPanelProps } from "./workspace-excel-import-panel-props";
 import { buildWorkspaceIsoDesignPanelProps } from "./workspace-iso-design-panel-props";
 import type { WorkspaceHomePanels } from "./workspace-home-view";
@@ -13,6 +14,7 @@ type BuildWorkspaceHomePanelsArgs = {
   isoDesign: Parameters<typeof buildWorkspaceIsoDesignPanelProps>[0];
   rawMaterials: Parameters<typeof buildWorkspaceRawMaterialsPanelProps>[0];
   compatibility: Parameters<typeof buildWorkspaceCompatibilityPanelProps>[0];
+  comparator: Parameters<typeof buildWorkspaceComparatorPanelProps>[0];
   library: Parameters<typeof buildWorkspaceLibraryPanelProps>[0];
   excelImport: Parameters<typeof buildWorkspaceExcelImportPanelProps>[0];
   aiAssistant: Parameters<typeof buildWorkspaceAiAssistantPanelProps>[0];
@@ -28,6 +30,7 @@ export function buildWorkspaceHomePanels(
     isoDesign: buildWorkspaceIsoDesignPanelProps(args.isoDesign),
     rawMaterials: buildWorkspaceRawMaterialsPanelProps(args.rawMaterials),
     compatibility: buildWorkspaceCompatibilityPanelProps(args.compatibility),
+    comparator: buildWorkspaceComparatorPanelProps(args.comparator),
     library: buildWorkspaceLibraryPanelProps(args.library),
     excelImport: buildWorkspaceExcelImportPanelProps(args.excelImport),
     aiAssistant: buildWorkspaceAiAssistantPanelProps(args.aiAssistant),

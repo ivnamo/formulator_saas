@@ -27,8 +27,9 @@ type ComparisonMaterialOption = {
   name: string;
 };
 
-type SavedFormulaComparisonPanelProps = {
+export type SavedFormulaComparisonPanelProps = {
   active: boolean;
+  variant?: "library" | "comparator";
   formulas: FormulaRead[];
   calculationHistory: FormulaCalculationHistory[];
   formulaCompareSelection: FormulaCompareSelection;
@@ -54,6 +55,7 @@ type SavedFormulaComparisonPanelProps = {
 
 export function SavedFormulaComparisonPanel({
   active,
+  variant = "library",
   formulas,
   calculationHistory,
   formulaCompareSelection,
@@ -76,6 +78,7 @@ export function SavedFormulaComparisonPanel({
   onUpdateConstraint,
   onShowOnlyConstraintIssuesChange,
 }: SavedFormulaComparisonPanelProps) {
+  const isComparator = variant === "comparator";
   const hasParameterConstraint = Boolean(
     comparisonConstraintForm.parameterCode.trim() &&
       comparisonConstraintForm.minParameterValue.trim(),
@@ -96,44 +99,52 @@ export function SavedFormulaComparisonPanel({
   ].filter(Boolean).length;
 
   return (
-    <section id="library" className="panel libraryPanel" hidden={!active}>
+    <section
+      id={isComparator ? "formula-comparator" : "library"}
+      className="panel libraryPanel"
+      hidden={!active}
+    >
       <div className="panelHeader">
-        <h2>Formula library</h2>
+        <h2>{isComparator ? "Comparador de formulas" : "Formula library"}</h2>
         <span>{formulas.length} formulas</span>
       </div>
-      <div className="libraryActions">
-        <label>
-          <span>Base</span>
-          <select
-            aria-label="Base formula"
-            value={formulaCompareSelection.baselineId}
-            onChange={(event) => onSelectFormula("baselineId", event.target.value)}
-            disabled={!canEditTenantData || formulas.length < 2}
-          >
-            <option value="">Select formula</option>
-            {formulas.map((formula) => (
-              <option key={formula.id} value={formula.id}>
-                {formula.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Candidate</span>
-          <select
-            aria-label="Candidate formula"
-            value={formulaCompareSelection.candidateId}
-            onChange={(event) => onSelectFormula("candidateId", event.target.value)}
-            disabled={!canEditTenantData || formulas.length < 2}
-          >
-            <option value="">Select formula</option>
-            {formulas.map((formula) => (
-              <option key={formula.id} value={formula.id}>
-                {formula.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className={isComparator ? "libraryActions" : "libraryActions libraryActionsCompact"}>
+        {isComparator ? (
+          <>
+            <label>
+              <span>Base</span>
+              <select
+                aria-label="Base formula"
+                value={formulaCompareSelection.baselineId}
+                onChange={(event) => onSelectFormula("baselineId", event.target.value)}
+                disabled={!canEditTenantData || formulas.length < 2}
+              >
+                <option value="">Select formula</option>
+                {formulas.map((formula) => (
+                  <option key={formula.id} value={formula.id}>
+                    {formula.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Candidate</span>
+              <select
+                aria-label="Candidate formula"
+                value={formulaCompareSelection.candidateId}
+                onChange={(event) => onSelectFormula("candidateId", event.target.value)}
+                disabled={!canEditTenantData || formulas.length < 2}
+              >
+                <option value="">Select formula</option>
+                {formulas.map((formula) => (
+                  <option key={formula.id} value={formula.id}>
+                    {formula.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : null}
         <button
           className="secondaryButton"
           type="button"
@@ -143,93 +154,98 @@ export function SavedFormulaComparisonPanel({
           <RefreshCw size={17} />
           Refresh library
         </button>
-        <button
-          className="secondaryButton"
-          type="button"
-          onClick={() => void onCompareSavedFormulas()}
-          disabled={!canCompareSavedFormulas}
-        >
-          <ListChecks size={17} />
-          Compare formulas
-        </button>
+        {isComparator ? (
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={() => void onCompareSavedFormulas()}
+            disabled={!canCompareSavedFormulas}
+          >
+            <ListChecks size={17} />
+            Compare formulas
+          </button>
+        ) : null}
       </div>
-      <details className="comparisonConstraintPanel">
-        <summary>
-          <span>
-            <SlidersHorizontal size={16} />
-            Criterios de comparacion
-          </span>
-          <code>{activeConstraintCount} activos</code>
-          <ChevronDown size={16} />
-        </summary>
-        <div className="comparisonConstraintBar">
-          <label>
-            <span>Precio maximo EUR/kg</span>
-            <input
-              inputMode="decimal"
-              value={comparisonConstraintForm.maxPrice}
-              onChange={(event) => onUpdateConstraint("maxPrice", event.target.value)}
-              disabled={!canEditTenantData}
-            />
-          </label>
-          <label>
-            <span>Parametro a evaluar</span>
-            <input
-              value={comparisonConstraintForm.parameterCode}
-              onChange={(event) => onUpdateConstraint("parameterCode", event.target.value)}
-              disabled={!canEditTenantData}
-            />
-          </label>
-          <label>
-            <span>Valor minimo parametro</span>
-            <input
-              inputMode="decimal"
-              value={comparisonConstraintForm.minParameterValue}
-              onChange={(event) => onUpdateConstraint("minParameterValue", event.target.value)}
-              disabled={!canEditTenantData}
-            />
-          </label>
-          <label>
-            <span>Materia prima a limitar</span>
-            <select
-              aria-label="Constraint material"
-              value={comparisonConstraintForm.materialId}
-              onChange={(event) => onUpdateConstraint("materialId", event.target.value)}
-              disabled={!canEditTenantData || comparisonMaterialOptions.length === 0}
-            >
-              <option value="">Sin limite de materia</option>
-              {comparisonMaterialOptions.map((material) => (
-                <option key={material.id} value={material.id}>
-                  {material.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>% minimo materia</span>
-            <input
-              inputMode="decimal"
-              value={comparisonConstraintForm.minMaterialPercentage}
-              onChange={(event) =>
-                onUpdateConstraint("minMaterialPercentage", event.target.value)
-              }
-              disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
-            />
-          </label>
-          <label>
-            <span>% maximo materia</span>
-            <input
-              inputMode="decimal"
-              value={comparisonConstraintForm.maxMaterialPercentage}
-              onChange={(event) =>
-                onUpdateConstraint("maxMaterialPercentage", event.target.value)
-              }
-              disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
-            />
-          </label>
-        </div>
-      </details>
-      <div className="libraryGrid">
+      {isComparator ? (
+        <details className="comparisonConstraintPanel">
+          <summary>
+            <span>
+              <SlidersHorizontal size={16} />
+              Criterios de comparacion
+            </span>
+            <code>{activeConstraintCount} activos</code>
+            <ChevronDown size={16} />
+          </summary>
+          <div className="comparisonConstraintBar">
+            <label>
+              <span>Precio maximo EUR/kg</span>
+              <input
+                inputMode="decimal"
+                value={comparisonConstraintForm.maxPrice}
+                onChange={(event) => onUpdateConstraint("maxPrice", event.target.value)}
+                disabled={!canEditTenantData}
+              />
+            </label>
+            <label>
+              <span>Parametro a evaluar</span>
+              <input
+                value={comparisonConstraintForm.parameterCode}
+                onChange={(event) => onUpdateConstraint("parameterCode", event.target.value)}
+                disabled={!canEditTenantData}
+              />
+            </label>
+            <label>
+              <span>Valor minimo parametro</span>
+              <input
+                inputMode="decimal"
+                value={comparisonConstraintForm.minParameterValue}
+                onChange={(event) => onUpdateConstraint("minParameterValue", event.target.value)}
+                disabled={!canEditTenantData}
+              />
+            </label>
+            <label>
+              <span>Materia prima a limitar</span>
+              <select
+                aria-label="Constraint material"
+                value={comparisonConstraintForm.materialId}
+                onChange={(event) => onUpdateConstraint("materialId", event.target.value)}
+                disabled={!canEditTenantData || comparisonMaterialOptions.length === 0}
+              >
+                <option value="">Sin limite de materia</option>
+                {comparisonMaterialOptions.map((material) => (
+                  <option key={material.id} value={material.id}>
+                    {material.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>% minimo materia</span>
+              <input
+                inputMode="decimal"
+                value={comparisonConstraintForm.minMaterialPercentage}
+                onChange={(event) =>
+                  onUpdateConstraint("minMaterialPercentage", event.target.value)
+                }
+                disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
+              />
+            </label>
+            <label>
+              <span>% maximo materia</span>
+              <input
+                inputMode="decimal"
+                value={comparisonConstraintForm.maxMaterialPercentage}
+                onChange={(event) =>
+                  onUpdateConstraint("maxMaterialPercentage", event.target.value)
+                }
+                disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
+              />
+            </label>
+          </div>
+        </details>
+      ) : null}
+      {!isComparator ? (
+        <div className="libraryGrid">
         <div className="formulaList">
           <div className="formulaListHead">
             <span>Name</span>
@@ -302,7 +318,8 @@ export function SavedFormulaComparisonPanel({
           )}
         </div>
       </div>
-      {savedFormulaComparison ? (
+      ) : null}
+      {isComparator && savedFormulaComparison ? (
         <SavedFormulaComparisonResult
           comparison={savedFormulaComparison}
           complianceSummary={comparisonComplianceSummary}
