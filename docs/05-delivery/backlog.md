@@ -109,7 +109,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-006 - Renombrar Formula actual a Formula Builder en sidebar
 
-- Estado: Inbox
+- Estado: Done
 - Prioridad: P1
 - Area: Formula Builder | UX
 - Origen: Usuario
