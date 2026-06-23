@@ -123,7 +123,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-007 - Marcar campos obligatorios con asterisco rojo
 
-- Estado: In progress
+- Estado: Done
 - Prioridad: P1
 - Area: Formula Builder | UX
 - Origen: Usuario
@@ -134,7 +134,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - La validacion del formulario coincide con los campos marcados.
   - Los mensajes de bloqueo explican que falta completar.
 - Validacion beta: Intentar guardar/enviar sin campos requeridos y comprobar feedback.
-- Notas: Implementado asterisco y bloqueo de nombre en Datos basicos de Formula Builder; pendiente extender descripcion obligatoria y revisar otros modulos/campos.
+- Notas: Implementado asterisco y bloqueo de nombre/descripcion en Datos basicos de Formula Builder. Rama `codex/backlog-required-field-markers`: ProyectoID solo se marca obligatorio cuando aplica a formula de Calidad/Jira y muestra ayuda contextual para alinear asterisco, `aria-required` y validacion.
 
 ### BL-008 - ProyectoID debe mostrar etiqueta completa y ordenar naturalmente
 

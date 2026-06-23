@@ -55,6 +55,8 @@ export function FormulaBasicsStep({
     jiraProjectIdOptions,
     values.formulaJiraProjectId,
   );
+  const isQualityJiraIssueType =
+    values.formulaJiraIssueType.trim().toLowerCase() === "calidad";
   return (
     <BuilderStep
       section="basics"
@@ -92,10 +94,12 @@ export function FormulaBasicsStep({
         <div className="formulaMetaGrid">
           <label>
             <span>
-              ProyectoID <span className="requiredMark">*</span>
+              ProyectoID{" "}
+              {isQualityJiraIssueType ? <span className="requiredMark">*</span> : null}
             </span>
             <select
               aria-label="ProyectoID"
+              aria-required={isQualityJiraIssueType}
               value={values.formulaJiraProjectId}
               onChange={(event) => onChange({ formulaJiraProjectId: event.target.value })}
               disabled={isBusy}
@@ -107,6 +111,11 @@ export function FormulaBasicsStep({
                 </option>
               ))}
             </select>
+            <small>
+              {isQualityJiraIssueType
+                ? "Obligatorio para enviar una formula de Calidad a Jira."
+                : "Opcional para este issue type; se puede asociar mas tarde."}
+            </small>
           </label>
           <label>
             <span>
