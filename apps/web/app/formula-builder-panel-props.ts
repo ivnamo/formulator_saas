@@ -67,6 +67,7 @@ type BuildFormulaBuilderPanelPropsArgs = {
   visibleWarnings: FormulaBuilderCalculationProps["visibleWarnings"];
   hasBackendResult: FormulaBuilderCalculationProps["isBackendResult"];
   canSaveFormula: FormulaBuilderReviewProps["canSaveFormula"];
+  canExportFormulas: FormulaBuilderReviewProps["canExportExcel"];
   toggleBuilderSection: FormulaBuilderBasicsProps["onToggle"];
   updateFormulaBasics: FormulaBuilderBasicsProps["onChange"];
   setShowOnlyPositiveParameters: FormulaBuilderMaterialsProps["onShowOnlyPositiveChange"];
@@ -225,6 +226,7 @@ function buildFormulaBuilderReviewProps(
     totalPercentage: args.totalPercentage,
     canSaveFormula: args.canSaveFormula,
     canExportExcel:
+      args.canExportFormulas &&
       !args.isBusy &&
       args.workspace.formulaLines.length > 0 &&
       args.workspace.formulaJiraDescription.trim().length > 0,

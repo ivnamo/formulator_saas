@@ -285,7 +285,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-017 - Sistema de roles y permisos por feature
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P0
 - Area: Backend | UX | Settings | Seguridad
 - Origen: Usuario
@@ -300,7 +300,12 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Se documenta una matriz de permisos por rol.
   - Las reglas cubren como minimo: borrar/archivar, editar materias primas, editar formulas, enviar a Jira, gestionar ISO, configurar integraciones, importar/exportar y ver observabilidad.
 - Validacion beta: Probar con owner, usuario tecnico y usuario limitado que cada uno solo ve/ejecuta lo permitido.
-- Notas: Coordinar con BL-001 y con futuros planes/entitlements si se monetiza por features.
+- Notas: Primer corte implementado en `codex/backlog-role-permissions-matrix`. Matriz inicial:
+  - `owner` y `admin`: gestion de usuarios/settings/integraciones/ISO, materias primas, formulas, import/export, Jira, comparador, IA, compatibilidad y observabilidad.
+  - `formulator`: materias primas, formulas, import/export, Jira, comparador, IA y compatibilidad.
+  - `viewer`: comparador/lectura operativa, sin acciones de escritura.
+  - Backend: los mutadores principales de parametros, materias primas, formulas, importaciones, IA y exports bloquean por rol; Jira/ISO mantienen helpers propios.
+  - Pendiente: UI de administracion fina de roles/permisos y permisos para borrar/archivar cuando BL-001 se cierre.
 
 ### BL-018 - Foco y feedback al seleccionar/anadir materia prima en Formula Builder
 

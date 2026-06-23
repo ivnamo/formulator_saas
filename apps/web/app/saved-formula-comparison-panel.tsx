@@ -36,6 +36,8 @@ export type SavedFormulaComparisonPanelProps = {
   comparisonConstraintForm: ComparisonConstraintForm;
   comparisonMaterialOptions: ComparisonMaterialOption[];
   canEditTenantData: boolean;
+  canExportFormulas: boolean;
+  canUseFormulaComparison: boolean;
   canCompareSavedFormulas: boolean;
   isBusy: boolean;
   savedFormulaComparison: SavedFormulaComparison | null;
@@ -61,7 +63,8 @@ export function SavedFormulaComparisonPanel({
   formulaCompareSelection,
   comparisonConstraintForm,
   comparisonMaterialOptions,
-  canEditTenantData,
+  canExportFormulas,
+  canUseFormulaComparison,
   canCompareSavedFormulas,
   isBusy,
   savedFormulaComparison,
@@ -117,7 +120,7 @@ export function SavedFormulaComparisonPanel({
                 aria-label="Base formula"
                 value={formulaCompareSelection.baselineId}
                 onChange={(event) => onSelectFormula("baselineId", event.target.value)}
-                disabled={!canEditTenantData || formulas.length < 2}
+                disabled={!canUseFormulaComparison || formulas.length < 2}
               >
                 <option value="">Select formula</option>
                 {formulas.map((formula) => (
@@ -133,7 +136,7 @@ export function SavedFormulaComparisonPanel({
                 aria-label="Candidate formula"
                 value={formulaCompareSelection.candidateId}
                 onChange={(event) => onSelectFormula("candidateId", event.target.value)}
-                disabled={!canEditTenantData || formulas.length < 2}
+                disabled={!canUseFormulaComparison || formulas.length < 2}
               >
                 <option value="">Select formula</option>
                 {formulas.map((formula) => (
@@ -149,7 +152,7 @@ export function SavedFormulaComparisonPanel({
           className="secondaryButton"
           type="button"
           onClick={() => void onRefreshLibrary()}
-          disabled={!canEditTenantData}
+          disabled={isBusy}
         >
           <RefreshCw size={17} />
           Refresh library
@@ -183,7 +186,7 @@ export function SavedFormulaComparisonPanel({
                 inputMode="decimal"
                 value={comparisonConstraintForm.maxPrice}
                 onChange={(event) => onUpdateConstraint("maxPrice", event.target.value)}
-                disabled={!canEditTenantData}
+                disabled={!canUseFormulaComparison}
               />
             </label>
             <label>
@@ -191,7 +194,7 @@ export function SavedFormulaComparisonPanel({
               <input
                 value={comparisonConstraintForm.parameterCode}
                 onChange={(event) => onUpdateConstraint("parameterCode", event.target.value)}
-                disabled={!canEditTenantData}
+                disabled={!canUseFormulaComparison}
               />
             </label>
             <label>
@@ -200,7 +203,7 @@ export function SavedFormulaComparisonPanel({
                 inputMode="decimal"
                 value={comparisonConstraintForm.minParameterValue}
                 onChange={(event) => onUpdateConstraint("minParameterValue", event.target.value)}
-                disabled={!canEditTenantData}
+                disabled={!canUseFormulaComparison}
               />
             </label>
             <label>
@@ -209,7 +212,7 @@ export function SavedFormulaComparisonPanel({
                 aria-label="Constraint material"
                 value={comparisonConstraintForm.materialId}
                 onChange={(event) => onUpdateConstraint("materialId", event.target.value)}
-                disabled={!canEditTenantData || comparisonMaterialOptions.length === 0}
+                disabled={!canUseFormulaComparison || comparisonMaterialOptions.length === 0}
               >
                 <option value="">Sin limite de materia</option>
                 {comparisonMaterialOptions.map((material) => (
@@ -227,7 +230,7 @@ export function SavedFormulaComparisonPanel({
                 onChange={(event) =>
                   onUpdateConstraint("minMaterialPercentage", event.target.value)
                 }
-                disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
+                disabled={!canUseFormulaComparison || !comparisonConstraintForm.materialId}
               />
             </label>
             <label>
@@ -238,7 +241,7 @@ export function SavedFormulaComparisonPanel({
                 onChange={(event) =>
                   onUpdateConstraint("maxMaterialPercentage", event.target.value)
                 }
-                disabled={!canEditTenantData || !comparisonConstraintForm.materialId}
+                disabled={!canUseFormulaComparison || !comparisonConstraintForm.materialId}
               />
             </label>
           </div>
@@ -273,7 +276,7 @@ export function SavedFormulaComparisonPanel({
                   className="iconButton"
                   type="button"
                   onClick={() => void onExportFormula(formula)}
-                  disabled={isBusy}
+                  disabled={!canExportFormulas}
                   title="Export Excel I+D"
                   aria-label={`Export ${formula.name} as Excel I+D`}
                 >

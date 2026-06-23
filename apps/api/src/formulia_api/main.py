@@ -138,6 +138,7 @@ from .tenant import (
     normalize_tenant_role,
     require_tenant_admin,
     require_tenant_context,
+    require_tenant_formulator,
     send_supabase_invite_email,
 )
 
@@ -295,6 +296,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> Parameter:
+        require_tenant_admin(tenant)
         parameter = Parameter(tenant_id=tenant.tenant_id, **payload.model_dump())
         session.add(parameter)
         session.commit()
@@ -363,6 +365,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         values = clean_raw_material_payload(payload.model_dump())
         if not values.get("code"):
             values["code"] = generate_raw_material_code(session, tenant.tenant_id)
@@ -404,6 +407,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         raw_material = _get_raw_material(session, tenant.tenant_id, raw_material_id)
         updates = clean_raw_material_payload(payload.model_dump(exclude_unset=True))
         if "name" in updates and updates["name"] is not None:
@@ -454,6 +458,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> RawMaterialAlias:
+        require_tenant_formulator(tenant)
         _get_raw_material(session, tenant.tenant_id, raw_material_id)
         alias = payload.alias.strip()
         if not alias:
@@ -504,6 +509,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         _get_raw_material(session, tenant.tenant_id, raw_material_id)
         ensure_valid_raw_material_price(payload.price)
         price = RawMaterialPrice(
@@ -524,6 +530,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         _get_raw_material(session, tenant.tenant_id, raw_material_id)
         parameter = _get_parameter(session, tenant.tenant_id, payload.parameter_id)
         existing = session.exec(
@@ -562,6 +569,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_admin(tenant)
         if not file.filename:
             raise HTTPException(status_code=400, detail="Import file needs a filename.")
         import_record = create_sap_import_preview(
@@ -602,6 +610,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_admin(tenant)
         import_record = _get_raw_material_import(session, tenant.tenant_id, import_id)
         import_record = apply_sap_import(session, tenant.tenant_id, import_record)
         return import_read(
@@ -630,6 +639,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> CompatibilityRule:
+        require_tenant_formulator(tenant)
         if payload.material_a_id == payload.material_b_id:
             raise HTTPException(
                 status_code=400,
@@ -676,6 +686,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         formula = Formula(
             tenant_id=tenant.tenant_id,
             name=payload.name,
@@ -706,6 +717,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         formula = _get_formula(session, tenant.tenant_id, formula_id)
         updates = payload.model_dump(exclude_unset=True, exclude={"items"})
         if "jira_project_id" in updates:
@@ -729,6 +741,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         formula = _get_formula(session, tenant.tenant_id, formula_id)
         items = session.exec(
             select(FormulaItem).where(
@@ -792,6 +805,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         items = [
             FormulaItem(
                 tenant_id=tenant.tenant_id,
@@ -815,6 +829,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> Response:
+        require_tenant_formulator(tenant)
         formula = _get_formula(session, tenant.tenant_id, formula_id)
         items = session.exec(
             select(FormulaItem)
@@ -844,6 +859,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> Response:
+        require_tenant_formulator(tenant)
         context = _formula_excel_context(
             session,
             tenant.tenant_id,
@@ -871,6 +887,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         active_parameters = _active_parameter_context(session, tenant.tenant_id)
         configured_provider = requirement_parser_provider()
         provider = "openai" if configured_provider in {"llm", "openai"} else configured_provider
@@ -958,6 +975,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         active_parameters = _active_parameter_context(session, tenant.tenant_id)
         orchestrator = agent_orchestrator_provider()
         model = agent_orchestrator_model() if orchestrator == "deepagents" else None
@@ -1001,6 +1019,7 @@ def register_routes(app: FastAPI) -> None:
         file: UploadFile = File(...),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         _ensure_xlsx_file(file)
         try:
             sheets = list_formula_xlsx_sheets(await file.read())
@@ -1020,6 +1039,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         _ensure_xlsx_file(file)
         try:
             parsed = parse_formula_xlsx(await file.read(), sheet_name=sheet_name)
@@ -1033,6 +1053,7 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
+        require_tenant_formulator(tenant)
         if not payload.rows:
             raise HTTPException(status_code=400, detail="Import rows are required.")
         formula = Formula(

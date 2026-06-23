@@ -9,6 +9,8 @@ type BuildWorkspaceLibraryPanelPropsArgs = {
   comparisonConstraintForm: LibraryPanelProps["comparisonConstraintForm"];
   comparisonMaterialOptions: LibraryPanelProps["comparisonMaterialOptions"];
   canEditTenantData: LibraryPanelProps["canEditTenantData"];
+  canExportFormulas: LibraryPanelProps["canExportFormulas"];
+  canUseFormulaComparison: LibraryPanelProps["canUseFormulaComparison"];
   canCompareSavedFormulas: LibraryPanelProps["canCompareSavedFormulas"];
   isBusy: LibraryPanelProps["isBusy"];
   savedFormulaComparison: LibraryPanelProps["savedFormulaComparison"];
@@ -36,6 +38,8 @@ export function buildWorkspaceLibraryPanelProps(
     comparisonConstraintForm: args.comparisonConstraintForm,
     comparisonMaterialOptions: args.comparisonMaterialOptions,
     canEditTenantData: args.canEditTenantData,
+    canExportFormulas: args.canExportFormulas,
+    canUseFormulaComparison: args.canUseFormulaComparison,
     canCompareSavedFormulas: args.canCompareSavedFormulas,
     isBusy: args.isBusy,
     savedFormulaComparison: args.savedFormulaComparison,

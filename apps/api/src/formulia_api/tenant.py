@@ -93,6 +93,11 @@ def require_tenant_admin(tenant: TenantContext) -> None:
         raise HTTPException(status_code=403, detail="Tenant admin role is required.")
 
 
+def require_tenant_formulator(tenant: TenantContext) -> None:
+    if tenant.role not in {"owner", "admin", "formulator"}:
+        raise HTTPException(status_code=403, detail="Formulator role is required.")
+
+
 def normalize_tenant_role(role: str) -> str:
     normalized = role.strip().casefold()
     if normalized == "formulador":
