@@ -66,6 +66,39 @@ def test_formula_item_payload_rejects_negative_percentage() -> None:
     assert response.json()["detail"][0]["type"] == "greater_than_equal"
 
 
+def test_formula_creation_requires_description() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    response = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={"name": "No Description Formula", "objective": "   ", "items": []},
+    )
+
+    assert response.status_code == 422
+
+
+def test_formula_update_rejects_blank_description() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={"name": "Described Formula", "objective": "Initial description.", "items": []},
+    ).json()
+
+    response = client.patch(
+        f"/api/v1/formulas/{formula['id']}",
+        headers=headers,
+        json={"objective": " "},
+    )
+
+    assert response.status_code == 422
+
+
 def test_lists_only_data_for_active_tenant() -> None:
     client = make_client()
     tenant_a = create_tenant(client, USER_A, "tenant-a")
@@ -667,6 +700,7 @@ def test_persisted_formula_calculation_uses_backend_core() -> None:
         headers=headers,
         json={
             "name": "Test Formula",
+            "objective": "Foundation calculation test.",
             "items": [
                 {"raw_material_id": rm_1["id"], "percentage": 25},
                 {"raw_material_id": rm_2["id"], "percentage": 75},
@@ -732,6 +766,7 @@ def test_persisted_formula_treats_missing_active_parameters_as_zero() -> None:
         headers=headers,
         json={
             "name": "Missing Parameter Formula",
+            "objective": "Formula used to verify default zero parameters.",
             "items": [{"raw_material_id": raw_material["id"], "percentage": 100}],
         },
     ).json()
@@ -821,6 +856,7 @@ def test_formula_calculation_history_is_tenant_scoped() -> None:
         headers=headers_a,
         json={
             "name": "History Formula",
+            "objective": "Formula used to verify calculation history scoping.",
             "items": [
                 {"raw_material_id": rm_1["id"], "percentage": 25},
                 {"raw_material_id": rm_2["id"], "percentage": 75},

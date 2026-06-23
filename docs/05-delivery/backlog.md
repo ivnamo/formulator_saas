@@ -185,7 +185,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-011 - Descripcion obligatoria de formula reutilizable en Jira e ISO
 
-- Estado: In progress
+- Estado: Done
 - Prioridad: P0
 - Area: Formula Builder | Jira | ISO | Biblioteca
 - Origen: Usuario
@@ -198,7 +198,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - ISO recibe o muestra esa descripcion cuando aplique.
   - La biblioteca conserva y muestra la descripcion.
 - Validacion beta: Crear formula sin descripcion y verificar bloqueo; crear con descripcion y verificar Jira/ISO.
-- Notas: Implementado usando `objective` como descripcion persistente de formula. Datos basicos la edita, guardar/exportar/Jira la exigen, Jira/ISO/Excel la reutilizan y biblioteca la muestra. Validado con `npm run check`.
+- Notas: Implementado usando `objective` como descripcion persistente de formula. Datos basicos la edita, guardar/exportar/Jira la exigen, Jira/ISO/Excel la reutilizan y biblioteca la muestra. Rama `codex/backlog-required-formula-description-api`: backend exige descripcion en crear/importar/exportar y evita vaciarla al actualizar; tests API cubren rechazos sin descripcion.
 
 ### BL-012 - Limpiar Excel Import despues de guardar formula
 

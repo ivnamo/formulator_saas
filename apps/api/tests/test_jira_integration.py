@@ -335,6 +335,7 @@ def create_formula(
         headers=request_headers,
         json={
             "name": "Review Formula",
+            "objective": "Review formula prepared from FormulIA.",
             "jira_project_id": "FLOWER",
             "jira_issue_type": jira_issue_type,
             "jira_product_type": jira_product_type,

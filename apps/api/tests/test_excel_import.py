@@ -597,6 +597,7 @@ def test_save_imported_rows_as_formula_and_calculate() -> None:
         headers=headers,
         json={
             "name": "Imported Formula",
+            "objective": "Imported formula used to verify save and calculation.",
             "rows": [
                 {"raw_material_id": active["id"], "percentage": 25},
                 {"raw_material_id": carrier["id"], "percentage": 75},
@@ -616,6 +617,20 @@ def test_save_imported_rows_as_formula_and_calculate() -> None:
     assert calculation.json()["parameters"][0]["value"] == 17.5
 
 
+def test_save_import_requires_description() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    response = client.post(
+        "/api/v1/imports/formulas/excel/save",
+        headers=headers,
+        json={"name": "No Description Import", "objective": "", "rows": []},
+    )
+
+    assert response.status_code == 422
+
+
 def test_save_import_rejects_negative_percentage() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
@@ -631,6 +646,7 @@ def test_save_import_rejects_negative_percentage() -> None:
         headers=headers,
         json={
             "name": "Invalid Import",
+            "objective": "Import used to verify negative percentage rejection.",
             "rows": [{"raw_material_id": raw_material["id"], "percentage": -1}],
         },
     )

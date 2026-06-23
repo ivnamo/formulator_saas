@@ -140,6 +140,7 @@ def test_saved_formula_exports_atlantica_id_lab_template() -> None:
         headers=headers,
         json={
             "name": "MICROCAT BON + AA - MUESTRA: F1",
+            "objective": "Saved formula export template test.",
             "items": [
                 {"raw_material_id": water["id"], "percentage": 50},
                 {"raw_material_id": glycine["id"], "percentage": 50},
@@ -209,6 +210,7 @@ def test_builder_draft_exports_atlantica_id_lab_template() -> None:
         headers=headers,
         json={
             "name": "Draft Formula",
+            "objective": "Draft formula export template test.",
             "items": [{"raw_material_id": boron["id"], "percentage": 100}],
             "metadata": {
                 "sample_code": "F1",
@@ -230,6 +232,19 @@ def test_builder_draft_exports_atlantica_id_lab_template() -> None:
     assert workbook["Hoja Lab"]["E6"].value == "=D6*10/2"
     assert workbook["Hoja Lab"]["E10"].value == 1.01592
     assert workbook["Hoja Lab"]["E11"].value == 10.48
+
+
+def test_builder_draft_export_requires_description() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+
+    response = client.post(
+        "/api/v1/formulas/exports/atlantica-id-lab.xlsx",
+        headers={"X-User-Id": USER_A, "X-Tenant-Id": tenant_id},
+        json={"name": "No Description Draft", "objective": " ", "items": []},
+    )
+
+    assert response.status_code == 422
 
 
 def _create_material(
