@@ -1,10 +1,13 @@
 import { Download, Loader2, Save } from "lucide-react";
-import type { BuilderSectionKey } from "../formula-builder-model";
+import type { BuilderSectionKey, FormulaBuilderMode } from "../formula-builder-model";
 import { BuilderStep } from "./builder-step";
 import { JiraReviewPanel, type JiraReviewPanelProps } from "./jira-review-panel";
 
 export type FormulaReviewStepProps = JiraReviewPanelProps & {
   isOpen: boolean;
+  formulaId: string | null;
+  formulaBuilderMode: FormulaBuilderMode;
+  formulaName: string;
   isFormulaBalanced: boolean;
   totalPercentage: number;
   canSaveFormula: boolean;
@@ -17,6 +20,9 @@ export type FormulaReviewStepProps = JiraReviewPanelProps & {
 
 export function FormulaReviewStep({
   isOpen,
+  formulaId,
+  formulaBuilderMode,
+  formulaName,
   isFormulaBalanced,
   totalPercentage,
   canSaveFormula,
@@ -32,6 +38,8 @@ export function FormulaReviewStep({
     : "Jira no configurado";
   const reviewCount = jiraReviewProps.formulaReviewRequests.length;
   const reviewLabel = reviewCount === 1 ? "1 revision" : `${reviewCount} revisiones`;
+  const saveMode = formulaId ? formulaBuilderMode : "new";
+  const saveIntent = formulaSaveIntent(saveMode, Boolean(formulaId), formulaName);
 
   return (
     <BuilderStep
@@ -61,6 +69,10 @@ export function FormulaReviewStep({
                 : `Hay ${blankFormulaLineCount} porcentajes en blanco; al guardar se convertiran en 0.`}
             </small>
           ) : null}
+          <span className="formulaSaveIntent">
+            {saveIntent.title}
+            <small>{saveIntent.description}</small>
+          </span>
         </div>
         <div className="formulaSaveActions">
           <button
@@ -79,11 +91,45 @@ export function FormulaReviewStep({
             disabled={!canSaveFormula}
           >
             {jiraReviewProps.isBusy ? <Loader2 className="spin" size={17} /> : <Save size={17} />}
-            Guardar formula
+            {saveIntent.buttonLabel}
           </button>
         </div>
       </div>
       <JiraReviewPanel {...jiraReviewProps} />
     </BuilderStep>
   );
+}
+
+function formulaSaveIntent(
+  mode: FormulaBuilderMode,
+  hasLoadedFormula: boolean,
+  formulaName: string,
+) {
+  const loadedName = formulaName.trim() || "la formula cargada";
+  if (mode === "editing" && hasLoadedFormula) {
+    return {
+      title: "Se actualizara la formula cargada",
+      description: `Guardar pisara los datos actuales de ${loadedName}.`,
+      buttonLabel: "Actualizar formula cargada",
+    };
+  }
+  if (mode === "version" && hasLoadedFormula) {
+    return {
+      title: "Se creara una nueva version",
+      description: `Guardar creara otro registro basado en ${loadedName}.`,
+      buttonLabel: "Guardar nueva version",
+    };
+  }
+  if (hasLoadedFormula) {
+    return {
+      title: "Se creara una formula nueva",
+      description: `Guardar duplicara/derivara ${loadedName} sin modificarla.`,
+      buttonLabel: "Guardar formula nueva",
+    };
+  }
+  return {
+    title: "Se creara una formula nueva",
+    description: "Guardar creara el primer registro de esta formula en biblioteca.",
+    buttonLabel: "Guardar formula nueva",
+  };
 }

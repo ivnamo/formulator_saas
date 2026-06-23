@@ -3678,23 +3678,24 @@ label span {
   gap: 12px;
   align-items: stretch;
   margin-bottom: 12px;
-  border: 1px solid #8fb2a6;
-  border-left: 5px solid var(--teal);
+  border: 1px solid #5d8f80;
+  border-left: 6px solid var(--teal);
   border-radius: 8px;
-  background: #edf8f4;
+  background: #e2f4ee;
   padding: 12px;
+  box-shadow: 0 12px 28px rgba(13, 76, 61, 0.08);
 }
 
 .formulaWorkModeBanner[data-mode="editing"] {
-  border-color: #8da9d8;
+  border-color: #557dbd;
   border-left-color: #2563eb;
-  background: #eff6ff;
+  background: #e5f0ff;
 }
 
 .formulaWorkModeBanner[data-mode="version"] {
-  border-color: #d8b15f;
+  border-color: #b9821f;
   border-left-color: #b7791f;
-  background: #fff8e8;
+  background: #fff1cf;
 }
 
 .formulaWorkModeStatus,
@@ -3763,9 +3764,14 @@ label span {
 
 .formulaModeChoices button[aria-pressed="true"] {
   border-color: var(--teal);
-  background: #e8f7f2;
+  background: var(--teal);
   color: var(--teal-dark);
   box-shadow: var(--shadow-soft);
+}
+
+.formulaModeChoices button[aria-pressed="true"] span,
+.formulaModeChoices button[aria-pressed="true"] small {
+  color: white;
 }
 
 .formulaModeChoices button:disabled {
@@ -4835,6 +4841,23 @@ label span {
 
 .formulaSavePanel .inlineWarning {
   color: var(--danger);
+}
+
+.formulaSavePanel .formulaSaveIntent {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+  color: #173d34;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: none;
+}
+
+.formulaSavePanel .formulaSaveIntent small {
+  color: #4a5b55;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .formulaSaveActions {

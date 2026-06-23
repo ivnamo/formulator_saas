@@ -20,24 +20,25 @@ export function FormulaWorkModeBanner({
   const hasLoadedFormula = Boolean(values.formulaId);
   const selectedMode = modeForDisplay(values.formulaBuilderMode, values.formulaId);
   const formulaName = values.formulaName.trim();
+  const intent = modeIntent(selectedMode, hasLoadedFormula);
 
   return (
     <div className="formulaWorkModeBanner" data-mode={selectedMode} aria-live="polite">
       <div className="formulaWorkModeStatus">
-        <span>Modo de trabajo</span>
-        <strong>{modeLabel(selectedMode)}</strong>
-        <small>{modeHelper(selectedMode)}</small>
+        <span>Operacion al guardar</span>
+        <strong>{intent.label}</strong>
+        <small>{intent.helper}</small>
       </div>
       <div className="formulaWorkModeSource">
-        <span>{hasLoadedFormula ? "Formula cargada" : "Sin formula cargada"}</span>
+        <span>{hasLoadedFormula ? "Formula base cargada" : "Formula base"}</span>
         <strong>
           {hasLoadedFormula ? formulaName || "Formula sin nombre" : "Creando desde cero"}
         </strong>
-        <small>{modeContext(hasLoadedFormula)}</small>
+        <small>{intent.context}</small>
       </div>
       <div
         className="formulaModeChoices formulaModeChoicesCompact"
-        aria-label="Modo de Formula Builder"
+        aria-label="Operacion al guardar en Formula Builder"
       >
         {formulaModeOptions.map((option) => {
           const isLocked = option.requiresLoadedFormula && !hasLoadedFormula;
@@ -70,20 +71,20 @@ const formulaModeOptions: Array<{
 }> = [
   {
     mode: "new",
-    label: "Nueva",
-    helper: "Guarda otro registro",
+    label: "Formula nueva",
+    helper: "No pisa la cargada",
     requiresLoadedFormula: false,
   },
   {
     mode: "editing",
-    label: "Modificar",
+    label: "Modificar cargada",
     helper: "Actualiza la cargada",
     requiresLoadedFormula: true,
   },
   {
     mode: "version",
-    label: "Version",
-    helper: "Guarda una version",
+    label: "Nueva version",
+    helper: "Crea otro registro",
     requiresLoadedFormula: true,
   },
 ];
@@ -95,29 +96,31 @@ function modeForDisplay(mode: FormulaBuilderMode, formulaId: string | null) {
   return mode;
 }
 
-function modeLabel(mode: FormulaBuilderMode) {
+function modeIntent(mode: FormulaBuilderMode, hasLoadedFormula: boolean) {
   if (mode === "editing") {
-    return "Modificacion";
+    return {
+      label: "Modificar formula cargada",
+      helper: "Guardar actualizara el registro abierto en biblioteca.",
+      context: "Usalo cuando quieres que esta misma formula quede cambiada.",
+    };
   }
   if (mode === "version") {
-    return "Nueva version";
+    return {
+      label: "Guardar como nueva version",
+      helper: "Guardar creara otro registro basado en la formula cargada.",
+      context: "La formula cargada se conserva como origen de trabajo.",
+    };
   }
-  return "Formula nueva";
-}
-
-function modeHelper(mode: FormulaBuilderMode) {
-  if (mode === "editing") {
-    return "Guardar pisara la formula abierta en biblioteca.";
-  }
-  if (mode === "version") {
-    return "Guardar creara otro registro desde la formula cargada.";
-  }
-  return "Guardar creara una formula nueva en biblioteca.";
-}
-
-function modeContext(hasLoadedFormula: boolean) {
   if (hasLoadedFormula) {
-    return "Elige antes de guardar si quieres actualizarla o crear otra formula/version.";
+    return {
+      label: "Guardar como formula nueva",
+      helper: "Guardar creara otro registro y no pisara la formula cargada.",
+      context: "Usalo para duplicar o derivar una formula sin tocar la original.",
+    };
   }
-  return "Modificar y versionar se activan al abrir una formula desde biblioteca o importacion.";
+  return {
+    label: "Crear formula nueva",
+    helper: "Guardar creara una formula nueva en biblioteca.",
+    context: "Modificar y versionar se activan al abrir una formula desde biblioteca.",
+  };
 }
