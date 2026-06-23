@@ -18,6 +18,7 @@ import {
   FormulaReviewStep,
   type FormulaReviewStepProps,
 } from "./formula-builder-ui/formula-review-step";
+import { FormulaWorkModeBanner } from "./formula-builder-ui/formula-work-mode-banner";
 import {
   formatResultPrice,
   formatSignedDelta,
@@ -56,6 +57,11 @@ export function FormulaBuilderWorkspace({
         <h2>Formula Builder</h2>
         <span>{isFormulaBalanced ? "Balanced" : `${totalPercentage.toFixed(1)}%`}</span>
       </div>
+      <FormulaWorkModeBanner
+        values={basics.values}
+        isBusy={basics.isBusy}
+        onChange={basics.onChange}
+      />
       <FormulaBasicsStep {...basics} />
       <FormulaMaterialsStep {...materials} />
       <FormulaCompositionStep

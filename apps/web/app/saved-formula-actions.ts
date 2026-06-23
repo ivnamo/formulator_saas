@@ -203,6 +203,7 @@ export function useSavedFormulaActions({
     }
 
     await runAction("Saving formula", async () => {
+      const saveMode = workspace.formulaId ? workspace.formulaBuilderMode : "new";
       const payload = buildManualFormulaSavePayload(workspace, workspace.formulaLines);
       const formulaId =
         workspace.formulaBuilderMode === "editing" ? workspace.formulaId : null;
@@ -222,7 +223,7 @@ export function useSavedFormulaActions({
       await refreshFormulaLibrary({ silent: true });
       await loadCalculationHistory(formula.id);
       await loadFormulaReviewRequests(formula.id);
-      setMessage("Formula saved");
+      setMessage(formulaSaveSuccessMessage(saveMode));
     });
   }, [
     calculatePersistedFormula,
@@ -341,4 +342,14 @@ export function useSavedFormulaActions({
     loadCalculationHistory,
     loadFormulaReviewRequests,
   };
+}
+
+function formulaSaveSuccessMessage(mode: WorkspaceState["formulaBuilderMode"]) {
+  if (mode === "editing") {
+    return "Formula cargada actualizada";
+  }
+  if (mode === "version") {
+    return "Nueva version guardada";
+  }
+  return "Formula nueva guardada";
 }

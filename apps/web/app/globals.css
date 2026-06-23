@@ -3665,47 +3665,61 @@ label span {
   padding: 12px 14px 14px;
 }
 
-.formulaModePanel {
+.formulaWorkModeBanner {
   display: grid;
-  grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.2fr);
-  gap: 14px;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(220px, 1fr) minmax(320px, 1.15fr);
+  gap: 12px;
   align-items: stretch;
-  border: 1px solid #9bb6ac;
+  margin-bottom: 12px;
+  border: 1px solid #8fb2a6;
+  border-left: 5px solid var(--teal);
   border-radius: 8px;
-  background: #f4faf8;
+  background: #edf8f4;
   padding: 12px;
 }
 
-.formulaModeCopy {
-  min-width: 0;
-  display: grid;
-  align-content: start;
-  gap: 5px;
+.formulaWorkModeBanner[data-mode="editing"] {
+  border-color: #8da9d8;
+  border-left-color: #2563eb;
+  background: #eff6ff;
 }
 
-.formulaModeCopy > span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
+.formulaWorkModeBanner[data-mode="version"] {
+  border-color: #d8b15f;
+  border-left-color: #b7791f;
+  background: #fff8e8;
+}
+
+.formulaWorkModeStatus,
+.formulaWorkModeSource {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.formulaWorkModeStatus > span,
+.formulaWorkModeSource > span {
+  color: #45534d;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
-.formulaModeCopy strong {
+.formulaWorkModeStatus strong,
+.formulaWorkModeSource strong {
   color: #102c24;
   font-size: 16px;
+  line-height: 1.2;
 }
 
-.formulaModeCopy small,
-.formulaModeCopy em {
-  color: var(--muted);
+.formulaWorkModeStatus small,
+.formulaWorkModeSource small {
+  color: #42534d;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
-}
-
-.formulaModeCopy em {
-  color: #36574c;
-  font-style: normal;
 }
 
 .formulaModeChoices {
@@ -3750,6 +3764,10 @@ label span {
 .formulaModeChoices button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.formulaModeChoicesCompact button {
+  min-height: 56px;
 }
 
 .formulaMeter {
@@ -5196,7 +5214,7 @@ label span {
     flex-direction: column;
   }
 
-  .formulaModePanel {
+  .formulaWorkModeBanner {
     grid-template-columns: 1fr;
   }
 

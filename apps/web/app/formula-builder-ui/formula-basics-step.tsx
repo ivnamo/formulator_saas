@@ -1,4 +1,4 @@
-import type { BuilderSectionKey, FormulaBuilderMode } from "../formula-builder-model";
+import type { BuilderSectionKey } from "../formula-builder-model";
 import type { IsoDesignProject } from "../iso-design-model";
 import type { WorkspaceState } from "../workspace-state-model";
 import { BuilderStep } from "./builder-step";
@@ -55,9 +55,6 @@ export function FormulaBasicsStep({
     jiraProjectIdOptions,
     values.formulaJiraProjectId,
   );
-  const selectedMode = modeForDisplay(values.formulaBuilderMode, values.formulaId);
-  const hasLoadedFormula = Boolean(values.formulaId);
-
   return (
     <BuilderStep
       section="basics"
@@ -66,32 +63,6 @@ export function FormulaBasicsStep({
       isOpen={isOpen}
       onToggle={onToggle}
     >
-      <div className="formulaModePanel">
-        <div className="formulaModeCopy">
-          <span>Decision de guardado</span>
-          <strong>{modeLabel(selectedMode)}</strong>
-          <small>{modeHelper(selectedMode)}</small>
-          <em>{modeContext(hasLoadedFormula)}</em>
-        </div>
-        <div className="formulaModeChoices" aria-label="Modo de Formula Builder">
-          {formulaModeOptions.map((option) => {
-            const isLocked = option.requiresLoadedFormula && !hasLoadedFormula;
-            return (
-              <button
-                key={option.mode}
-                type="button"
-                aria-pressed={selectedMode === option.mode}
-                onClick={() => onChange({ formulaBuilderMode: option.mode })}
-                disabled={isBusy || isLocked}
-                title={isLocked ? "Carga una formula de biblioteca para activar este modo." : undefined}
-              >
-                <span>{option.label}</span>
-                <small>{isLocked ? "Requiere formula cargada" : option.helper}</small>
-              </button>
-            );
-          })}
-        </div>
-      </div>
       <label className="fullWidthLabel">
         <span>
           Nombre <span className="requiredMark">*</span>
@@ -186,66 +157,6 @@ export function FormulaBasicsStep({
       ) : null}
     </BuilderStep>
   );
-}
-
-const formulaModeOptions: Array<{
-  mode: FormulaBuilderMode;
-  label: string;
-  helper: string;
-  requiresLoadedFormula: boolean;
-}> = [
-  {
-    mode: "new",
-    label: "Formula nueva",
-    helper: "Guarda un registro nuevo",
-    requiresLoadedFormula: false,
-  },
-  {
-    mode: "editing",
-    label: "Modificar cargada",
-    helper: "Actualiza la formula abierta",
-    requiresLoadedFormula: true,
-  },
-  {
-    mode: "version",
-    label: "Crear version",
-    helper: "Guarda otra formula desde la cargada",
-    requiresLoadedFormula: true,
-  },
-];
-
-function modeForDisplay(mode: FormulaBuilderMode, formulaId: string | null) {
-  if (!formulaId) {
-    return "new";
-  }
-  return mode;
-}
-
-function modeLabel(mode: FormulaBuilderMode) {
-  if (mode === "editing") {
-    return "Modificacion de formula cargada";
-  }
-  if (mode === "version") {
-    return "Nueva version de formula cargada";
-  }
-  return "Formula nueva";
-}
-
-function modeHelper(mode: FormulaBuilderMode) {
-  if (mode === "editing") {
-    return "Guardar actualizara la formula abierta en biblioteca.";
-  }
-  if (mode === "version") {
-    return "Guardar creara otra formula a partir de la cargada.";
-  }
-  return "Guardar creara una formula nueva en biblioteca.";
-}
-
-function modeContext(hasLoadedFormula: boolean) {
-  if (hasLoadedFormula) {
-    return "Hay una formula cargada: elige si quieres pisarla o crear otra version antes de guardar.";
-  }
-  return "Sin formula cargada: estas creando desde cero; modificar y versionar se activan al abrir una formula.";
 }
 
 function withCurrentOption(options: string[], current: string) {

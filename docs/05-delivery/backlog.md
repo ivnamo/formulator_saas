@@ -58,7 +58,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Jira recibe/refleja la version correcta de la formula.
   - ISO puede asociar F10-02/revision a la version correcta cuando aplique.
 - Validacion beta: Abrir F2 desde biblioteca, crear F3, guardar y comprobar biblioteca/Jira.
-- Notas: Revisar modelo de datos antes de implementar para evitar duplicados sueltos. Rama `codex/backlog-builder-basics`: anadido modo visible nueva/editar/version y guardado como nuevo registro cuando el modo no es editar; pendiente versionado ligado real en backend/biblioteca/Jira.
+- Notas: Revisar modelo de datos antes de implementar para evitar duplicados sueltos. Rama `codex/backlog-builder-basics`: anadido modo visible nueva/editar/version y guardado como nuevo registro cuando el modo no es editar. Rama `codex/builder-working-mode-clarity`: reforzada banda superior siempre visible con modo de trabajo y feedback especifico al guardar. Pendiente versionado ligado real en backend/biblioteca/Jira.
 
 ### BL-003 - Precios de formulas no actualizados en biblioteca
 
