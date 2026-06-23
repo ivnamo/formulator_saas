@@ -170,6 +170,7 @@ class Formula(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    source_formula_id: uuid.UUID | None = Field(default=None, foreign_key="formulas.id")
     name: str
     version: int = 1
     status: str = "draft"

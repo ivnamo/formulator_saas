@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Archive,
   ChevronDown,
@@ -105,6 +106,10 @@ export function SavedFormulaComparisonPanel({
     hasMaterialMinimumConstraint,
     hasMaterialMaximumConstraint,
   ].filter(Boolean).length;
+  const formulaNameById = useMemo(
+    () => new Map(formulas.map((formula) => [formula.id, formula.name])),
+    [formulas],
+  );
 
   return (
     <section
@@ -266,52 +271,65 @@ export function SavedFormulaComparisonPanel({
           {formulas.length === 0 ? (
             <div className="empty">No saved formulas yet.</div>
           ) : (
-            formulas.map((formula) => (
-              <div className="formulaListRow" data-archive={canArchiveEntities} key={formula.id}>
-                <span className="formulaLibraryName">
-                  <strong>{formula.name}</strong>
-                  {formula.objective ? <small>{formula.objective}</small> : null}
-                </span>
-                <span>
-                  {formula.total_price === null
-                    ? "-"
-                    : `${formula.total_price.toFixed(2)} ${formula.currency}/kg`}
-                </span>
-                <span>{formula.items.length}</span>
-                <button
-                  className="iconButton"
-                  type="button"
-                  onClick={() => void onExportFormula(formula)}
-                  disabled={!canExportFormulas}
-                  title="Export Excel I+D"
-                  aria-label={`Export ${formula.name} as Excel I+D`}
+            formulas.map((formula) => {
+              const sourceFormulaName = formula.source_formula_id
+                ? formulaNameById.get(formula.source_formula_id) ?? "formula origen"
+                : null;
+              return (
+                <div
+                  className="formulaListRow"
+                  data-archive={canArchiveEntities}
+                  key={formula.id}
                 >
-                  <Download size={16} />
-                </button>
-                <button
-                  className="iconButton"
-                  type="button"
-                  onClick={() => void onOpenFormula(formula)}
-                  disabled={isBusy}
-                  title="Open formula"
-                  aria-label={`Open ${formula.name}`}
-                >
-                  <FolderOpen size={16} />
-                </button>
-                {canArchiveEntities ? (
+                  <span className="formulaLibraryName">
+                    <strong>{formula.name}</strong>
+                    <small>
+                      v{formula.version}
+                      {sourceFormulaName ? ` - version de ${sourceFormulaName}` : ""}
+                    </small>
+                    {formula.objective ? <small>{formula.objective}</small> : null}
+                  </span>
+                  <span>
+                    {formula.total_price === null
+                      ? "-"
+                      : `${formula.total_price.toFixed(2)} ${formula.currency}/kg`}
+                  </span>
+                  <span>{formula.items.length}</span>
                   <button
-                    className="iconButton dangerIconButton"
+                    className="iconButton"
                     type="button"
-                    onClick={() => void onArchiveFormula(formula)}
-                    disabled={isBusy}
-                    title="Archive formula"
-                    aria-label={`Archive ${formula.name}`}
+                    onClick={() => void onExportFormula(formula)}
+                    disabled={!canExportFormulas}
+                    title="Export Excel I+D"
+                    aria-label={`Export ${formula.name} as Excel I+D`}
                   >
-                    <Archive size={16} />
+                    <Download size={16} />
                   </button>
-                ) : null}
-              </div>
-            ))
+                  <button
+                    className="iconButton"
+                    type="button"
+                    onClick={() => void onOpenFormula(formula)}
+                    disabled={isBusy}
+                    title="Open formula"
+                    aria-label={`Open ${formula.name}`}
+                  >
+                    <FolderOpen size={16} />
+                  </button>
+                  {canArchiveEntities ? (
+                    <button
+                      className="iconButton dangerIconButton"
+                      type="button"
+                      onClick={() => void onArchiveFormula(formula)}
+                      disabled={isBusy}
+                      title="Archive formula"
+                      aria-label={`Archive ${formula.name}`}
+                    >
+                      <Archive size={16} />
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })
           )}
         </div>
         <div className="historyList">

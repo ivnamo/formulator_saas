@@ -45,7 +45,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-002 - Versionado ligado de formulas
 
-- Estado: Done
+- Estado: In progress
 - Prioridad: P0
 - Area: Biblioteca | Formula Builder | Jira | ISO
 - Origen: Usuario
@@ -58,7 +58,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Jira recibe/refleja la version correcta de la formula.
   - ISO puede asociar F10-02/revision a la version correcta cuando aplique.
 - Validacion beta: Abrir F2 desde biblioteca, crear F3, guardar y comprobar biblioteca/Jira.
-- Notas: Revisar modelo de datos antes de implementar para evitar duplicados sueltos. Rama `codex/backlog-builder-basics`: anadido modo visible nueva/editar/version y guardado como nuevo registro cuando el modo no es editar. Rama `codex/builder-working-mode-clarity`: reforzada banda superior siempre visible con modo de trabajo y feedback especifico al guardar. Pendiente versionado ligado real en backend/biblioteca/Jira.
+- Notas: Revisar modelo de datos antes de implementar para evitar duplicados sueltos. Rama `codex/backlog-builder-basics`: anadido modo visible nueva/editar/version y guardado como nuevo registro cuando el modo no es editar. Rama `codex/builder-working-mode-clarity`: reforzada banda superior siempre visible con modo de trabajo y feedback especifico al guardar. Rama `codex/backlog-linked-formula-versions`: se anade `source_formula_id`, las nuevas versiones creadas desde Builder quedan enlazadas a la formula origen, incrementan `version`, Biblioteca muestra `vN` y origen inmediato, y Jira snapshot incluye la relacion. Pendiente historial/arbol completo de versiones en Biblioteca/ISO y reglas de recuperacion si se archiva una version origen.
 
 ### BL-003 - Precios de formulas no actualizados en biblioteca
 
@@ -383,7 +383,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Las acciones de guardar/exportar/Jira usan el modo seleccionado para evitar sobrescrituras accidentales.
   - El modo queda reflejado en biblioteca y en historico/versionado.
 - Validacion beta: Abrir una formula desde biblioteca y comprobar que el usuario entiende si esta editando, duplicando o versionando antes de guardar.
-- Notas: Implementado selector de modo y semantica de guardar/exportar/Jira segun modo. Rama `codex/builder-working-mode-clarity`: el modo queda en una banda superior siempre visible, con contexto de formula cargada/sin cargar y feedback especifico al guardar (`Formula nueva guardada`, `Formula cargada actualizada`, `Nueva version guardada`). Rama `codex/backlog-builder-mode-clarity-followup`: se refuerza la banda como `Operacion al guardar`, se sube el contraste del selector y Revision muestra el efecto exacto y cambia el texto del boton segun cree formula nueva, actualice la cargada o guarde nueva version. Rama `codex/backlog-version-name-suggestion`: el builder recuerda la formula base cargada, sugiere el siguiente nombre F2 -> F3 al elegir `Nueva version` y permite aplicar la sugerencia sin pisar nombres escritos manualmente. Pendiente reflejo completo en biblioteca/historico/versionado ligado.
+- Notas: Implementado selector de modo y semantica de guardar/exportar/Jira segun modo. Rama `codex/builder-working-mode-clarity`: el modo queda en una banda superior siempre visible, con contexto de formula cargada/sin cargar y feedback especifico al guardar (`Formula nueva guardada`, `Formula cargada actualizada`, `Nueva version guardada`). Rama `codex/backlog-builder-mode-clarity-followup`: se refuerza la banda como `Operacion al guardar`, se sube el contraste del selector y Revision muestra el efecto exacto y cambia el texto del boton segun cree formula nueva, actualice la cargada o guarde nueva version. Rama `codex/backlog-version-name-suggestion`: el builder recuerda la formula base cargada, sugiere el siguiente nombre F2 -> F3 al elegir `Nueva version` y permite aplicar la sugerencia sin pisar nombres escritos manualmente. Rama `codex/backlog-linked-formula-versions`: `Nueva version` persiste `source_formula_id`, incrementa `version`, aparece en Biblioteca y viaja a snapshot Jira. Pendiente arbol/historico completo de versiones y vista ISO.
 
 ## Ready
 

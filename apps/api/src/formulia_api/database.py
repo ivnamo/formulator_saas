@@ -60,6 +60,7 @@ def _ensure_compatible_schema(engine: Engine) -> None:
             engine,
             "formulas",
             {
+                "source_formula_id": _uuid_column_sql(engine, nullable=True),
                 "jira_project_id": _string_column_sql(engine, nullable=True),
                 "jira_issue_type": _string_column_sql(engine, default="'Calidad'"),
                 "jira_product_type": _string_column_sql(engine, default="'Nuevo'"),
@@ -341,6 +342,13 @@ def _string_column_sql(
     definition = "VARCHAR"
     if default is not None:
         definition += f" DEFAULT {default}"
+    if not nullable:
+        definition += " NOT NULL"
+    return definition
+
+
+def _uuid_column_sql(engine: Engine, *, nullable: bool = False) -> str:
+    definition = "UUID" if engine.dialect.name == "postgresql" else "CHAR(32)"
     if not nullable:
         definition += " NOT NULL"
     return definition

@@ -112,6 +112,71 @@ def test_formula_creation_requires_name() -> None:
     assert response.status_code == 422
 
 
+def test_formula_version_creation_links_source_and_increments_version() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    source = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={"name": "Formula F2", "objective": "Initial version.", "items": []},
+    ).json()
+
+    version = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={
+            "name": "Formula F3",
+            "objective": "Linked version.",
+            "source_formula_id": source["id"],
+            "items": [],
+        },
+    )
+    next_version = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={
+            "name": "Formula F4",
+            "objective": "Second linked version.",
+            "source_formula_id": source["id"],
+            "items": [],
+        },
+    )
+
+    assert version.status_code == 201
+    assert version.json()["source_formula_id"] == source["id"]
+    assert version.json()["version"] == source["version"] + 1
+    assert next_version.status_code == 201
+    assert next_version.json()["source_formula_id"] == source["id"]
+    assert next_version.json()["version"] == version.json()["version"] + 1
+
+
+def test_formula_version_source_must_belong_to_tenant() -> None:
+    client = make_client()
+    tenant_a = create_tenant(client, USER_A, "tenant-a")
+    tenant_b = create_tenant(client, USER_B, "tenant-b")
+    headers_a = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_a}
+    headers_b = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_b}
+    external_source = client.post(
+        "/api/v1/formulas",
+        headers=headers_b,
+        json={"name": "External Formula", "objective": "Other tenant.", "items": []},
+    ).json()
+
+    response = client.post(
+        "/api/v1/formulas",
+        headers=headers_a,
+        json={
+            "name": "Invalid Linked Formula",
+            "objective": "Should not link across tenants.",
+            "source_formula_id": external_source["id"],
+            "items": [],
+        },
+    )
+
+    assert response.status_code == 404
+
+
 def test_formula_update_rejects_blank_description() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

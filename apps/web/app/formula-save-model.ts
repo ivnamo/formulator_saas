@@ -1,4 +1,7 @@
-import { formulaLinePercentageValue } from "./formula-builder-model";
+import {
+  formulaLinePercentageValue,
+  type FormulaBuilderMode,
+} from "./formula-builder-model";
 
 type FormulaSaveLine = {
   rawMaterialId: string;
@@ -6,6 +9,8 @@ type FormulaSaveLine = {
 };
 
 type FormulaSaveMetadata = {
+  formulaId: string | null;
+  formulaBuilderMode: FormulaBuilderMode;
   formulaName: string;
   formulaJiraProjectId: string;
   formulaJiraIssueType: string;
@@ -25,6 +30,8 @@ export function buildManualFormulaSavePayload(
   return {
     name: metadata.formulaName.trim(),
     objective: metadata.formulaJiraDescription.trim(),
+    source_formula_id:
+      metadata.formulaBuilderMode === "version" ? metadata.formulaId : null,
     jira_project_id: metadata.formulaJiraProjectId.trim() || null,
     jira_issue_type: metadata.formulaJiraIssueType,
     jira_product_type: metadata.formulaJiraProductType,
@@ -38,7 +45,7 @@ export function buildManualFormulaSavePayload(
 
 export function buildImportedFormulaSavePayload(
   _tenantName: string | null | undefined,
-  metadata: Omit<FormulaSaveMetadata, "formulaName">,
+  metadata: Omit<FormulaSaveMetadata, "formulaName" | "formulaId" | "formulaBuilderMode">,
   rows: FormulaImportRow[],
   formulaName?: string | null,
 ) {

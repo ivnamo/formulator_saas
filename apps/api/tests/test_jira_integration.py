@@ -659,6 +659,41 @@ def test_formula_jira_review_request_captures_snapshot() -> None:
     assert [item["id"] for item in listed.json()] == [review["id"]]
 
 
+def test_formula_jira_review_snapshot_includes_linked_version_source() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    create_jira_connection(client, tenant_id)
+    source = create_formula(client, tenant_id)
+    version = client.post(
+        "/api/v1/formulas",
+        headers=headers(USER_A, tenant_id),
+        json={
+            "name": "Review Formula F2",
+            "objective": "Version linked to previous formula.",
+            "source_formula_id": source["id"],
+            "items": [
+                {
+                    "raw_material_id": source["items"][0]["raw_material_id"],
+                    "percentage": source["items"][0]["percentage"],
+                    "order_index": 0,
+                }
+            ],
+        },
+    ).json()
+
+    created = client.post(
+        f"/api/v1/formulas/{version['id']}/reviews/jira",
+        headers=headers(USER_A, tenant_id),
+        json={"notes": "Revision de nueva version."},
+    )
+
+    assert created.status_code == 201
+    review = created.json()
+    assert review["formula_version"] == source["version"] + 1
+    assert review["snapshot"]["formula"]["source_formula_id"] == source["id"]
+    assert review["snapshot"]["formula"]["version"] == source["version"] + 1
+
+
 def test_formula_jira_review_can_link_iso_trial_and_sync_result(monkeypatch) -> None:
     client = make_client()
     fake_jira = FakeJiraClient(issue_status="FINALIZADO", technical_result="Liberado")

@@ -1535,6 +1535,9 @@ def _formula_jira_snapshot(
     snapshot: dict[str, Any] = {
         "formula": {
             "id": str(formula.id),
+            "source_formula_id": (
+                str(formula.source_formula_id) if formula.source_formula_id else None
+            ),
             "name": formula.name,
             "version": formula.version,
             "status": formula.status,

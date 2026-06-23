@@ -714,9 +714,20 @@ def register_routes(app: FastAPI) -> None:
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         require_tenant_formulator(tenant)
+        source_formula = (
+            _get_formula(session, tenant.tenant_id, payload.source_formula_id)
+            if payload.source_formula_id is not None
+            else None
+        )
         formula = Formula(
             tenant_id=tenant.tenant_id,
+            source_formula_id=source_formula.id if source_formula is not None else None,
             name=payload.name,
+            version=(
+                _next_formula_version(session, tenant.tenant_id, source_formula)
+                if source_formula is not None
+                else 1
+            ),
             objective=payload.objective,
             jira_project_id=_formula_jira_project_id(payload.jira_project_id, payload.name),
             jira_issue_type=payload.jira_issue_type,
@@ -1612,6 +1623,27 @@ def _get_formula(session: Session, tenant_id: uuid.UUID, formula_id: uuid.UUID) 
     if formula is None:
         raise HTTPException(status_code=404, detail="Formula not found.")
     return formula
+
+
+def _next_formula_version(
+    session: Session,
+    tenant_id: uuid.UUID,
+    source_formula: Formula,
+) -> int:
+    formulas = session.exec(select(Formula).where(Formula.tenant_id == tenant_id)).all()
+    descendants = {source_formula.id}
+    changed = True
+    while changed:
+        changed = False
+        for formula in formulas:
+            if formula.source_formula_id in descendants and formula.id not in descendants:
+                descendants.add(formula.id)
+                changed = True
+    max_version = max(
+        (formula.version for formula in formulas if formula.id in descendants),
+        default=source_formula.version,
+    )
+    return max_version + 1
 
 
 def _replace_formula_items(

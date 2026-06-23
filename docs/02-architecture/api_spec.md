@@ -88,6 +88,12 @@ POST /formulas/{id}/export/excel
 POST /formulas/{id}/export/pdf
 ```
 
+`POST /formulas` acepta `source_formula_id` opcional. Si se informa, debe apuntar a
+una formula del mismo tenant; la nueva formula queda ligada como version derivada y
+el backend asigna el siguiente `version` numerico de esa rama. `GET /formulas` y
+`GET /formulas/{id}` devuelven `source_formula_id` para que Biblioteca, Jira e ISO
+puedan reconstruir la relacion.
+
 ## Cálculo ad hoc
 
 ```http

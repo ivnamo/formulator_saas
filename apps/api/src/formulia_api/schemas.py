@@ -237,6 +237,7 @@ class FormulaItemCreate(BaseModel):
 class FormulaCreate(BaseModel):
     name: str = Field(min_length=1)
     objective: str = Field(min_length=1)
+    source_formula_id: uuid.UUID | None = None
     jira_project_id: str | None = None
     jira_issue_type: str = "Calidad"
     jira_product_type: str = "Nuevo"
@@ -277,6 +278,7 @@ class FormulaRead(BaseModel):
 
     id: uuid.UUID
     tenant_id: uuid.UUID
+    source_formula_id: uuid.UUID | None
     name: str
     version: int
     status: str

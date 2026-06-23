@@ -1,6 +1,7 @@
 export type FormulaRead = {
   id: string;
   tenant_id: string;
+  source_formula_id: string | null;
   name: string;
   version: number;
   status: string;
@@ -48,6 +49,7 @@ export type FormulaReviewRequest = {
   last_sync_at: string | null;
   snapshot: {
     formula?: {
+      source_formula_id?: string | null;
       name?: string;
       version?: number;
       jira_project_id?: string | null;
