@@ -139,6 +139,7 @@ from .tenant import (
     require_tenant_admin,
     require_tenant_context,
     require_tenant_formulator,
+    require_tenant_owner,
     send_supabase_invite_email,
 )
 
@@ -672,11 +673,15 @@ def register_routes(app: FastAPI) -> None:
 
     @app.get("/api/v1/formulas", response_model=list[FormulaRead])
     def list_formulas(
+        include_archived: bool = Query(False),
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> list[dict[str, Any]]:
+        statement = select(Formula).where(Formula.tenant_id == tenant.tenant_id)
+        if not include_archived:
+            statement = statement.where(Formula.status != "archived")
         formulas = session.exec(
-            select(Formula).where(Formula.tenant_id == tenant.tenant_id)
+            statement
         ).all()
         return [_formula_read(session, formula) for formula in formulas]
 
@@ -733,6 +738,21 @@ def register_routes(app: FastAPI) -> None:
         session.refresh(formula)
         if payload.items is not None:
             _replace_formula_items(session, tenant.tenant_id, formula.id, payload.items)
+        return _formula_read(session, formula)
+
+    @app.post("/api/v1/formulas/{formula_id}/archive", response_model=FormulaRead)
+    def archive_formula(
+        formula_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        require_tenant_owner(tenant)
+        formula = _get_formula(session, tenant.tenant_id, formula_id)
+        formula.status = "archived"
+        formula.updated_at = utc_now()
+        session.add(formula)
+        session.commit()
+        session.refresh(formula)
         return _formula_read(session, formula)
 
     @app.post("/api/v1/formulas/{formula_id}/calculate", response_model=CalculationRead)

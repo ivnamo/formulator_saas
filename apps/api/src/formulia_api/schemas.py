@@ -255,7 +255,6 @@ class FormulaCreate(BaseModel):
 
 class FormulaUpdate(BaseModel):
     name: str | None = None
-    status: str | None = None
     objective: str | None = None
     jira_project_id: str | None = None
     jira_issue_type: str | None = None

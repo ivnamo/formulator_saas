@@ -1,4 +1,5 @@
 import {
+  Archive,
   ChevronDown,
   Download,
   FolderOpen,
@@ -37,6 +38,7 @@ export type SavedFormulaComparisonPanelProps = {
   comparisonMaterialOptions: ComparisonMaterialOption[];
   canEditTenantData: boolean;
   canExportFormulas: boolean;
+  canArchiveEntities: boolean;
   canUseFormulaComparison: boolean;
   canCompareSavedFormulas: boolean;
   isBusy: boolean;
@@ -50,6 +52,7 @@ export type SavedFormulaComparisonPanelProps = {
   onRefreshLibrary: () => void | Promise<void>;
   onCompareSavedFormulas: () => void | Promise<void>;
   onExportFormula: (formula: FormulaRead) => void | Promise<void>;
+  onArchiveFormula: (formula: FormulaRead) => void | Promise<void>;
   onOpenFormula: (formula: FormulaRead) => void | Promise<void>;
   onUpdateConstraint: (field: ComparisonConstraintField, value: string) => void;
   onShowOnlyConstraintIssuesChange: (checked: boolean) => void;
@@ -64,6 +67,7 @@ export function SavedFormulaComparisonPanel({
   comparisonConstraintForm,
   comparisonMaterialOptions,
   canExportFormulas,
+  canArchiveEntities,
   canUseFormulaComparison,
   canCompareSavedFormulas,
   isBusy,
@@ -77,6 +81,7 @@ export function SavedFormulaComparisonPanel({
   onRefreshLibrary,
   onCompareSavedFormulas,
   onExportFormula,
+  onArchiveFormula,
   onOpenFormula,
   onUpdateConstraint,
   onShowOnlyConstraintIssuesChange,
@@ -250,18 +255,19 @@ export function SavedFormulaComparisonPanel({
       {!isComparator ? (
         <div className="libraryGrid">
         <div className="formulaList">
-          <div className="formulaListHead">
+          <div className="formulaListHead" data-archive={canArchiveEntities}>
             <span>Name</span>
             <span>Price</span>
             <span>Lines</span>
             <span>Excel</span>
             <span>Open</span>
+            {canArchiveEntities ? <span>Archive</span> : null}
           </div>
           {formulas.length === 0 ? (
             <div className="empty">No saved formulas yet.</div>
           ) : (
             formulas.map((formula) => (
-              <div className="formulaListRow" key={formula.id}>
+              <div className="formulaListRow" data-archive={canArchiveEntities} key={formula.id}>
                 <span className="formulaLibraryName">
                   <strong>{formula.name}</strong>
                   {formula.objective ? <small>{formula.objective}</small> : null}
@@ -292,6 +298,18 @@ export function SavedFormulaComparisonPanel({
                 >
                   <FolderOpen size={16} />
                 </button>
+                {canArchiveEntities ? (
+                  <button
+                    className="iconButton dangerIconButton"
+                    type="button"
+                    onClick={() => void onArchiveFormula(formula)}
+                    disabled={isBusy}
+                    title="Archive formula"
+                    aria-label={`Archive ${formula.name}`}
+                  >
+                    <Archive size={16} />
+                  </button>
+                ) : null}
               </div>
             ))
           )}

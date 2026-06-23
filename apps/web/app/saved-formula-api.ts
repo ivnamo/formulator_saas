@@ -88,3 +88,13 @@ export function persistSavedFormula(
     body: JSON.stringify(payload),
   });
 }
+
+export function archiveSavedFormula(
+  headers: HeadersInit,
+  formulaId: string,
+): Promise<FormulaRead> {
+  return request<FormulaRead>(`/api/v1/formulas/${formulaId}/archive`, {
+    method: "POST",
+    headers,
+  });
+}

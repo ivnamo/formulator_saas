@@ -11,6 +11,7 @@ import {
   downloadSavedFormulaIdLabExcel,
 } from "./formula-excel-export-api";
 import {
+  archiveSavedFormula,
   calculateSavedFormula,
   fetchFormulaCalculationHistory,
   fetchFormulaReviewArtifactsByReview,
@@ -293,6 +294,47 @@ export function useSavedFormulaActions({
     [headers, runAction, setMessage],
   );
 
+  const archiveFormula = useCallback(
+    async (formula: FormulaRead) => {
+      const confirmed = window.confirm(
+        `Archivar "${formula.name}"? Dejara de aparecer en la biblioteca operativa.`,
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      await runAction("Archiving formula", async () => {
+        await archiveSavedFormula(headers, formula.id);
+        setFormulas((current) => current.filter((item) => item.id !== formula.id));
+        setSavedFormulaComparison(null);
+        setFormulaReviewRequests((current) =>
+          current.filter((review) => review.formula_id !== formula.id),
+        );
+        if (workspace.formulaId === formula.id) {
+          setWorkspace((current) => ({
+            ...current,
+            formulaId: null,
+            formulaBaseName: null,
+            formulaBuilderMode: "new",
+          }));
+          setCalculationHistory([]);
+        }
+        setMessage("Formula archivada");
+      });
+    },
+    [
+      headers,
+      runAction,
+      setCalculationHistory,
+      setFormulaReviewRequests,
+      setFormulas,
+      setMessage,
+      setSavedFormulaComparison,
+      setWorkspace,
+      workspace.formulaId,
+    ],
+  );
+
   const openFormula = useCallback(
     async (formula: FormulaRead) => {
       await runAction("Opening formula", async () => {
@@ -337,6 +379,7 @@ export function useSavedFormulaActions({
     saveFormula,
     exportCurrentFormulaIdLabExcel,
     exportSavedFormulaIdLabExcel,
+    archiveFormula,
     refreshFormulaLibrary,
     openFormula,
     loadCalculationHistory,

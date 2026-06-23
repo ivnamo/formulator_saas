@@ -41,7 +41,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Las entidades archivadas dejan de aparecer en selectores operativos, pero pueden consultarse/recuperarse si se define vista de archivo.
   - El borrado evita romper historicos, formulas, revisiones Jira/ISO o auditoria.
 - Validacion beta: Probar con usuario owner y no-owner en materias primas y formulas.
-- Notas: Definir para cada entidad si aplica hard delete, soft delete, archive o ambos.
+- Notas: Definir para cada entidad si aplica hard delete, soft delete, archive o ambos. Rama `codex/backlog-owner-archive-formulas`: primer corte para formulas con soft archive (`status=archived`), endpoint owner-only, listado operativo que oculta archivadas por defecto y boton en Biblioteca solo para owner. Pendiente extender el patron a materias primas/vista de archivo y definir hard delete.
 
 ### BL-002 - Versionado ligado de formulas
 

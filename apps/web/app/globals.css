@@ -3306,6 +3306,11 @@ label span {
   align-items: center;
 }
 
+.formulaListHead[data-archive="true"],
+.formulaListRow[data-archive="true"] {
+  grid-template-columns: minmax(180px, 1fr) 120px 58px 48px 48px 58px;
+}
+
 .formulaListHead {
   min-height: 32px;
   color: var(--muted);
@@ -3323,6 +3328,15 @@ label span {
 .formulaListRow > span:first-child {
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+.dangerIconButton {
+  color: var(--danger);
+}
+
+.dangerIconButton:hover:not(:disabled) {
+  border-color: rgba(180, 35, 24, 0.32);
+  background: var(--danger-soft);
 }
 
 .formulaLibraryName {

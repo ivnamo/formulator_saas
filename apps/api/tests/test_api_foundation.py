@@ -2,9 +2,10 @@ import uuid
 
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import SQLModel, Session, create_engine
 
 from formulia_api.main import create_app
+from formulia_api.models import TenantMember, User
 
 
 USER_A = "10000000-0000-0000-0000-000000000001"
@@ -30,6 +31,23 @@ def create_tenant(client: TestClient, user_id: str, slug: str) -> str:
     )
     assert response.status_code == 201
     return response.json()["id"]
+
+
+def add_tenant_member(client: TestClient, tenant_id: str, user_id: str, role: str) -> None:
+    with Session(client.app.state.engine) as session:
+        user_uuid = uuid.UUID(user_id)
+        if session.get(User, user_uuid) is None:
+            session.add(User(id=user_uuid, email=f"{user_id}@example.test"))
+            session.commit()
+        session.add(
+            TenantMember(
+                tenant_id=uuid.UUID(tenant_id),
+                user_id=user_uuid,
+                role=role,
+                status="active",
+            )
+        )
+        session.commit()
 
 
 def test_rejects_tenant_access_without_membership() -> None:
@@ -130,6 +148,54 @@ def test_formula_update_rejects_blank_name() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_owner_can_archive_formula_and_default_list_hides_it() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={"name": "Archive Formula", "objective": "Formula to archive.", "items": []},
+    ).json()
+
+    archived = client.post(
+        f"/api/v1/formulas/{formula['id']}/archive",
+        headers=headers,
+    )
+    listed = client.get("/api/v1/formulas", headers=headers)
+    listed_with_archive = client.get(
+        "/api/v1/formulas?include_archived=true",
+        headers=headers,
+    )
+
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "archived"
+    assert listed.status_code == 200
+    assert listed.json() == []
+    assert listed_with_archive.status_code == 200
+    assert [item["id"] for item in listed_with_archive.json()] == [formula["id"]]
+
+
+def test_only_owner_can_archive_formula() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    add_tenant_member(client, tenant_id, USER_B, "formulator")
+    owner_headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    formulator_headers = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_id}
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=owner_headers,
+        json={"name": "Owner Formula", "objective": "Formula owner archive test.", "items": []},
+    ).json()
+
+    forbidden = client.post(
+        f"/api/v1/formulas/{formula['id']}/archive",
+        headers=formulator_headers,
+    )
+
+    assert forbidden.status_code == 403
 
 
 def test_lists_only_data_for_active_tenant() -> None:

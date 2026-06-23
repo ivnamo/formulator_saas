@@ -13,6 +13,7 @@ export type TenantPermission =
   | "compare"
   | "use_ai"
   | "create_compatibility"
+  | "archive_entities"
   | "view_observability";
 
 const rolePermissions: Record<TenantRole, ReadonlySet<TenantPermission>> = {
@@ -29,6 +30,7 @@ const rolePermissions: Record<TenantRole, ReadonlySet<TenantPermission>> = {
     "compare",
     "use_ai",
     "create_compatibility",
+    "archive_entities",
     "view_observability",
   ]),
   admin: new Set([

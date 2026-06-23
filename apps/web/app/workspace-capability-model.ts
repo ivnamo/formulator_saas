@@ -35,6 +35,7 @@ export type WorkspaceCapabilities = {
   canCalculate: boolean;
   canSaveFormula: boolean;
   canExportFormulas: boolean;
+  canArchiveEntities: boolean;
   canUseFormulaComparison: boolean;
   canCompareSavedFormulas: boolean;
   canSelectImportSheet: boolean;
@@ -80,6 +81,8 @@ export function buildWorkspaceCapabilities({
   const canImportFormulas = hasTenantPermission(tenantRole, "import_formulas");
   const canExportFormulas =
     Boolean(workspace.tenant) && hasTenantPermission(tenantRole, "export_formulas") && !isBusy;
+  const canArchiveEntities =
+    Boolean(workspace.tenant) && hasTenantPermission(tenantRole, "archive_entities") && !isBusy;
   const canSendToJira = hasTenantPermission(tenantRole, "send_to_jira");
   const canCompare = hasTenantPermission(tenantRole, "compare");
   const canUseAi = hasTenantPermission(tenantRole, "use_ai");
@@ -175,6 +178,7 @@ export function buildWorkspaceCapabilities({
     canCalculate,
     canSaveFormula,
     canExportFormulas,
+    canArchiveEntities,
     canUseFormulaComparison,
     canCompareSavedFormulas,
     canSelectImportSheet,

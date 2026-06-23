@@ -10,6 +10,7 @@ type BuildWorkspaceLibraryPanelPropsArgs = {
   comparisonMaterialOptions: LibraryPanelProps["comparisonMaterialOptions"];
   canEditTenantData: LibraryPanelProps["canEditTenantData"];
   canExportFormulas: LibraryPanelProps["canExportFormulas"];
+  canArchiveEntities: LibraryPanelProps["canArchiveEntities"];
   canUseFormulaComparison: LibraryPanelProps["canUseFormulaComparison"];
   canCompareSavedFormulas: LibraryPanelProps["canCompareSavedFormulas"];
   isBusy: LibraryPanelProps["isBusy"];
@@ -23,6 +24,7 @@ type BuildWorkspaceLibraryPanelPropsArgs = {
   refreshFormulaLibrary: LibraryPanelProps["onRefreshLibrary"];
   compareSavedFormulas: LibraryPanelProps["onCompareSavedFormulas"];
   exportSavedFormulaIdLabExcel: LibraryPanelProps["onExportFormula"];
+  archiveFormula: LibraryPanelProps["onArchiveFormula"];
   openFormula: LibraryPanelProps["onOpenFormula"];
   updateComparisonConstraint: LibraryPanelProps["onUpdateConstraint"];
   setShowOnlyConstraintIssues: LibraryPanelProps["onShowOnlyConstraintIssuesChange"];
@@ -39,6 +41,7 @@ export function buildWorkspaceLibraryPanelProps(
     comparisonMaterialOptions: args.comparisonMaterialOptions,
     canEditTenantData: args.canEditTenantData,
     canExportFormulas: args.canExportFormulas,
+    canArchiveEntities: args.canArchiveEntities,
     canUseFormulaComparison: args.canUseFormulaComparison,
     canCompareSavedFormulas: args.canCompareSavedFormulas,
     isBusy: args.isBusy,
@@ -52,6 +55,7 @@ export function buildWorkspaceLibraryPanelProps(
     onRefreshLibrary: args.refreshFormulaLibrary,
     onCompareSavedFormulas: args.compareSavedFormulas,
     onExportFormula: args.exportSavedFormulaIdLabExcel,
+    onArchiveFormula: args.archiveFormula,
     onOpenFormula: args.openFormula,
     onUpdateConstraint: args.updateComparisonConstraint,
     onShowOnlyConstraintIssuesChange: args.setShowOnlyConstraintIssues,
