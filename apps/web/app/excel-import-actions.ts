@@ -271,6 +271,7 @@ export function useExcelImportActions({
     setWorkspace((current) => ({
       ...current,
       formulaId: null,
+      formulaBaseName: null,
       formulaBuilderMode: "new",
       formulaName: importFormulaName || importPreview.formula_name || "",
       formulaJiraDescription: importFormulaDescription,

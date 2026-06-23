@@ -3783,6 +3783,32 @@ label span {
   min-height: 56px;
 }
 
+.formulaVersionSuggestion {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.4fr) minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid rgba(15, 118, 110, 0.22);
+  padding-top: 10px;
+}
+
+.formulaVersionSuggestion span {
+  color: #45534d;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.formulaVersionSuggestion strong {
+  min-width: 0;
+  color: #102c24;
+  font-size: 14px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .formulaMeter {
   height: 10px;
   background: var(--surface-muted);

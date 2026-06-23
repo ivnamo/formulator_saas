@@ -7,6 +7,7 @@ import { FormulaIsoLinkPanel } from "./formula-iso-link-panel";
 export type FormulaBasicsValue = Pick<
   WorkspaceState,
   | "formulaId"
+  | "formulaBaseName"
   | "formulaBuilderMode"
   | "formulaName"
   | "formulaJiraDescription"

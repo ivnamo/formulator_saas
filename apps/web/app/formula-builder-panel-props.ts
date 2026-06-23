@@ -223,6 +223,7 @@ function buildFormulaBuilderReviewProps(
   return {
     isOpen: args.builderSections.review,
     formulaId: args.workspace.formulaId,
+    formulaBaseName: args.workspace.formulaBaseName,
     formulaBuilderMode: args.workspace.formulaBuilderMode,
     formulaName: args.workspace.formulaName,
     isFormulaBalanced: args.isFormulaBalanced,

@@ -6,6 +6,7 @@ import { JiraReviewPanel, type JiraReviewPanelProps } from "./jira-review-panel"
 export type FormulaReviewStepProps = JiraReviewPanelProps & {
   isOpen: boolean;
   formulaId: string | null;
+  formulaBaseName: string | null;
   formulaBuilderMode: FormulaBuilderMode;
   formulaName: string;
   isFormulaBalanced: boolean;
@@ -21,6 +22,7 @@ export type FormulaReviewStepProps = JiraReviewPanelProps & {
 export function FormulaReviewStep({
   isOpen,
   formulaId,
+  formulaBaseName,
   formulaBuilderMode,
   formulaName,
   isFormulaBalanced,
@@ -39,7 +41,11 @@ export function FormulaReviewStep({
   const reviewCount = jiraReviewProps.formulaReviewRequests.length;
   const reviewLabel = reviewCount === 1 ? "1 revision" : `${reviewCount} revisiones`;
   const saveMode = formulaId ? formulaBuilderMode : "new";
-  const saveIntent = formulaSaveIntent(saveMode, Boolean(formulaId), formulaName);
+  const saveIntent = formulaSaveIntent(
+    saveMode,
+    Boolean(formulaId),
+    formulaBaseName ?? formulaName,
+  );
 
   return (
     <BuilderStep

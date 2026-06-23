@@ -1,6 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { ParameterViewPresetKey } from "./formula-builder-model";
 import type { FormulaBasicsValue } from "./formula-builder-ui/formula-basics-step";
+import { suggestNextFormulaVersionName } from "./formula-version-name";
 import type { WorkspaceState } from "./workspace-state-model";
 
 type FormulaBuilderLocalActionsOptions = {
@@ -24,10 +25,27 @@ export function useFormulaBuilderLocalActions({
 }: FormulaBuilderLocalActionsOptions) {
   const updateFormulaBasics = useCallback(
     (patch: Partial<FormulaBasicsValue>) => {
-      setWorkspace((current) => ({
-        ...current,
-        ...patch,
-      }));
+      setWorkspace((current) => {
+        const next = {
+          ...current,
+          ...patch,
+        };
+        const isSwitchingToVersion =
+          patch.formulaBuilderMode === "version" && current.formulaBuilderMode !== "version";
+        const baseName = current.formulaBaseName?.trim();
+        const currentName = current.formulaName.trim();
+
+        if (
+          current.formulaId &&
+          baseName &&
+          isSwitchingToVersion &&
+          (!currentName || currentName === baseName)
+        ) {
+          next.formulaName = suggestNextFormulaVersionName(baseName);
+        }
+
+        return next;
+      });
       markDraftReviewPending();
     },
     [markDraftReviewPending, setWorkspace],

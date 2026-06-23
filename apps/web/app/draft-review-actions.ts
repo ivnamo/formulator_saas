@@ -192,6 +192,7 @@ export function useDraftReviewActions({
             ...current,
             rawMaterials: [...current.rawMaterials, ...addedMaterials],
             formulaId: null,
+            formulaBaseName: null,
             formulaBuilderMode: "new",
             formulaName: `${candidate.name} Review Draft`,
             formulaLines,

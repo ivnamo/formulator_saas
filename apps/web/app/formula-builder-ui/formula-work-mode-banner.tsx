@@ -1,9 +1,10 @@
 import type { FormulaBuilderMode } from "../formula-builder-model";
+import { suggestNextFormulaVersionName } from "../formula-version-name";
 import type { WorkspaceState } from "../workspace-state-model";
 
 type FormulaWorkModeValue = Pick<
   WorkspaceState,
-  "formulaId" | "formulaBuilderMode" | "formulaName"
+  "formulaId" | "formulaBaseName" | "formulaBuilderMode" | "formulaName"
 >;
 
 type FormulaWorkModeBannerProps = {
@@ -20,6 +21,12 @@ export function FormulaWorkModeBanner({
   const hasLoadedFormula = Boolean(values.formulaId);
   const selectedMode = modeForDisplay(values.formulaBuilderMode, values.formulaId);
   const formulaName = values.formulaName.trim();
+  const formulaBaseName = values.formulaBaseName?.trim() || formulaName;
+  const suggestedVersionName = suggestNextFormulaVersionName(formulaBaseName);
+  const canUseSuggestedVersionName =
+    selectedMode === "version" &&
+    Boolean(formulaBaseName) &&
+    suggestedVersionName !== formulaName;
   const intent = modeIntent(selectedMode, hasLoadedFormula);
 
   return (
@@ -32,7 +39,7 @@ export function FormulaWorkModeBanner({
       <div className="formulaWorkModeSource">
         <span>{hasLoadedFormula ? "Formula base cargada" : "Formula base"}</span>
         <strong>
-          {hasLoadedFormula ? formulaName || "Formula sin nombre" : "Creando desde cero"}
+          {hasLoadedFormula ? formulaBaseName || "Formula sin nombre" : "Creando desde cero"}
         </strong>
         <small>{intent.context}</small>
       </div>
@@ -59,6 +66,20 @@ export function FormulaWorkModeBanner({
           );
         })}
       </div>
+      {canUseSuggestedVersionName ? (
+        <div className="formulaVersionSuggestion">
+          <span>Nombre sugerido</span>
+          <strong>{suggestedVersionName}</strong>
+          <button
+            type="button"
+            className="compactButton"
+            onClick={() => onChange({ formulaName: suggestedVersionName })}
+            disabled={isBusy}
+          >
+            Usar sugerencia
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
