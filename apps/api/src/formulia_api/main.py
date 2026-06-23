@@ -411,6 +411,12 @@ def register_routes(app: FastAPI) -> None:
         require_tenant_formulator(tenant)
         raw_material = _get_raw_material(session, tenant.tenant_id, raw_material_id)
         updates = clean_raw_material_payload(payload.model_dump(exclude_unset=True))
+        status_is_changing = (
+            ("is_active" in updates and updates["is_active"] != raw_material.is_active)
+            or ("is_obsolete" in updates and updates["is_obsolete"] != raw_material.is_obsolete)
+        )
+        if status_is_changing:
+            require_tenant_owner(tenant)
         if "name" in updates and updates["name"] is not None:
             updates["normalized_name"] = normalize_raw_material_name(updates["name"])
         if updates.get("is_active", raw_material.is_active):
@@ -424,6 +430,22 @@ def register_routes(app: FastAPI) -> None:
             )
         for key, value in updates.items():
             setattr(raw_material, key, value)
+        raw_material.updated_at = utc_now()
+        session.add(raw_material)
+        session.commit()
+        session.refresh(raw_material)
+        return _raw_material_read(session, tenant.tenant_id, raw_material)
+
+    @app.post("/api/v1/raw-materials/{raw_material_id}/archive", response_model=RawMaterialRead)
+    def archive_raw_material(
+        raw_material_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        require_tenant_owner(tenant)
+        raw_material = _get_raw_material(session, tenant.tenant_id, raw_material_id)
+        raw_material.is_active = False
+        raw_material.is_obsolete = True
         raw_material.updated_at = utc_now()
         session.add(raw_material)
         session.commit()

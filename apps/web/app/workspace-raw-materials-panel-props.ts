@@ -8,6 +8,7 @@ type BuildWorkspaceRawMaterialsPanelPropsArgs = {
   materialForm: RawMaterialsPanelProps["materialForm"];
   aliasInputs: RawMaterialsPanelProps["aliasInputs"];
   canEditTenantData: RawMaterialsPanelProps["canEditTenantData"];
+  canArchiveEntities: RawMaterialsPanelProps["canArchiveEntities"];
   isBusy: RawMaterialsPanelProps["isBusy"];
   setMaterialForm: RawMaterialsPanelProps["onMaterialFormChange"];
   setAliasInputs: RawMaterialsPanelProps["onAliasInputsChange"];
@@ -16,6 +17,7 @@ type BuildWorkspaceRawMaterialsPanelPropsArgs = {
   addFormulaLine: RawMaterialsPanelProps["onAddFormulaLine"];
   createAlias: RawMaterialsPanelProps["onCreateAlias"];
   updateMaterial: RawMaterialsPanelProps["onUpdateMaterial"];
+  archiveMaterial: RawMaterialsPanelProps["onArchiveMaterial"];
   updateMaterialParameterValue: RawMaterialsPanelProps["onUpdateMaterialParameterValue"];
   loadMaterialPriceHistory: RawMaterialsPanelProps["onLoadMaterialPriceHistory"];
   addMaterialPrice: RawMaterialsPanelProps["onAddMaterialPrice"];
@@ -32,6 +34,7 @@ export function buildWorkspaceRawMaterialsPanelProps(
     materialForm: args.materialForm,
     aliasInputs: args.aliasInputs,
     canEditTenantData: args.canEditTenantData,
+    canArchiveEntities: args.canArchiveEntities,
     isBusy: args.isBusy,
     onMaterialFormChange: args.setMaterialForm,
     onAliasInputsChange: args.setAliasInputs,
@@ -40,6 +43,7 @@ export function buildWorkspaceRawMaterialsPanelProps(
     onAddFormulaLine: args.addFormulaLine,
     onCreateAlias: args.createAlias,
     onUpdateMaterial: args.updateMaterial,
+    onArchiveMaterial: args.archiveMaterial,
     onUpdateMaterialParameterValue: args.updateMaterialParameterValue,
     onLoadMaterialPriceHistory: args.loadMaterialPriceHistory,
     onAddMaterialPrice: args.addMaterialPrice,

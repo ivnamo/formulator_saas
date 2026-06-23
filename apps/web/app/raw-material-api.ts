@@ -113,6 +113,16 @@ export function updateRawMaterial(
   });
 }
 
+export function archiveRawMaterial(
+  headers: HeadersInit,
+  rawMaterialId: string,
+): Promise<RawMaterialRead> {
+  return request<RawMaterialRead>(`/api/v1/raw-materials/${rawMaterialId}/archive`, {
+    method: "POST",
+    headers,
+  });
+}
+
 export function fetchRawMaterialPrices(
   headers: HeadersInit,
   rawMaterialId: string,

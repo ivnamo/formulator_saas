@@ -3339,6 +3339,15 @@ label span {
   background: var(--danger-soft);
 }
 
+.dangerSoftButton {
+  border-color: rgba(180, 35, 24, 0.32);
+  color: var(--danger);
+}
+
+.dangerSoftButton:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
 .formulaLibraryName {
   display: grid;
   gap: 2px;

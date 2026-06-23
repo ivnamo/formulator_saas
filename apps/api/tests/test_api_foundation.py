@@ -505,6 +505,58 @@ def test_raw_material_catalog_excludes_obsolete_materials() -> None:
     assert payload["families"] == ["Selectable"]
 
 
+def test_owner_can_archive_raw_material() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    active = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Archive Raw Material", "code": "ARCH-RM", "family": "Selectable"},
+    ).json()
+
+    archived = client.post(
+        f"/api/v1/raw-materials/{active['id']}/archive",
+        headers=headers,
+    )
+    catalog = client.get("/api/v1/raw-materials/catalog", headers=headers)
+    full_list = client.get("/api/v1/raw-materials", headers=headers)
+
+    assert archived.status_code == 200
+    assert archived.json()["is_obsolete"] is True
+    assert archived.json()["is_active"] is False
+    assert catalog.status_code == 200
+    assert catalog.json()["total"] == 0
+    assert full_list.status_code == 200
+    assert [item["id"] for item in full_list.json()] == [active["id"]]
+
+
+def test_only_owner_can_archive_raw_material_or_change_material_status() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    add_tenant_member(client, tenant_id, USER_B, "formulator")
+    owner_headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    formulator_headers = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_id}
+    material = client.post(
+        "/api/v1/raw-materials",
+        headers=owner_headers,
+        json={"name": "Owner Raw Material", "code": "OWNER-RM"},
+    ).json()
+
+    forbidden_archive = client.post(
+        f"/api/v1/raw-materials/{material['id']}/archive",
+        headers=formulator_headers,
+    )
+    forbidden_status_patch = client.patch(
+        f"/api/v1/raw-materials/{material['id']}",
+        headers=formulator_headers,
+        json={"is_obsolete": True},
+    )
+
+    assert forbidden_archive.status_code == 403
+    assert forbidden_status_patch.status_code == 403
+
+
 def test_raw_material_master_blocks_duplicate_identity() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

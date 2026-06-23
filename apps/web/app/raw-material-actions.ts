@@ -1,5 +1,6 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import {
+  archiveRawMaterial,
   applySapRawMaterialImport,
   createRawMaterial,
   createRawMaterialAlias,
@@ -317,6 +318,62 @@ export function useRawMaterialActions({
     ],
   );
 
+  const archiveMaterial = useCallback(
+    async (rawMaterialId: string) => {
+      if (!workspace.tenant) {
+        setError("Create a workspace first");
+        return null;
+      }
+      const materialName = rawMaterialsById.get(rawMaterialId)?.name ?? "esta materia prima";
+      const confirmed = window.confirm(
+        `Archivar "${materialName}"? Dejara de aparecer en selectores operativos.`,
+      );
+      if (!confirmed) {
+        return null;
+      }
+
+      let updatedMaterial: RawMaterial | null = null;
+      await runAction("Archiving raw material", async () => {
+        const material = await archiveRawMaterial(headers, rawMaterialId);
+        updatedMaterial = toWorkspaceRawMaterial(
+          material,
+          {
+            parameterValue: workspace.parameter
+              ? (material.parameters.find((parameter) => parameter.code === workspace.parameter?.code)
+                  ?.value ?? null)
+              : null,
+          },
+          workspace.parameters,
+        );
+        setWorkspace((current) => ({
+          ...current,
+          rawMaterials: mergeRawMaterials(current.rawMaterials, [updatedMaterial as RawMaterial]),
+        }));
+        setComparisonMaterialIds((current) => current.filter((id) => id !== rawMaterialId));
+        refreshCatalog();
+        resetImportState();
+        setResult(null);
+        setMessage("Materia prima archivada");
+      });
+      return updatedMaterial;
+    },
+    [
+      headers,
+      rawMaterialsById,
+      refreshCatalog,
+      resetImportState,
+      runAction,
+      setComparisonMaterialIds,
+      setError,
+      setMessage,
+      setResult,
+      setWorkspace,
+      workspace.parameter,
+      workspace.parameters,
+      workspace.tenant,
+    ],
+  );
+
   const updateMaterialParameterValue = useCallback(
     async (
       rawMaterialId: string,
@@ -492,6 +549,7 @@ export function useRawMaterialActions({
     createMaterial,
     createAlias,
     updateMaterial,
+    archiveMaterial,
     updateMaterialParameterValue,
     loadMaterialPriceHistory,
     addMaterialPrice,

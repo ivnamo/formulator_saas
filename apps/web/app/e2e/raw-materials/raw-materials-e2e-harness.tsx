@@ -171,6 +171,7 @@ export function RawMaterialsE2EHarness() {
         materialForm={materialForm}
         aliasInputs={aliasInputs}
         canEditTenantData
+        canArchiveEntities={false}
         isBusy={false}
         onMaterialFormChange={setMaterialForm}
         onAliasInputsChange={setAliasInputs}
@@ -218,6 +219,7 @@ export function RawMaterialsE2EHarness() {
           );
           return updated;
         }}
+        onArchiveMaterial={() => null}
         onUpdateMaterialParameterValue={(rawMaterialId, parameterToUpdate, value) => {
           let updated: RawMaterial | null = null;
           setRawMaterials((current) =>

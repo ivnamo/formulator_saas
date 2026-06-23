@@ -1,4 +1,5 @@
 import {
+  Archive,
   Atom,
   CheckCircle2,
   ChevronDown,
@@ -37,6 +38,7 @@ type RawMaterialsPanelProps = {
   materialForm: MaterialForm;
   aliasInputs: Record<string, string>;
   canEditTenantData: boolean;
+  canArchiveEntities: boolean;
   isBusy: boolean;
   onMaterialFormChange: Dispatch<SetStateAction<MaterialForm>>;
   onAliasInputsChange: Dispatch<SetStateAction<Record<string, string>>>;
@@ -48,6 +50,7 @@ type RawMaterialsPanelProps = {
     rawMaterialId: string,
     form: RawMaterialUpdateForm,
   ) => RawMaterial | null | Promise<RawMaterial | null>;
+  onArchiveMaterial: (rawMaterialId: string) => RawMaterial | null | Promise<RawMaterial | null>;
   onUpdateMaterialParameterValue: (
     rawMaterialId: string,
     parameter: Parameter,
@@ -150,6 +153,7 @@ export function RawMaterialsPanel({
   materialForm,
   aliasInputs,
   canEditTenantData,
+  canArchiveEntities,
   isBusy,
   onMaterialFormChange,
   onAliasInputsChange,
@@ -158,6 +162,7 @@ export function RawMaterialsPanel({
   onAddFormulaLine,
   onCreateAlias,
   onUpdateMaterial,
+  onArchiveMaterial,
   onUpdateMaterialParameterValue,
   onLoadMaterialPriceHistory,
   onAddMaterialPrice,
@@ -417,6 +422,16 @@ export function RawMaterialsPanel({
       return;
     }
     const updated = await onUpdateMaterial(selectedMaterial.id, editForm);
+    if (updated) {
+      setEditForm(buildRawMaterialUpdateForm(updated));
+    }
+  }
+
+  async function archiveSelectedMaterial() {
+    if (!selectedMaterial) {
+      return;
+    }
+    const updated = await onArchiveMaterial(selectedMaterial.id);
     if (updated) {
       setEditForm(buildRawMaterialUpdateForm(updated));
     }
@@ -1113,7 +1128,7 @@ export function RawMaterialsPanel({
                             : current,
                         )
                       }
-                      disabled={!canEditTenantData}
+                      disabled={!canArchiveEntities || isBusy}
                     />
                     <span>Active</span>
                   </label>
@@ -1132,10 +1147,21 @@ export function RawMaterialsPanel({
                             : current,
                         )
                       }
-                      disabled={!canEditTenantData}
+                      disabled={!canArchiveEntities || isBusy}
                     />
                     <span>Obsolete</span>
                   </label>
+                  {canArchiveEntities && !selectedMaterial.isObsolete ? (
+                    <button
+                      className="secondaryButton dangerSoftButton"
+                      type="button"
+                      onClick={() => void archiveSelectedMaterial()}
+                      disabled={isBusy}
+                    >
+                      <Archive size={16} />
+                      Archive
+                    </button>
+                  ) : null}
                   <button
                     className="secondaryButton"
                     type="button"
