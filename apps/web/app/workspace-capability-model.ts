@@ -17,6 +17,7 @@ export type WorkspaceCapabilitiesOptions = {
   availableImportSheets: string[];
   importFile: File | null;
   importPreview: ExcelImportPreview | null;
+  importFormulaName: string;
   importFormulaDescription: string;
   requirementText: string;
   compatibilityRuleForm: CompatibilityRuleForm;
@@ -65,6 +66,7 @@ export function buildWorkspaceCapabilities({
   availableImportSheets,
   importFile,
   importPreview,
+  importFormulaName,
   importFormulaDescription,
   requirementText,
   compatibilityRuleForm,
@@ -115,6 +117,7 @@ export function buildWorkspaceCapabilities({
     Boolean(importPreview) &&
     importPreview?.rows.length !== 0 &&
     importPreview?.pending_rows === 0 &&
+    importFormulaName.trim().length > 0 &&
     importFormulaDescription.trim().length > 0 &&
     !isBusy;
   const canParseRequirements =

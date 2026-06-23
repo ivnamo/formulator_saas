@@ -80,6 +80,20 @@ def test_formula_creation_requires_description() -> None:
     assert response.status_code == 422
 
 
+def test_formula_creation_requires_name() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    response = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={"name": " ", "objective": "Formula description.", "items": []},
+    )
+
+    assert response.status_code == 422
+
+
 def test_formula_update_rejects_blank_description() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
@@ -94,6 +108,25 @@ def test_formula_update_rejects_blank_description() -> None:
         f"/api/v1/formulas/{formula['id']}",
         headers=headers,
         json={"objective": " "},
+    )
+
+    assert response.status_code == 422
+
+
+def test_formula_update_rejects_blank_name() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={"name": "Named Formula", "objective": "Initial description.", "items": []},
+    ).json()
+
+    response = client.patch(
+        f"/api/v1/formulas/{formula['id']}",
+        headers=headers,
+        json={"name": " "},
     )
 
     assert response.status_code == 422

@@ -192,6 +192,10 @@ export function useExcelImportActions({
       setError("Resolve import rows before saving");
       return;
     }
+    if (!importFormulaName.trim()) {
+      setError("Indica un nombre de formula antes de guardar la importacion.");
+      return;
+    }
     if (!importFormulaDescription.trim()) {
       setError("Indica una descripcion de formula antes de guardar la importacion.");
       return;
@@ -202,7 +206,7 @@ export function useExcelImportActions({
         headers,
         workspace.tenant?.name,
         workspace,
-        importFormulaName || importPreview.formula_name,
+        importFormulaName,
         importFormulaDescription,
         importPreview.rows,
       );

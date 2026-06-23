@@ -20,6 +20,19 @@ def _clean_optional_formula_objective(value: str | None) -> str | None:
     return _clean_required_formula_objective(value)
 
 
+def _clean_required_formula_name(value: str) -> str:
+    cleaned = value.strip()
+    if not cleaned:
+        raise ValueError("Formula name is required.")
+    return cleaned
+
+
+def _clean_optional_formula_name(value: str | None) -> str | None:
+    if value is None:
+        return None
+    return _clean_required_formula_name(value)
+
+
 class TenantCreate(BaseModel):
     name: str
     slug: str
@@ -222,12 +235,17 @@ class FormulaItemCreate(BaseModel):
 
 
 class FormulaCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     objective: str = Field(min_length=1)
     jira_project_id: str | None = None
     jira_issue_type: str = "Calidad"
     jira_product_type: str = "Nuevo"
     items: list[FormulaItemCreate] = []
+
+    @field_validator("name")
+    @classmethod
+    def name_is_required(cls, value: str) -> str:
+        return _clean_required_formula_name(value)
 
     @field_validator("objective")
     @classmethod
@@ -243,6 +261,11 @@ class FormulaUpdate(BaseModel):
     jira_issue_type: str | None = None
     jira_product_type: str | None = None
     items: list[FormulaItemCreate] | None = None
+
+    @field_validator("name")
+    @classmethod
+    def name_is_not_blank(cls, value: str | None) -> str | None:
+        return _clean_optional_formula_name(value)
 
     @field_validator("objective")
     @classmethod
@@ -282,13 +305,18 @@ class FormulaExcelMetadataCreate(BaseModel):
 
 
 class FormulaExcelExportRequest(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     objective: str = Field(min_length=1)
     items: list[FormulaItemCreate]
     jira_project_id: str | None = None
     jira_issue_type: str = "Calidad"
     jira_product_type: str = "Nuevo"
     metadata: FormulaExcelMetadataCreate = Field(default_factory=FormulaExcelMetadataCreate)
+
+    @field_validator("name")
+    @classmethod
+    def name_is_required(cls, value: str) -> str:
+        return _clean_required_formula_name(value)
 
     @field_validator("objective")
     @classmethod
@@ -781,12 +809,17 @@ class ExcelImportSaveRow(BaseModel):
 
 
 class ExcelImportSaveRequest(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     objective: str = Field(min_length=1)
     jira_project_id: str | None = None
     jira_issue_type: str = "Calidad"
     jira_product_type: str = "Nuevo"
     rows: list[ExcelImportSaveRow]
+
+    @field_validator("name")
+    @classmethod
+    def name_is_required(cls, value: str) -> str:
+        return _clean_required_formula_name(value)
 
     @field_validator("objective")
     @classmethod

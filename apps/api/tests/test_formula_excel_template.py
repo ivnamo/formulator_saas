@@ -247,6 +247,19 @@ def test_builder_draft_export_requires_description() -> None:
     assert response.status_code == 422
 
 
+def test_builder_draft_export_requires_name() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+
+    response = client.post(
+        "/api/v1/formulas/exports/atlantica-id-lab.xlsx",
+        headers={"X-User-Id": USER_A, "X-Tenant-Id": tenant_id},
+        json={"name": " ", "objective": "Draft formula description.", "items": []},
+    )
+
+    assert response.status_code == 422
+
+
 def _create_material(
     client: TestClient,
     headers: dict[str, str],

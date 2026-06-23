@@ -154,7 +154,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-009 - Evitar nombre por defecto Atlantica Agricola Formula
 
-- Estado: In progress
+- Estado: Done
 - Prioridad: P1
 - Area: Formula Builder | Biblioteca | UX
 - Origen: Usuario
@@ -165,7 +165,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - El campo de nombre obliga al usuario a escribir un nombre propio si es requerido.
   - Importaciones y formulas nuevas usan nombre propuesto solo si el usuario lo confirma.
 - Validacion beta: Crear formula nueva y comprobar que no se guarda con nombre generico.
-- Notas: Eliminado nombre generico al crear/cargar workspace y bloqueado guardado sin nombre; pendiente revisar importaciones Excel y nombres propuestos.
+- Notas: Eliminado nombre generico al crear/cargar workspace y bloqueado guardado sin nombre. Rama `codex/backlog-explicit-formula-names`: importacion Excel ya no usa fallback automatico `<tenant> Excel Formula`, el nombre detectado se muestra solo como sugerencia a confirmar, guardar importacion exige nombre y la API rechaza nombres en blanco al crear/importar/exportar/actualizar formulas.
 
 ### BL-010 - Mover guardar y exportar a Revision y salidas
 

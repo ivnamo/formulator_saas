@@ -122,10 +122,18 @@ export function ExcelImportPanel({
           </span>
           <input
             aria-label="Imported formula name"
+            placeholder={
+              importPreview?.formula_name
+                ? `Sugerido: ${importPreview.formula_name}`
+                : "Nombre de formula importada"
+            }
             value={importFormulaName}
             onChange={(event) => onFormulaNameChange(event.target.value)}
             disabled={!importPreview || isBusy}
           />
+          {importPreview?.formula_name ? (
+            <small>Nombre detectado: {importPreview.formula_name}. Escribelo para confirmarlo.</small>
+          ) : null}
         </label>
         <label>
           <span>

@@ -375,6 +375,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     availableImportSheets,
     importFile,
     importPreview,
+    importFormulaName,
     importFormulaDescription,
     requirementText,
     compatibilityRuleForm,

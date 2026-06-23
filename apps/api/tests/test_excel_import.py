@@ -631,6 +631,20 @@ def test_save_import_requires_description() -> None:
     assert response.status_code == 422
 
 
+def test_save_import_requires_name() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    response = client.post(
+        "/api/v1/imports/formulas/excel/save",
+        headers=headers,
+        json={"name": " ", "objective": "Imported formula description.", "rows": []},
+    )
+
+    assert response.status_code == 422
+
+
 def test_save_import_rejects_negative_percentage() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
