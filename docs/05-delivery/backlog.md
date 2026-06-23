@@ -344,7 +344,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-020 - Accion Completar porcentaje en Formula editable
 
-- Estado: Inbox
+- Estado: Done
 - Prioridad: P1
 - Area: Formula Builder | UX
 - Origen: Usuario
@@ -365,7 +365,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Tras aplicar, se recalculan total, precio, parametros y avisos.
   - Se muestra feedback claro indicando cuanto se ha ajustado y en que materia.
 - Validacion beta: Crear formula que suma 96.5%, pulsar Completar en una linea y comprobar que esa linea sube 3.5 puntos y total queda 100.0%.
-- Notas: Implementado nucleo de Completar, clamp de negativos, porcentaje en blanco temporal, aviso en guardado y normalizacion a 0 en calculo/export/save; pendiente beta y pulir feedback fino si hace falta.
+- Notas: Implementado nucleo de Completar, clamp de negativos, porcentaje en blanco temporal, aviso en guardado y normalizacion a 0 en calculo/export/save. Rama `codex/backlog-complete-percentage-guards`: backend rechaza porcentajes negativos en `FormulaItemCreate`, el feedback de Completar incluye la materia prima ajustada y existe test API para `%` negativo.
 
 ### BL-021 - Modo de trabajo en Formula Builder: nueva, editar o modificacion/version
 

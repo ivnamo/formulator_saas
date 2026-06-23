@@ -44,6 +44,28 @@ def test_rejects_tenant_access_without_membership() -> None:
     assert response.status_code == 403
 
 
+def test_formula_item_payload_rejects_negative_percentage() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+
+    response = client.post(
+        "/api/v1/formulas/calculate",
+        headers={"X-User-Id": USER_A, "X-Tenant-Id": tenant_id},
+        json={
+            "items": [
+                {
+                    "raw_material_id": str(uuid.uuid4()),
+                    "percentage": -0.1,
+                    "order_index": 0,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["type"] == "greater_than_equal"
+
+
 def test_lists_only_data_for_active_tenant() -> None:
     client = make_client()
     tenant_a = create_tenant(client, USER_A, "tenant-a")

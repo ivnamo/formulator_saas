@@ -444,6 +444,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     duplicateFormulaLine,
   } = useFormulaLineActions({
     formulaLines: workspace.formulaLines,
+    rawMaterialsById,
     setWorkspace,
     setBuilderSections,
     setResult,

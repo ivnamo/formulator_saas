@@ -204,7 +204,7 @@ class RawMaterialImportRead(BaseModel):
 
 class FormulaItemCreate(BaseModel):
     raw_material_id: uuid.UUID
-    percentage: float
+    percentage: float = Field(ge=0)
     order_index: int = 0
 
 

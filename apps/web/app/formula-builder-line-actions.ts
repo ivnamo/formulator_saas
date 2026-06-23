@@ -11,6 +11,7 @@ import { makeLocalId } from "./workspace-utils";
 
 type FormulaLineActionsOptions = {
   formulaLines: WorkspaceState["formulaLines"];
+  rawMaterialsById: Map<string, RawMaterial>;
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
   setBuilderSections: Dispatch<SetStateAction<Record<BuilderSectionKey, boolean>>>;
   setResult: Dispatch<SetStateAction<CalculationResult | null>>;
@@ -21,6 +22,7 @@ type FormulaLineActionsOptions = {
 
 export function useFormulaLineActions({
   formulaLines,
+  rawMaterialsById,
   setWorkspace,
   setBuilderSections,
   setResult,
@@ -100,6 +102,7 @@ export function useFormulaLineActions({
   const completeFormulaLine = useCallback(
     (localId: string) => {
       let completedPercentage = 0;
+      let completedRawMaterialId: string | null = null;
       setWorkspace((current) => {
         const totalPercentage = current.formulaLines.reduce(
           (sum, line) => sum + formulaLinePercentageValue(line.percentage),
@@ -110,6 +113,8 @@ export function useFormulaLineActions({
           return current;
         }
         completedPercentage = missingPercentage;
+        completedRawMaterialId =
+          current.formulaLines.find((line) => line.localId === localId)?.rawMaterialId ?? null;
 
         return {
           ...current,
@@ -125,10 +130,15 @@ export function useFormulaLineActions({
       });
       invalidateFormulaResult();
       if (completedPercentage > 0) {
-        setMessage(`Linea completada con ${completedPercentage.toFixed(2)}%.`);
+        const materialName = completedRawMaterialId
+          ? rawMaterialsById.get(completedRawMaterialId)?.name
+          : null;
+        setMessage(
+          `${materialName ?? "Linea"} completada con ${completedPercentage.toFixed(2)}%.`,
+        );
       }
     },
-    [invalidateFormulaResult, setMessage, setWorkspace],
+    [invalidateFormulaResult, rawMaterialsById, setMessage, setWorkspace],
   );
 
   const moveFormulaLine = useCallback(
