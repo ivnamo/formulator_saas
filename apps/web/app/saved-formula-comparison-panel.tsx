@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Download,
   FolderOpen,
+  GitBranch,
   History,
   ListChecks,
   RefreshCw,
@@ -115,6 +116,10 @@ export function SavedFormulaComparisonPanel({
   ].filter(Boolean).length;
   const formulaNameById = useMemo(
     () => new Map(formulas.map((formula) => [formula.id, formula.name])),
+    [formulas],
+  );
+  const formulaVersionFamilies = useMemo(
+    () => buildFormulaVersionFamilies(formulas),
     [formulas],
   );
 
@@ -275,121 +280,130 @@ export function SavedFormulaComparisonPanel({
         </details>
       ) : null}
       {!isComparator ? (
+        <FormulaVersionFamilyPanel
+          families={formulaVersionFamilies}
+          canExportFormulas={canExportFormulas}
+          isBusy={isBusy}
+          onExportFormula={onExportFormula}
+          onOpenFormula={onOpenFormula}
+        />
+      ) : null}
+      {!isComparator ? (
         <div className="libraryGrid">
-        <div className="formulaList">
-          <div className="formulaListHead" data-archive={canArchiveEntities}>
-            <span>Name</span>
-            <span>Price</span>
-            <span>Status</span>
-            <span>Lines</span>
-            <span>Excel</span>
-            <span>Open</span>
-            {canArchiveEntities ? <span>Action</span> : null}
-          </div>
-          {formulas.length === 0 ? (
-            <div className="empty">No saved formulas yet.</div>
-          ) : (
-            formulas.map((formula) => {
-              const sourceFormulaName = formula.source_formula_id
-                ? formulaNameById.get(formula.source_formula_id) ?? "formula origen"
-                : null;
-              return (
-                <div
-                  className="formulaListRow"
-                  data-archive={canArchiveEntities}
-                  key={formula.id}
-                >
-                  <span className="formulaLibraryName">
-                    <strong>{formula.name}</strong>
-                    <small>
-                      v{formula.version}
-                      {sourceFormulaName ? ` - version de ${sourceFormulaName}` : ""}
-                    </small>
-                    {formula.objective ? <small>{formula.objective}</small> : null}
-                  </span>
-                  <span>
-                    {formula.total_price === null
-                      ? "-"
-                      : `${formula.total_price.toFixed(2)} ${formula.currency}/kg`}
-                  </span>
-                  <span>
-                    <code className="statusPill">{formula.status}</code>
-                  </span>
-                  <span>{formula.items.length}</span>
-                  <button
-                    className="iconButton"
-                    type="button"
-                    onClick={() => void onExportFormula(formula)}
-                    disabled={!canExportFormulas}
-                    title="Export Excel I+D"
-                    aria-label={`Export ${formula.name} as Excel I+D`}
+          <div className="formulaList">
+            <div className="formulaListHead" data-archive={canArchiveEntities}>
+              <span>Name</span>
+              <span>Price</span>
+              <span>Status</span>
+              <span>Lines</span>
+              <span>Excel</span>
+              <span>Open</span>
+              {canArchiveEntities ? <span>Action</span> : null}
+            </div>
+            {formulas.length === 0 ? (
+              <div className="empty">No saved formulas yet.</div>
+            ) : (
+              formulas.map((formula) => {
+                const sourceFormulaName = formula.source_formula_id
+                  ? formulaNameById.get(formula.source_formula_id) ?? "formula origen"
+                  : null;
+                return (
+                  <div
+                    className="formulaListRow"
+                    data-archive={canArchiveEntities}
+                    key={formula.id}
                   >
-                    <Download size={16} />
-                  </button>
-                  <button
-                    className="iconButton"
-                    type="button"
-                    onClick={() => void onOpenFormula(formula)}
-                    disabled={isBusy}
-                    title="Open formula"
-                    aria-label={`Open ${formula.name}`}
-                  >
-                    <FolderOpen size={16} />
-                  </button>
-                  {canArchiveEntities && formula.status !== "archived" ? (
-                    <button
-                      className="iconButton dangerIconButton"
-                      type="button"
-                      onClick={() => void onArchiveFormula(formula)}
-                      disabled={isBusy}
-                      title="Archive formula"
-                      aria-label={`Archive ${formula.name}`}
-                    >
-                      <Archive size={16} />
-                    </button>
-                  ) : null}
-                  {canArchiveEntities && formula.status === "archived" ? (
+                    <span className="formulaLibraryName">
+                      <strong>{formula.name}</strong>
+                      <small>
+                        v{formula.version}
+                        {sourceFormulaName ? ` - version de ${sourceFormulaName}` : ""}
+                      </small>
+                      {formula.objective ? <small>{formula.objective}</small> : null}
+                    </span>
+                    <span>
+                      {formula.total_price === null
+                        ? "-"
+                        : `${formula.total_price.toFixed(2)} ${formula.currency}/kg`}
+                    </span>
+                    <span>
+                      <code className="statusPill">{formula.status}</code>
+                    </span>
+                    <span>{formula.items.length}</span>
                     <button
                       className="iconButton"
                       type="button"
-                      onClick={() => void onRestoreFormula(formula)}
-                      disabled={isBusy}
-                      title="Restore formula"
-                      aria-label={`Restore ${formula.name}`}
+                      onClick={() => void onExportFormula(formula)}
+                      disabled={!canExportFormulas}
+                      title="Export Excel I+D"
+                      aria-label={`Export ${formula.name} as Excel I+D`}
                     >
-                      <RotateCcw size={16} />
+                      <Download size={16} />
                     </button>
-                  ) : null}
-                </div>
-              );
-            })
-          )}
-        </div>
-        <div className="historyList">
-          <div className="historyTitle">
-            <History size={17} />
-            <strong>Calculation history</strong>
+                    <button
+                      className="iconButton"
+                      type="button"
+                      onClick={() => void onOpenFormula(formula)}
+                      disabled={isBusy}
+                      title="Open formula"
+                      aria-label={`Open ${formula.name}`}
+                    >
+                      <FolderOpen size={16} />
+                    </button>
+                    {canArchiveEntities && formula.status !== "archived" ? (
+                      <button
+                        className="iconButton dangerIconButton"
+                        type="button"
+                        onClick={() => void onArchiveFormula(formula)}
+                        disabled={isBusy}
+                        title="Archive formula"
+                        aria-label={`Archive ${formula.name}`}
+                      >
+                        <Archive size={16} />
+                      </button>
+                    ) : null}
+                    {canArchiveEntities && formula.status === "archived" ? (
+                      <button
+                        className="iconButton"
+                        type="button"
+                        onClick={() => void onRestoreFormula(formula)}
+                        disabled={isBusy}
+                        title="Restore formula"
+                        aria-label={`Restore ${formula.name}`}
+                      >
+                        <RotateCcw size={16} />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })
+            )}
           </div>
-          {calculationHistory.length === 0 ? (
-            <div className="empty">No calculations yet.</div>
-          ) : (
-            calculationHistory.map((entry) => (
-              <div className="historyRow" key={entry.id}>
-                <span>{formatDateTime(entry.calculated_at)}</span>
-                <strong>
-                  {entry.price_total === null
-                    ? "-"
-                    : `${entry.price_total.toFixed(2)} ${entry.result_json.currency}/kg`}
-                </strong>
-                <span>
-                  {entry.result_json.total_percentage.toFixed(1)}%{" "}
-                  {"\u00b7"} {entry.result_json.warnings.length} warnings
-                </span>
-              </div>
-            ))
-          )}
+          <div className="historyList">
+            <div className="historyTitle">
+              <History size={17} />
+              <strong>Calculation history</strong>
+            </div>
+            {calculationHistory.length === 0 ? (
+              <div className="empty">No calculations yet.</div>
+            ) : (
+              calculationHistory.map((entry) => (
+                <div className="historyRow" key={entry.id}>
+                  <span>{formatDateTime(entry.calculated_at)}</span>
+                  <strong>
+                    {entry.price_total === null
+                      ? "-"
+                      : `${entry.price_total.toFixed(2)} ${entry.result_json.currency}/kg`}
+                  </strong>
+                  <span>
+                    {entry.result_json.total_percentage.toFixed(1)}%{" "}
+                    {"\u00b7"} {entry.result_json.warnings.length} warnings
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
       ) : null}
       {isComparator && savedFormulaComparison ? (
         <SavedFormulaComparisonResult
@@ -404,4 +418,202 @@ export function SavedFormulaComparisonPanel({
       ) : null}
     </section>
   );
+}
+
+type FormulaVersionNode = {
+  formula: FormulaRead;
+  depth: number;
+  sourceName: string | null;
+  isLatest: boolean;
+};
+
+type FormulaVersionFamily = {
+  rootId: string;
+  rootName: string;
+  rootSourceMissing: boolean;
+  latestVersion: number;
+  nodes: FormulaVersionNode[];
+};
+
+type FormulaVersionFamilyPanelProps = {
+  families: FormulaVersionFamily[];
+  canExportFormulas: boolean;
+  isBusy: boolean;
+  onExportFormula: (formula: FormulaRead) => void | Promise<void>;
+  onOpenFormula: (formula: FormulaRead) => void | Promise<void>;
+};
+
+function FormulaVersionFamilyPanel({
+  families,
+  canExportFormulas,
+  isBusy,
+  onExportFormula,
+  onOpenFormula,
+}: FormulaVersionFamilyPanelProps) {
+  if (families.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="formulaVersionFamilies" aria-label="Historial de versiones de formulas">
+      <div className="versionFamilyTitle">
+        <span>
+          <GitBranch size={17} />
+          Historial de versiones
+        </span>
+        <code>{families.length === 1 ? "1 familia" : `${families.length} familias`}</code>
+      </div>
+      <div className="versionFamilyGrid">
+        {families.map((family) => (
+          <article className="versionFamilyCard" key={family.rootId}>
+            <div className="versionFamilyHeader">
+              <div>
+                <span>Familia</span>
+                <strong>{family.rootName}</strong>
+                <small>
+                  {family.nodes.length} versiones - ultima v{family.latestVersion}
+                  {family.rootSourceMissing ? " - origen fuera de la vista actual" : ""}
+                </small>
+              </div>
+            </div>
+            <div className="versionNodeList">
+              {family.nodes.map((node) => (
+                <div
+                  className="versionNodeRow"
+                  data-depth={Math.min(node.depth, 4)}
+                  key={node.formula.id}
+                >
+                  <span className="versionNodeMarker">v{node.formula.version}</span>
+                  <div className="versionNodeMain">
+                    <strong>{node.formula.name}</strong>
+                    <small>
+                      {node.sourceName ? `Version de ${node.sourceName}` : "Formula origen"}
+                    </small>
+                  </div>
+                  <code className="statusPill">{node.formula.status}</code>
+                  <span
+                    className={
+                      node.isLatest
+                        ? "latestVersionBadge"
+                        : "latestVersionBadge latestVersionBadgeEmpty"
+                    }
+                    aria-hidden={!node.isLatest}
+                  >
+                    {node.isLatest ? "Ultima" : "-"}
+                  </span>
+                  <button
+                    className="iconButton"
+                    type="button"
+                    onClick={() => void onExportFormula(node.formula)}
+                    disabled={!canExportFormulas}
+                    title="Export Excel I+D"
+                    aria-label={`Export ${node.formula.name} as Excel I+D`}
+                  >
+                    <Download size={16} />
+                  </button>
+                  <button
+                    className="iconButton"
+                    type="button"
+                    onClick={() => void onOpenFormula(node.formula)}
+                    disabled={isBusy}
+                    title="Open formula"
+                    aria-label={`Open ${node.formula.name}`}
+                  >
+                    <FolderOpen size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function buildFormulaVersionFamilies(formulas: FormulaRead[]): FormulaVersionFamily[] {
+  if (formulas.length === 0) {
+    return [];
+  }
+
+  const formulasById = new Map(formulas.map((formula) => [formula.id, formula]));
+  const rootIdByFormulaId = new Map<string, string>();
+
+  function rootForFormula(formula: FormulaRead) {
+    const visited = new Set<string>();
+    let current = formula;
+    while (
+      current.source_formula_id &&
+      formulasById.has(current.source_formula_id) &&
+      !visited.has(current.id)
+    ) {
+      visited.add(current.id);
+      current = formulasById.get(current.source_formula_id) ?? current;
+    }
+    return current.id;
+  }
+
+  function depthForFormula(formula: FormulaRead) {
+    const visited = new Set<string>();
+    let depth = 0;
+    let current = formula;
+    while (
+      current.source_formula_id &&
+      formulasById.has(current.source_formula_id) &&
+      !visited.has(current.id)
+    ) {
+      visited.add(current.id);
+      depth += 1;
+      current = formulasById.get(current.source_formula_id) ?? current;
+    }
+    return depth;
+  }
+
+  for (const formula of formulas) {
+    rootIdByFormulaId.set(formula.id, rootForFormula(formula));
+  }
+
+  const familiesByRoot = new Map<string, FormulaRead[]>();
+  for (const formula of formulas) {
+    const rootId = rootIdByFormulaId.get(formula.id) ?? formula.id;
+    familiesByRoot.set(rootId, [...(familiesByRoot.get(rootId) ?? []), formula]);
+  }
+
+  return [...familiesByRoot.entries()]
+    .map(([rootId, familyFormulas]) => {
+      const rootFormula = formulasById.get(rootId) ?? familyFormulas[0];
+      const latestVersion = Math.max(...familyFormulas.map((formula) => formula.version));
+      const nodes = familyFormulas
+        .map<FormulaVersionNode>((formula) => ({
+          formula,
+          depth: depthForFormula(formula),
+          sourceName: formula.source_formula_id
+            ? formulasById.get(formula.source_formula_id)?.name ?? "origen no visible"
+            : null,
+          isLatest: formula.version === latestVersion,
+        }))
+        .sort(compareFormulaVersionNodes);
+      return {
+        rootId,
+        rootName: rootFormula.name,
+        rootSourceMissing: Boolean(
+          rootFormula.source_formula_id && !formulasById.has(rootFormula.source_formula_id),
+        ),
+        latestVersion,
+        nodes,
+      };
+    })
+    .sort((left, right) => left.rootName.localeCompare(right.rootName, "es"));
+}
+
+function compareFormulaVersionNodes(left: FormulaVersionNode, right: FormulaVersionNode) {
+  const versionDelta = left.formula.version - right.formula.version;
+  if (versionDelta !== 0) {
+    return versionDelta;
+  }
+  const depthDelta = left.depth - right.depth;
+  if (depthDelta !== 0) {
+    return depthDelta;
+  }
+  return left.formula.name.localeCompare(right.formula.name, "es");
 }
