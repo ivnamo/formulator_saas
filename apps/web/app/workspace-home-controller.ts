@@ -41,6 +41,7 @@ import {
   fetchProductEventSummary,
   recordProductEvent,
   type ProductEventPayload,
+  type ProductEventSummaryFilters,
   type ProductEventSummary,
 } from "./product-observability-api";
 
@@ -58,6 +59,8 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     useState(false);
   const [productEventSummary, setProductEventSummary] =
     useState<ProductEventSummary | null>(null);
+  const [productEventFilters, setProductEventFilters] =
+    useState<ProductEventSummaryFilters>({});
   const {
     workspace,
     setWorkspace,
@@ -458,13 +461,14 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       return;
     }
     await observedRunAction("Refreshing product observability", async () => {
-      setProductEventSummary(await fetchProductEventSummary(headers));
+      setProductEventSummary(await fetchProductEventSummary(headers, productEventFilters));
       setMessage("Observabilidad actualizada");
     });
   }, [
     canViewObservability,
     headers,
     observedRunAction,
+    productEventFilters,
     setMessage,
     workspace.tenant,
   ]);
@@ -908,6 +912,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       showInvitationAdminPanel,
       canViewObservability,
       productEventSummary,
+      productEventFilters,
       setWorkspaceName,
       createWorkspace,
       setInvitationForm,
@@ -923,6 +928,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       authorizeJiraOAuth,
       setJiraMappingKey,
       mapJiraField,
+      setProductEventFilters,
       refreshProductEventSummary,
     },
     isoDesign: {

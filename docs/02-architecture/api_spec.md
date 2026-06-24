@@ -147,7 +147,9 @@ acciones iniciadas, acciones completadas y errores de accion. El payload usa
 `event_type`, `surface`, `element` opcional y `metadata` limitada.
 
 `GET /product-events/summary` es admin/owner-only y devuelve agregados por tipo de
-evento, por pantalla/superficie y los eventos recientes para revisar friccion de UX.
+evento, pantalla/superficie, elemento y usuario, junto con eventos recientes para
+revisar friccion de UX. Acepta filtros opcionales `date_from`, `date_to`,
+`event_type`, `surface`, `user_id` y `limit`.
 
 Diccionario inicial:
 

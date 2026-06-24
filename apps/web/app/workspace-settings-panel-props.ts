@@ -24,6 +24,7 @@ type BuildWorkspaceSettingsPanelPropsArgs = {
   showInvitationAdminPanel: SettingsPanelProps["showInvitationAdminPanel"];
   canViewObservability: SettingsPanelProps["canViewObservability"];
   productEventSummary: SettingsPanelProps["productEventSummary"];
+  productEventFilters: SettingsPanelProps["productEventFilters"];
   setWorkspaceName: SettingsPanelProps["onWorkspaceNameChange"];
   createWorkspace: SettingsPanelProps["onCreateWorkspace"];
   setInvitationForm: SettingsPanelProps["onInvitationFormChange"];
@@ -39,6 +40,7 @@ type BuildWorkspaceSettingsPanelPropsArgs = {
   authorizeJiraOAuth: SettingsPanelProps["onAuthorizeJiraOAuth"];
   setJiraMappingKey: SettingsPanelProps["onJiraMappingKeyChange"];
   mapJiraField: SettingsPanelProps["onMapJiraField"];
+  setProductEventFilters: SettingsPanelProps["onProductEventFiltersChange"];
   refreshProductEventSummary: SettingsPanelProps["onRefreshProductEvents"];
 };
 
@@ -67,6 +69,7 @@ export function buildWorkspaceSettingsPanelProps(
     showInvitationAdminPanel: args.showInvitationAdminPanel,
     canViewObservability: args.canViewObservability,
     productEventSummary: args.productEventSummary,
+    productEventFilters: args.productEventFilters,
     onWorkspaceNameChange: args.setWorkspaceName,
     onCreateWorkspace: args.createWorkspace,
     onInvitationFormChange: args.setInvitationForm,
@@ -82,6 +85,7 @@ export function buildWorkspaceSettingsPanelProps(
     onAuthorizeJiraOAuth: args.authorizeJiraOAuth,
     onJiraMappingKeyChange: args.setJiraMappingKey,
     onMapJiraField: args.mapJiraField,
+    onProductEventFiltersChange: args.setProductEventFilters,
     onRefreshProductEvents: args.refreshProductEventSummary,
   };
 }

@@ -1,6 +1,9 @@
 import { BarChart3, KeyRound, Plus, RefreshCw, Save, Send, UserCog } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import type { ProductEventSummary } from "./product-observability-api";
+import type {
+  ProductEventSummary,
+  ProductEventSummaryFilters,
+} from "./product-observability-api";
 import type { TenantInvitationRead, TenantMemberRead } from "./workspace-base-model";
 import type { InvitationForm, ParameterForm } from "./workspace-core-state";
 import { formatDateTime } from "./workspace-utils";
@@ -273,16 +276,21 @@ export function ParameterSettingsSection({
 type ProductObservabilitySectionProps = {
   active: boolean;
   summary: ProductEventSummary | null;
+  filters: ProductEventSummaryFilters;
   isBusy: boolean;
+  onFiltersChange: Dispatch<SetStateAction<ProductEventSummaryFilters>>;
   onRefresh: () => void | Promise<void>;
 };
 
 export function ProductObservabilitySection({
   active,
   summary,
+  filters,
   isBusy,
+  onFiltersChange,
   onRefresh,
 }: ProductObservabilitySectionProps) {
+  const userRows = summary?.by_user ?? [];
   return (
     <section className="panel setupPanel" hidden={!active}>
       <div className="panelHeader">
@@ -304,15 +312,88 @@ export function ProductObservabilitySection({
           Actualizar
         </button>
       </div>
+      <div className="observabilityFilters">
+        <label>
+          <span>Desde</span>
+          <input
+            type="date"
+            value={filters.dateFrom ?? ""}
+            onChange={(event) =>
+              onFiltersChange((current) => ({ ...current, dateFrom: event.target.value }))
+            }
+          />
+        </label>
+        <label>
+          <span>Hasta</span>
+          <input
+            type="date"
+            value={filters.dateTo ?? ""}
+            onChange={(event) =>
+              onFiltersChange((current) => ({ ...current, dateTo: event.target.value }))
+            }
+          />
+        </label>
+        <label>
+          <span>Pantalla</span>
+          <select
+            value={filters.surface ?? ""}
+            onChange={(event) =>
+              onFiltersChange((current) => ({ ...current, surface: event.target.value }))
+            }
+          >
+            <option value="">Todas</option>
+            {withCurrentCountOption(summary?.by_surface ?? [], filters.surface).map((row) => (
+              <option key={row.key} value={row.key}>
+                {row.key} ({row.count})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Evento</span>
+          <select
+            value={filters.eventType ?? ""}
+            onChange={(event) =>
+              onFiltersChange((current) => ({ ...current, eventType: event.target.value }))
+            }
+          >
+            <option value="">Todos</option>
+            {withCurrentCountOption(summary?.by_event_type ?? [], filters.eventType).map((row) => (
+              <option key={row.key} value={row.key}>
+                {row.key} ({row.count})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Usuario</span>
+          <select
+            value={filters.userId ?? ""}
+            onChange={(event) =>
+              onFiltersChange((current) => ({ ...current, userId: event.target.value }))
+            }
+          >
+            <option value="">Todos</option>
+            {withCurrentUserOption(userRows, filters.userId).map((row) => (
+              <option key={row.user_id} value={row.user_id}>
+                {formatUserCountLabel(row)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       {summary ? (
         <>
           <div className="observabilityGrid">
             <EventCountList title="Pantallas" rows={summary.by_surface} />
             <EventCountList title="Eventos" rows={summary.by_event_type} />
+            <EventCountList title="Elementos" rows={summary.by_element} />
+            <UserCountList title="Usuarios" rows={summary.by_user} />
           </div>
           <div className="observabilityRecent">
             <div className="observabilityRecentHead">
               <span>Fecha</span>
+              <span>Usuario</span>
               <span>Pantalla</span>
               <span>Evento</span>
               <span>Elemento</span>
@@ -323,6 +404,7 @@ export function ProductObservabilitySection({
               summary.recent.map((event) => (
                 <div className="observabilityRecentRow" key={event.id}>
                   <span>{formatDateTime(event.created_at)}</span>
+                  <span>{formatRecentUser(event.user_id, userRows)}</span>
                   <strong>{event.surface}</strong>
                   <code>{event.event_type}</code>
                   <span>{event.element ?? "-"}</span>
@@ -335,6 +417,30 @@ export function ProductObservabilitySection({
         <div className="empty">No hay resumen cargado.</div>
       )}
     </section>
+  );
+}
+
+function UserCountList({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: ProductEventSummary["by_user"];
+}) {
+  return (
+    <div className="observabilityCountList">
+      <strong>{title}</strong>
+      {rows.length === 0 ? (
+        <span className="empty">Sin eventos</span>
+      ) : (
+        rows.slice(0, 8).map((row) => (
+          <div key={row.user_id}>
+            <span>{formatUserCountLabel(row)}</span>
+            <code>{row.count}</code>
+          </div>
+        ))
+      )}
+    </div>
   );
 }
 
@@ -360,4 +466,37 @@ function EventCountList({
       )}
     </div>
   );
+}
+
+function withCurrentCountOption(
+  rows: Array<{ key: string; count: number }>,
+  current: string | undefined,
+) {
+  if (!current || rows.some((row) => row.key === current)) {
+    return rows;
+  }
+  return [{ key: current, count: 0 }, ...rows];
+}
+
+function withCurrentUserOption(
+  rows: ProductEventSummary["by_user"],
+  current: string | undefined,
+) {
+  if (!current || rows.some((row) => row.user_id === current)) {
+    return rows;
+  }
+  return [{ user_id: current, user_email: null, user_role: "-", count: 0 }, ...rows];
+}
+
+function formatUserCountLabel(row: ProductEventSummary["by_user"][number]) {
+  return `${row.user_email || shortId(row.user_id)} - ${row.user_role} (${row.count})`;
+}
+
+function formatRecentUser(userId: string, users: ProductEventSummary["by_user"]) {
+  const user = users.find((row) => row.user_id === userId);
+  return user?.user_email || shortId(userId);
+}
+
+function shortId(value: string) {
+  return value.slice(0, 8);
 }

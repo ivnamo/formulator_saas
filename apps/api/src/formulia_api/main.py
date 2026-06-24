@@ -5,7 +5,7 @@ import os
 import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, datetime
 from difflib import SequenceMatcher
 from typing import Any
 
@@ -361,13 +361,31 @@ def register_routes(app: FastAPI) -> None:
     @app.get("/api/v1/product-events/summary", response_model=ProductEventSummaryRead)
     def product_event_summary(
         limit: int = Query(500, ge=1, le=1000),
+        date_from: datetime | None = Query(default=None),
+        date_to: datetime | None = Query(default=None),
+        event_type: str | None = Query(default=None, min_length=1, max_length=80),
+        surface: str | None = Query(default=None, min_length=1, max_length=80),
+        user_id: uuid.UUID | None = Query(default=None),
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> dict[str, Any]:
         require_tenant_admin(tenant)
+        if date_from and date_to and date_from > date_to:
+            raise HTTPException(status_code=400, detail="date_from must be before date_to.")
+        conditions = [ProductEvent.tenant_id == tenant.tenant_id]
+        if date_from:
+            conditions.append(ProductEvent.created_at >= date_from)
+        if date_to:
+            conditions.append(ProductEvent.created_at <= date_to)
+        if event_type:
+            conditions.append(ProductEvent.event_type == event_type.strip())
+        if surface:
+            conditions.append(ProductEvent.surface == surface.strip())
+        if user_id:
+            conditions.append(ProductEvent.user_id == user_id)
         events = session.exec(
             select(ProductEvent)
-            .where(ProductEvent.tenant_id == tenant.tenant_id)
+            .where(*conditions)
             .order_by(ProductEvent.created_at.desc())
             .limit(limit)
         ).all()
@@ -375,6 +393,11 @@ def register_routes(app: FastAPI) -> None:
             "total": len(events),
             "by_event_type": _product_event_counts(events, lambda event: event.event_type),
             "by_surface": _product_event_counts(events, lambda event: event.surface),
+            "by_element": _product_event_counts(
+                events,
+                lambda event: event.element or "sin_elemento",
+            ),
+            "by_user": _product_event_user_counts(session, events),
             "recent": events[:25],
         }
 
@@ -2333,6 +2356,31 @@ def _product_event_counts(
         {"key": name, "count": count}
         for name, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
     ]
+
+
+def _product_event_user_counts(
+    session: Session,
+    events: list[ProductEvent],
+) -> list[dict[str, Any]]:
+    counts: dict[uuid.UUID, dict[str, Any]] = {}
+    for event in events:
+        row = counts.setdefault(
+            event.user_id,
+            {
+                "user_id": event.user_id,
+                "user_email": None,
+                "user_role": event.user_role,
+                "count": 0,
+            },
+        )
+        row["count"] += 1
+    for user_id, row in counts.items():
+        user = session.get(User, user_id)
+        row["user_email"] = user.email if user else None
+    return sorted(
+        counts.values(),
+        key=lambda row: (-int(row["count"]), str(row["user_email"] or row["user_id"])),
+    )
 
 
 def _normalize(value: str) -> str:

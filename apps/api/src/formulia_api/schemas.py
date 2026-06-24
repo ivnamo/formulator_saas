@@ -122,10 +122,19 @@ class ProductEventCountRead(BaseModel):
     count: int
 
 
+class ProductEventUserCountRead(BaseModel):
+    user_id: uuid.UUID
+    user_email: str | None
+    user_role: str
+    count: int
+
+
 class ProductEventSummaryRead(BaseModel):
     total: int
     by_event_type: list[ProductEventCountRead]
     by_surface: list[ProductEventCountRead]
+    by_element: list[ProductEventCountRead]
+    by_user: list[ProductEventUserCountRead]
     recent: list[ProductEventRead]
 
 
