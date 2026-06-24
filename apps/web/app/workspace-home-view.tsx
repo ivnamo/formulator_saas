@@ -14,6 +14,7 @@ export type WorkspaceHomeViewProps = {
   message: string;
   isBusy: boolean;
   onViewChange: (view: WorkspaceView) => void;
+  onTrackControlClick: (element: string, metadata: Record<string, unknown>) => void;
   onClearStatus: () => void;
   onSignOut: () => void | Promise<void>;
   panels: WorkspaceHomePanels;
@@ -27,6 +28,7 @@ export function WorkspaceHomeView({
   message,
   isBusy,
   onViewChange,
+  onTrackControlClick,
   onClearStatus,
   onSignOut,
   panels,
@@ -40,6 +42,7 @@ export function WorkspaceHomeView({
       message={message}
       isBusy={isBusy}
       onViewChange={onViewChange}
+      onTrackControlClick={onTrackControlClick}
       onClearStatus={onClearStatus}
       onSignOut={onSignOut}
     >

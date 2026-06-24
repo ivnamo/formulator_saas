@@ -72,6 +72,9 @@ export function FormulaLineTable({
                 <button
                   className="iconButton"
                   type="button"
+                  data-track-click="formula_line_move"
+                  data-track-section="formula"
+                  data-track-value="up"
                   onClick={() => onMoveLine(line.localId, -1)}
                   disabled={isBusy || line.index === 0}
                   title="Subir linea"
@@ -82,6 +85,9 @@ export function FormulaLineTable({
                 <button
                   className="iconButton"
                   type="button"
+                  data-track-click="formula_line_move"
+                  data-track-section="formula"
+                  data-track-value="down"
                   onClick={() => onMoveLine(line.localId, 1)}
                   disabled={isBusy || line.index === lines.length - 1}
                   title="Bajar linea"
@@ -129,6 +135,8 @@ export function FormulaLineTable({
                 <button
                   className="secondaryButton compactButton"
                   type="button"
+                  data-track-click="formula_line_complete"
+                  data-track-section="formula"
                   onClick={() => onCompleteLine(line.localId)}
                   disabled={isBusy || !canCompleteLine}
                   title={`Completar con ${missingPercentage.toFixed(2)}%`}
@@ -140,6 +148,8 @@ export function FormulaLineTable({
                 <button
                   className="iconButton"
                   type="button"
+                  data-track-click="formula_line_duplicate"
+                  data-track-section="formula"
                   onClick={() => onDuplicateLine(line.localId)}
                   disabled={isBusy}
                   title="Duplicar linea"
@@ -150,6 +160,8 @@ export function FormulaLineTable({
                 <button
                   className="iconButton danger"
                   type="button"
+                  data-track-click="formula_line_remove"
+                  data-track-section="formula"
                   onClick={() => onRemoveLine(line.localId)}
                   disabled={isBusy}
                   title="Eliminar linea"

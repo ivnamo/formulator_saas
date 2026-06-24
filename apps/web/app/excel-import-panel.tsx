@@ -150,6 +150,8 @@ export function ExcelImportPanel({
         <button
           className="secondaryButton"
           type="button"
+          data-track-click="excel_import_open_builder"
+          data-track-section="import_preview"
           onClick={onOpenInFormulaBuilder}
           disabled={!importPreview || importPreview.pending_rows > 0 || isBusy}
         >
@@ -159,6 +161,8 @@ export function ExcelImportPanel({
         <button
           className="secondaryButton"
           type="button"
+          data-track-click="excel_import_save"
+          data-track-section="import_preview"
           onClick={() => void onSaveImport()}
           disabled={!canSaveImport}
         >
@@ -182,6 +186,8 @@ export function ExcelImportPanel({
           className="secondaryButton"
           disabled={!canEditTenantData || isBusy || !pastedRowsText.trim()}
           type="button"
+          data-track-click="excel_import_parse_paste"
+          data-track-section="paste_import"
           onClick={() => onParsePastedRows(pastedRowsText)}
         >
           <ClipboardPaste size={17} />

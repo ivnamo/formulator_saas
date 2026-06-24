@@ -1221,6 +1221,22 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     [activeView, setActiveView, trackProductEvent, workspace.tenant?.role],
   );
 
+  const handleTrackControlClick = useCallback(
+    (element: string, metadata: Record<string, unknown>) => {
+      trackProductEvent({
+        event_type: "control_click",
+        surface: activeView,
+        element,
+        metadata: {
+          ...metadata,
+          view: activeView,
+          role: workspace.tenant?.role ?? null,
+        },
+      });
+    },
+    [activeView, trackProductEvent, workspace.tenant?.role],
+  );
+
   return {
     isReady: true,
     viewProps: {
@@ -1231,6 +1247,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       message,
       isBusy,
       onViewChange: handleViewChange,
+      onTrackControlClick: handleTrackControlClick,
       onClearStatus: clearStatus,
       onSignOut: signOut,
       panels,

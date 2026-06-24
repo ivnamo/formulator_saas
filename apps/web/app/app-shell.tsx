@@ -16,7 +16,7 @@ import {
   UserCircle,
   X,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import type { Status } from "./workspace-base-model";
 import type { WorkspaceState } from "./workspace-state-model";
 
@@ -67,6 +67,7 @@ type AppShellProps = {
   isBusy: boolean;
   children: ReactNode;
   onViewChange: (view: WorkspaceView) => void;
+  onTrackControlClick: (element: string, metadata: Record<string, unknown>) => void;
   onClearStatus: () => void;
   onSignOut: () => void | Promise<void>;
 };
@@ -100,6 +101,7 @@ export function AppShell({
   isBusy,
   children,
   onViewChange,
+  onTrackControlClick,
   onClearStatus,
   onSignOut,
 }: AppShellProps) {
@@ -110,8 +112,23 @@ export function AppShell({
         .join(" - ")
     : VIEW_DESCRIPTIONS[activeView];
 
+  function handleTrackedClick(event: MouseEvent<HTMLElement>) {
+    if (!(event.target instanceof Element)) {
+      return;
+    }
+    const target = event.target.closest<HTMLElement>("[data-track-click]");
+    if (!target || !event.currentTarget.contains(target)) {
+      return;
+    }
+    const element = target.dataset.trackClick?.trim();
+    if (!element) {
+      return;
+    }
+    onTrackControlClick(element, trackedClickMetadata(target));
+  }
+
   return (
-    <main className="shell">
+    <main className="shell" onClickCapture={handleTrackedClick}>
       <aside className="sidebar" aria-label="Workspace navigation">
         <div className="brand">
           <div className="brandMark">F</div>
@@ -222,4 +239,20 @@ export function AppShell({
       </section>
     </main>
   );
+}
+
+function trackedClickMetadata(target: HTMLElement) {
+  const metadata: Record<string, unknown> = { control_type: target.tagName.toLowerCase() };
+  for (const [key, value] of Object.entries(target.dataset)) {
+    if (!key.startsWith("track") || key === "trackClick") {
+      continue;
+    }
+    const normalizedKey = key
+      .replace(/^track/, "")
+      .replace(/^[A-Z]/, (letter) => letter.toLowerCase());
+    if (normalizedKey && value) {
+      metadata[normalizedKey] = value;
+    }
+  }
+  return metadata;
 }

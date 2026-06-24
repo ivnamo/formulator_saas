@@ -84,6 +84,8 @@ export function FormulaReviewStep({
           <button
             className="secondaryButton"
             type="button"
+            data-track-click="formula_export_excel"
+            data-track-section="review"
             onClick={() => void onExportExcel()}
             disabled={!canExportExcel}
           >
@@ -93,6 +95,9 @@ export function FormulaReviewStep({
           <button
             className="primaryButton"
             type="button"
+            data-track-click="formula_save"
+            data-track-section="review"
+            data-track-value={saveMode}
             onClick={() => void onSaveFormula()}
             disabled={!canSaveFormula}
           >

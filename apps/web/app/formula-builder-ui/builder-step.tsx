@@ -23,7 +23,14 @@ export function BuilderStep({
 }: BuilderStepProps) {
   return (
     <section className="builderStep" data-open={isOpen}>
-      <button className="builderStepHeader" type="button" onClick={() => onToggle(section)}>
+      <button
+        className="builderStepHeader"
+        type="button"
+        data-track-click="builder_section_toggle"
+        data-track-section={section}
+        data-track-state={isOpen ? "open" : "closed"}
+        onClick={() => onToggle(section)}
+      >
         <span>
           <strong>{title}</strong>
           <small>{summary}</small>

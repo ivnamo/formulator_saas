@@ -107,6 +107,9 @@ export function FormulaBasicsStep({
                 key={option.mode}
                 type="button"
                 aria-pressed={isSelected}
+                data-track-click="formula_work_type_select"
+                data-track-section="basics"
+                data-track-value={option.mode}
                 onClick={() => onChange({ formulaBuilderMode: option.mode })}
                 disabled={isBusy || isLocked}
                 title={
