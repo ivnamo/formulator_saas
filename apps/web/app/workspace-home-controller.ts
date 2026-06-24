@@ -37,6 +37,12 @@ import type { WorkspaceHomeViewProps } from "./workspace-home-view";
 import { buildWorkspaceHomePanels } from "./workspace-home-panels";
 import { useWorkspaceShellState } from "./workspace-shell-state";
 import { isSelectableRawMaterial } from "./raw-material-model";
+import {
+  fetchProductEventSummary,
+  recordProductEvent,
+  type ProductEventPayload,
+  type ProductEventSummary,
+} from "./product-observability-api";
 
 export type WorkspaceHomeControllerState =
   | {
@@ -50,6 +56,8 @@ export type WorkspaceHomeControllerState =
 export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   const [isoProjectPreparedFromFormulaBuilder, setIsoProjectPreparedFromFormulaBuilder] =
     useState(false);
+  const [productEventSummary, setProductEventSummary] =
+    useState<ProductEventSummary | null>(null);
   const {
     workspace,
     setWorkspace,
@@ -221,6 +229,50 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
   const { session, authChecked, authHeaders, headers, uploadHeaders } =
     useWorkspaceAuthSession(workspace.tenant);
 
+  const trackProductEvent = useCallback(
+    (payload: ProductEventPayload) => {
+      if (!workspace.tenant || !session?.access_token) {
+        return;
+      }
+      void recordProductEvent(headers, payload).catch(() => undefined);
+    },
+    [headers, session?.access_token, workspace.tenant],
+  );
+
+  const observedRunAction = useCallback(
+    async (label: string, action: () => Promise<void>) => {
+      trackProductEvent({
+        event_type: "action_start",
+        surface: activeView,
+        element: label,
+        metadata: { label },
+      });
+      await runAction(label, async () => {
+        try {
+          await action();
+          trackProductEvent({
+            event_type: "action_success",
+            surface: activeView,
+            element: label,
+            metadata: { label },
+          });
+        } catch (error) {
+          trackProductEvent({
+            event_type: "action_error",
+            surface: activeView,
+            element: label,
+            metadata: {
+              label,
+              message: error instanceof Error ? error.message : "Action failed",
+            },
+          });
+          throw error;
+        }
+      });
+    },
+    [activeView, runAction, trackProductEvent],
+  );
+
   useEffect(() => {
     setIsoProjectPreparedFromFormulaBuilder(false);
   }, [workspace.tenant?.id]);
@@ -230,6 +282,15 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       setBuilderSections(DEFAULT_BUILDER_SECTIONS);
     }
   }, [activeView, setBuilderSections]);
+
+  useEffect(() => {
+    trackProductEvent({
+      event_type: "navigation_view",
+      surface: activeView,
+      element: "workspace_navigation",
+      metadata: { view: activeView, role: workspace.tenant?.role ?? null },
+    });
+  }, [activeView, trackProductEvent, workspace.tenant?.role]);
 
   const {
     catalogMaterialIds,
@@ -283,7 +344,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     resetImportState,
     updateComparisonConstraint,
     refreshCatalog,
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
   });
@@ -369,6 +430,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     canAuthorizeJiraOAuth,
     canPrepareJiraReview,
     canSearchCatalog,
+    canViewObservability,
   } = useWorkspaceCapabilities({
     workspace,
     status,
@@ -385,6 +447,31 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     jiraConnections,
     jiraConnectionForm,
   });
+
+  const refreshProductEventSummary = useCallback(async () => {
+    if (!workspace.tenant || !canViewObservability) {
+      setProductEventSummary(null);
+      return;
+    }
+    await observedRunAction("Refreshing product observability", async () => {
+      setProductEventSummary(await fetchProductEventSummary(headers));
+      setMessage("Observabilidad actualizada");
+    });
+  }, [
+    canViewObservability,
+    headers,
+    observedRunAction,
+    setMessage,
+    workspace.tenant,
+  ]);
+
+  useEffect(() => {
+    if (activeView !== "settings" || !canViewObservability || !workspace.tenant) {
+      return;
+    }
+    void refreshProductEventSummary();
+  }, [activeView, canViewObservability, refreshProductEventSummary, workspace.tenant]);
+
   const {
     ensureRawMaterialDetail,
     inspectMaterial,
@@ -418,7 +505,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setResult,
     refreshCatalog,
     resetImportState,
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
   });
@@ -437,7 +524,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setResult,
     setBuilderSections,
     setDraftReview,
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
   });
@@ -507,7 +594,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setJiraConnectionForm,
     setJiraMetadata,
     setStatus,
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
   });
@@ -548,7 +635,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setIsoLegacyImportFile,
     setSelectedIsoLegacyImportSheet,
     setIsoLegacyImportPreview,
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
     onProjectCreated: (project) => {
@@ -657,7 +744,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setAgentPlan,
     setAiRuns,
     setRequirementText,
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
   });
@@ -668,7 +755,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setCompatibilityRules,
     setCompatibilityRuleForm,
     setResult,
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
   });
@@ -703,7 +790,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setBuilderSections,
     ensureRawMaterialDetail,
     resetImportState,
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
   });
@@ -747,7 +834,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     setFormulaReviewArtifacts,
     loadFormulaReviewRequests,
     onIsoModuleRefresh: () => loadIsoModule({ silent: true }),
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
   });
@@ -785,7 +872,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     refreshCatalog,
     refreshFormulaLibrary,
     loadCalculationHistory,
-    runAction,
+    runAction: observedRunAction,
     setError,
     setMessage,
   });
@@ -814,6 +901,8 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       canLoadJiraMetadata,
       canAuthorizeJiraOAuth,
       showInvitationAdminPanel,
+      canViewObservability,
+      productEventSummary,
       setWorkspaceName,
       createWorkspace,
       setInvitationForm,
@@ -828,6 +917,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       authorizeJiraOAuth,
       setJiraMappingKey,
       mapJiraField,
+      refreshProductEventSummary,
     },
     isoDesign: {
       settings: isoSettings,

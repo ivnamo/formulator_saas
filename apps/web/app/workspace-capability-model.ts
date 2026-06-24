@@ -50,6 +50,7 @@ export type WorkspaceCapabilities = {
   canAuthorizeJiraOAuth: boolean;
   canPrepareJiraReview: boolean;
   canSearchCatalog: boolean;
+  canViewObservability: boolean;
 };
 
 export function getActiveJiraConnection(
@@ -88,6 +89,7 @@ export function buildWorkspaceCapabilities({
   const canUseAi = hasTenantPermission(tenantRole, "use_ai");
   const canCreateCompatibility = hasTenantPermission(tenantRole, "create_compatibility");
   const canManageIntegrations = hasTenantPermission(tenantRole, "manage_integrations");
+  const canViewObservability = hasTenantPermission(tenantRole, "view_observability");
   const canEditTenantData = Boolean(workspace.tenant) && canEditRawMaterials && !isBusy;
   const showInvitationAdminPanel = isTenantAdminRole(workspace.tenant?.role);
   const canManageTenantUsers = showInvitationAdminPanel && !isBusy;
@@ -193,5 +195,6 @@ export function buildWorkspaceCapabilities({
     canAuthorizeJiraOAuth,
     canPrepareJiraReview,
     canSearchCatalog,
+    canViewObservability,
   };
 }

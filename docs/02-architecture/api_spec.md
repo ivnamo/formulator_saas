@@ -132,6 +132,30 @@ Response:
 }
 ```
 
+## Observabilidad de producto
+
+```http
+POST /product-events
+GET /product-events/summary
+```
+
+`POST /product-events` registra eventos tenant-scoped de uso de UI: navegacion,
+acciones iniciadas, acciones completadas y errores de accion. El payload usa
+`event_type`, `surface`, `element` opcional y `metadata` limitada.
+
+`GET /product-events/summary` es admin/owner-only y devuelve agregados por tipo de
+evento, por pantalla/superficie y los eventos recientes para revisar friccion de UX.
+
+Diccionario inicial:
+
+- `navigation_view`: cambio de pantalla. `surface` es la vista activa; `element`
+  suele ser `workspace_navigation`; `metadata.view` y `metadata.role` ayudan a
+  segmentar por flujo y perfil.
+- `action_start`: inicio de una accion de negocio envuelta por `runAction`.
+  `element`/`metadata.label` identifican la accion.
+- `action_success`: accion completada correctamente.
+- `action_error`: accion fallida; `metadata.message` conserva el error resumido.
+
 ## Incompatibilidades manuales
 
 ```http

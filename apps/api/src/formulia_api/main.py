@@ -65,6 +65,7 @@ from .models import (
     FormulaCalculationResult,
     FormulaItem,
     Parameter,
+    ProductEvent,
     RawMaterial,
     RawMaterialAlias,
     RawMaterialImport,
@@ -110,6 +111,9 @@ from .schemas import (
     FormulaUpdate,
     ParameterCreate,
     ParameterRead,
+    ProductEventCreate,
+    ProductEventRead,
+    ProductEventSummaryRead,
     RawMaterialCreate,
     RawMaterialCatalogRead,
     RawMaterialAliasCreate,
@@ -280,6 +284,46 @@ def register_routes(app: FastAPI) -> None:
             send_supabase_invite_email(email)
             email_delivery_status = "sent"
         return _tenant_invitation_read(invitation, email_delivery_status)
+
+    @app.post("/api/v1/product-events", response_model=ProductEventRead, status_code=201)
+    def create_product_event(
+        payload: ProductEventCreate,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> ProductEvent:
+        event = ProductEvent(
+            tenant_id=tenant.tenant_id,
+            user_id=tenant.user_id,
+            user_role=tenant.role,
+            event_type=payload.event_type,
+            surface=payload.surface,
+            element=payload.element,
+            metadata_json=_product_event_metadata(payload.metadata),
+        )
+        session.add(event)
+        session.commit()
+        session.refresh(event)
+        return event
+
+    @app.get("/api/v1/product-events/summary", response_model=ProductEventSummaryRead)
+    def product_event_summary(
+        limit: int = Query(500, ge=1, le=1000),
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        require_tenant_admin(tenant)
+        events = session.exec(
+            select(ProductEvent)
+            .where(ProductEvent.tenant_id == tenant.tenant_id)
+            .order_by(ProductEvent.created_at.desc())
+            .limit(limit)
+        ).all()
+        return {
+            "total": len(events),
+            "by_event_type": _product_event_counts(events, lambda event: event.event_type),
+            "by_surface": _product_event_counts(events, lambda event: event.surface),
+            "recent": events[:25],
+        }
 
     @app.get("/api/v1/parameters", response_model=list[ParameterRead])
     def list_parameters(
@@ -2142,6 +2186,41 @@ def _tenant_invitation_read(
         "accepted_at": invitation.accepted_at,
         "email_delivery_status": email_delivery_status,
     }
+
+
+def _product_event_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    cleaned: dict[str, Any] = {}
+    for raw_key, raw_value in list(metadata.items())[:24]:
+        key = str(raw_key).strip()[:80]
+        if not key:
+            continue
+        cleaned[key] = _json_safe_event_value(raw_value)
+    return cleaned
+
+
+def _json_safe_event_value(value: Any) -> Any:
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, str):
+        return value[:500]
+    try:
+        encoded = json.dumps(value, default=str)
+        return json.loads(encoded)
+    except (TypeError, ValueError):
+        return str(value)[:500]
+
+
+def _product_event_counts(
+    events: list[ProductEvent],
+    key: Any,
+) -> list[dict[str, Any]]:
+    counts: dict[str, int] = defaultdict(int)
+    for event in events:
+        counts[str(key(event))] += 1
+    return [
+        {"key": name, "count": count}
+        for name, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
 
 
 def _normalize(value: str) -> str:

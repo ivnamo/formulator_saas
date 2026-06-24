@@ -21,6 +21,8 @@ type BuildWorkspaceSettingsPanelPropsArgs = {
   canLoadJiraMetadata: SettingsPanelProps["canLoadJiraMetadata"];
   canAuthorizeJiraOAuth: SettingsPanelProps["canAuthorizeJiraOAuth"];
   showInvitationAdminPanel: SettingsPanelProps["showInvitationAdminPanel"];
+  canViewObservability: SettingsPanelProps["canViewObservability"];
+  productEventSummary: SettingsPanelProps["productEventSummary"];
   setWorkspaceName: SettingsPanelProps["onWorkspaceNameChange"];
   createWorkspace: SettingsPanelProps["onCreateWorkspace"];
   setInvitationForm: SettingsPanelProps["onInvitationFormChange"];
@@ -35,6 +37,7 @@ type BuildWorkspaceSettingsPanelPropsArgs = {
   authorizeJiraOAuth: SettingsPanelProps["onAuthorizeJiraOAuth"];
   setJiraMappingKey: SettingsPanelProps["onJiraMappingKeyChange"];
   mapJiraField: SettingsPanelProps["onMapJiraField"];
+  refreshProductEventSummary: SettingsPanelProps["onRefreshProductEvents"];
 };
 
 export function buildWorkspaceSettingsPanelProps(
@@ -59,6 +62,8 @@ export function buildWorkspaceSettingsPanelProps(
     canLoadJiraMetadata: args.canLoadJiraMetadata,
     canAuthorizeJiraOAuth: args.canAuthorizeJiraOAuth,
     showInvitationAdminPanel: args.showInvitationAdminPanel,
+    canViewObservability: args.canViewObservability,
+    productEventSummary: args.productEventSummary,
     onWorkspaceNameChange: args.setWorkspaceName,
     onCreateWorkspace: args.createWorkspace,
     onInvitationFormChange: args.setInvitationForm,
@@ -73,5 +78,6 @@ export function buildWorkspaceSettingsPanelProps(
     onAuthorizeJiraOAuth: args.authorizeJiraOAuth,
     onJiraMappingKeyChange: args.setJiraMappingKey,
     onMapJiraField: args.mapJiraField,
+    onRefreshProductEvents: args.refreshProductEventSummary,
   };
 }

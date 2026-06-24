@@ -731,6 +731,74 @@ label span {
   font-size: 12px;
 }
 
+.observabilityHeader {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.observabilityHeader > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+}
+
+.observabilityGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.observabilityCountList {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfb;
+  padding: 12px;
+}
+
+.observabilityCountList > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.observabilityCountList > div {
+  min-height: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+}
+
+.observabilityRecent {
+  display: grid;
+  border-top: 1px solid var(--border);
+}
+
+.observabilityRecentHead,
+.observabilityRecentRow {
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 180px 120px 150px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.observabilityRecentHead {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .materialPanel,
 .compatibilityPanel,
 .isoPanel {
@@ -5243,6 +5311,7 @@ label span {
   .aliasEditor,
   .materialDetailAliases,
   .materialDetailForm,
+  .observabilityGrid,
   .integrationActions,
   .agentCandidateRow,
   .comparisonHeader,
@@ -5285,7 +5354,9 @@ label span {
   .importSummary,
   .aiResultGrid,
   .aiRunHead,
-  .aiRunRow {
+  .aiRunRow,
+  .observabilityRecentHead,
+  .observabilityRecentRow {
     grid-template-columns: 1fr;
   }
 

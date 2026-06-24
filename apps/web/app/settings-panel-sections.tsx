@@ -1,7 +1,9 @@
-import { KeyRound, Plus, Save, Send } from "lucide-react";
+import { BarChart3, KeyRound, Plus, RefreshCw, Save, Send } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
+import type { ProductEventSummary } from "./product-observability-api";
 import type { TenantInvitationRead } from "./workspace-base-model";
 import type { InvitationForm, ParameterForm } from "./workspace-core-state";
+import { formatDateTime } from "./workspace-utils";
 
 type WorkspaceSettingsSectionProps = {
   active: boolean;
@@ -224,5 +226,97 @@ export function ParameterSettingsSection({
         </button>
       </div>
     </section>
+  );
+}
+
+type ProductObservabilitySectionProps = {
+  active: boolean;
+  summary: ProductEventSummary | null;
+  isBusy: boolean;
+  onRefresh: () => void | Promise<void>;
+};
+
+export function ProductObservabilitySection({
+  active,
+  summary,
+  isBusy,
+  onRefresh,
+}: ProductObservabilitySectionProps) {
+  return (
+    <section className="panel setupPanel" hidden={!active}>
+      <div className="panelHeader">
+        <h2>Observabilidad</h2>
+        <span>{summary ? `${summary.total} eventos` : "Sin datos"}</span>
+      </div>
+      <div className="observabilityHeader">
+        <div>
+          <BarChart3 size={18} />
+          <strong>Uso de producto</strong>
+        </div>
+        <button
+          className="secondaryButton"
+          type="button"
+          onClick={() => void onRefresh()}
+          disabled={isBusy}
+        >
+          <RefreshCw size={16} />
+          Actualizar
+        </button>
+      </div>
+      {summary ? (
+        <>
+          <div className="observabilityGrid">
+            <EventCountList title="Pantallas" rows={summary.by_surface} />
+            <EventCountList title="Eventos" rows={summary.by_event_type} />
+          </div>
+          <div className="observabilityRecent">
+            <div className="observabilityRecentHead">
+              <span>Fecha</span>
+              <span>Pantalla</span>
+              <span>Evento</span>
+              <span>Elemento</span>
+            </div>
+            {summary.recent.length === 0 ? (
+              <div className="empty">No hay eventos registrados.</div>
+            ) : (
+              summary.recent.map((event) => (
+                <div className="observabilityRecentRow" key={event.id}>
+                  <span>{formatDateTime(event.created_at)}</span>
+                  <strong>{event.surface}</strong>
+                  <code>{event.event_type}</code>
+                  <span>{event.element ?? "-"}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="empty">No hay resumen cargado.</div>
+      )}
+    </section>
+  );
+}
+
+function EventCountList({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<{ key: string; count: number }>;
+}) {
+  return (
+    <div className="observabilityCountList">
+      <strong>{title}</strong>
+      {rows.length === 0 ? (
+        <span className="empty">Sin eventos</span>
+      ) : (
+        rows.slice(0, 8).map((row) => (
+          <div key={row.key}>
+            <span>{row.key}</span>
+            <code>{row.count}</code>
+          </div>
+        ))
+      )}
+    </div>
   );
 }

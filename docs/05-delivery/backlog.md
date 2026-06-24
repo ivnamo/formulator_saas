@@ -267,7 +267,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
 
 ### BL-016 - Observabilidad de uso para mejorar UI/UX
 
-- Estado: Inbox
+- Estado: In progress
 - Prioridad: P1
 - Area: UX | Observabilidad | QA | Backend
 - Origen: Usuario
@@ -281,7 +281,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - El tracking no degrada la experiencia ni bloquea acciones si falla.
   - Se documenta el diccionario de eventos.
 - Validacion beta: Durante una sesion de beta, revisar que se ve que pantallas se usan mas y donde se producen clicks/errores frecuentes.
-- Notas: Evaluar si usar PostHog/Plausible/Supabase events propio. Importante separar observabilidad de producto de logs tecnicos/auditoria.
+- Notas: Evaluar si usar PostHog/Plausible/Supabase events propio. Importante separar observabilidad de producto de logs tecnicos/auditoria. Rama `codex/backlog-product-observability`: primer corte con tabla/API propia `product_events`, tracking central de navegacion y acciones (`action_start`, `action_success`, `action_error`) y resumen visible en Configuracion para owner/admin. Pendiente instrumentar clicks especificos de controles finos, abandonos de flujo y dashboards historicos por rango temporal.
 
 ### BL-017 - Sistema de roles y permisos por feature
 

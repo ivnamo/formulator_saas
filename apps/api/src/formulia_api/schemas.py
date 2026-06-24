@@ -71,6 +71,49 @@ class TenantInvitationRead(BaseModel):
     email_delivery_status: str | None = None
 
 
+class ProductEventCreate(BaseModel):
+    event_type: str = Field(min_length=1, max_length=80)
+    surface: str = Field(min_length=1, max_length=80)
+    element: str | None = Field(default=None, max_length=120)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("event_type", "surface", "element")
+    @classmethod
+    def text_is_clean(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Event text fields cannot be blank.")
+        return cleaned
+
+
+class ProductEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID
+    user_role: str
+    event_type: str
+    surface: str
+    element: str | None
+    metadata_json: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+
+class ProductEventCountRead(BaseModel):
+    key: str
+    count: int
+
+
+class ProductEventSummaryRead(BaseModel):
+    total: int
+    by_event_type: list[ProductEventCountRead]
+    by_surface: list[ProductEventCountRead]
+    recent: list[ProductEventRead]
+
+
 class ParameterCreate(BaseModel):
     code: str
     name: str

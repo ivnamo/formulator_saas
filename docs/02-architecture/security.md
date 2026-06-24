@@ -57,6 +57,7 @@ Auditar:
 - Owner controla billing y usuarios.
 - Owner es el unico rol que puede archivar o restaurar formulas y materias primas operativas.
 - Formulator puede editar datos tecnicos, pero no cambiar `status`, `is_active` o `is_obsolete`.
+- Owner/admin pueden ver observabilidad de producto agregada del tenant; formulator/viewer no.
 
 ## Rate limiting
 

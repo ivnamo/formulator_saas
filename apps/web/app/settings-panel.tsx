@@ -11,10 +11,12 @@ import type { WorkspaceState } from "./workspace-state-model";
 import { JiraIntegrationPanel } from "./jira-integration-panel";
 import {
   AccountSettingsSection,
+  ProductObservabilitySection,
   ParameterSettingsSection,
   TenantInvitationsSection,
   WorkspaceSettingsSection,
 } from "./settings-panel-sections";
+import type { ProductEventSummary } from "./product-observability-api";
 
 type SettingsPanelProps = {
   active: boolean;
@@ -36,6 +38,8 @@ type SettingsPanelProps = {
   canLoadJiraMetadata: boolean;
   canAuthorizeJiraOAuth: boolean;
   showInvitationAdminPanel: boolean;
+  canViewObservability: boolean;
+  productEventSummary: ProductEventSummary | null;
   onWorkspaceNameChange: (value: string) => void;
   onCreateWorkspace: () => void | Promise<void>;
   onInvitationFormChange: Dispatch<SetStateAction<InvitationForm>>;
@@ -50,6 +54,7 @@ type SettingsPanelProps = {
   onAuthorizeJiraOAuth: () => void | Promise<void>;
   onJiraMappingKeyChange: (value: string) => void;
   onMapJiraField: (field: JiraFieldMetadata) => void;
+  onRefreshProductEvents: () => void | Promise<void>;
 };
 
 export function SettingsPanel({
@@ -72,6 +77,8 @@ export function SettingsPanel({
   canLoadJiraMetadata,
   canAuthorizeJiraOAuth,
   showInvitationAdminPanel,
+  canViewObservability,
+  productEventSummary,
   onWorkspaceNameChange,
   onCreateWorkspace,
   onInvitationFormChange,
@@ -86,6 +93,7 @@ export function SettingsPanel({
   onAuthorizeJiraOAuth,
   onJiraMappingKeyChange,
   onMapJiraField,
+  onRefreshProductEvents,
 }: SettingsPanelProps) {
   return (
     <>
@@ -140,6 +148,15 @@ export function SettingsPanel({
         onJiraMappingKeyChange={onJiraMappingKeyChange}
         onMapJiraField={onMapJiraField}
       />
+
+      {canViewObservability ? (
+        <ProductObservabilitySection
+          active={active}
+          summary={productEventSummary}
+          isBusy={isBusy}
+          onRefresh={onRefreshProductEvents}
+        />
+      ) : null}
     </>
   );
 }

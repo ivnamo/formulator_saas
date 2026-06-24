@@ -297,6 +297,20 @@ class IntegrationEvent(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class ProductEvent(SQLModel, table=True):
+    __tablename__ = "product_events"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    tenant_id: uuid.UUID = Field(index=True, foreign_key="tenants.id")
+    user_id: uuid.UUID = Field(index=True, foreign_key="users.id")
+    user_role: str = Field(index=True)
+    event_type: str = Field(index=True)
+    surface: str = Field(index=True)
+    element: str | None = Field(default=None, index=True)
+    metadata_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class IsoTenantSettings(SQLModel, table=True):
     __tablename__ = "iso_tenant_settings"
     __table_args__ = (

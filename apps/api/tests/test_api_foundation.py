@@ -62,6 +62,64 @@ def test_rejects_tenant_access_without_membership() -> None:
     assert response.status_code == 403
 
 
+def test_product_events_can_be_recorded_and_summarized_by_admin() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+
+    navigation = client.post(
+        "/api/v1/product-events",
+        headers=headers,
+        json={
+            "event_type": "navigation_view",
+            "surface": "formula",
+            "element": "sidebar",
+            "metadata": {"view": "formula"},
+        },
+    )
+    action = client.post(
+        "/api/v1/product-events",
+        headers=headers,
+        json={
+            "event_type": "action_success",
+            "surface": "library",
+            "element": "Refresh library",
+            "metadata": {"label": "Refresh library"},
+        },
+    )
+    summary = client.get("/api/v1/product-events/summary", headers=headers)
+
+    assert navigation.status_code == 201
+    assert navigation.json()["metadata_json"] == {"view": "formula"}
+    assert action.status_code == 201
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["total"] == 2
+    assert payload["by_event_type"][0] == {"key": "action_success", "count": 1}
+    assert {item["key"] for item in payload["by_surface"]} == {"formula", "library"}
+    assert len(payload["recent"]) == 2
+
+
+def test_product_event_summary_requires_admin_role() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    add_tenant_member(client, tenant_id, USER_B, "formulator")
+    formulator_headers = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_id}
+
+    recorded = client.post(
+        "/api/v1/product-events",
+        headers=formulator_headers,
+        json={"event_type": "navigation_view", "surface": "formula"},
+    )
+    forbidden_summary = client.get(
+        "/api/v1/product-events/summary",
+        headers=formulator_headers,
+    )
+
+    assert recorded.status_code == 201
+    assert forbidden_summary.status_code == 403
+
+
 def test_formula_item_payload_rejects_negative_percentage() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")
