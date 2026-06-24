@@ -5,7 +5,7 @@ import type {
   JiraFieldMetadata,
   JiraMetadataState,
 } from "./jira-connection-model";
-import type { TenantInvitationRead } from "./workspace-base-model";
+import type { TenantInvitationRead, TenantMemberRead } from "./workspace-base-model";
 import type { InvitationForm, ParameterForm } from "./workspace-core-state";
 import type { WorkspaceState } from "./workspace-state-model";
 import { JiraIntegrationPanel } from "./jira-integration-panel";
@@ -24,6 +24,7 @@ type SettingsPanelProps = {
   workspaceName: string;
   sessionEmail: string | null | undefined;
   invitationForm: InvitationForm;
+  tenantMembers: TenantMemberRead[];
   tenantInvitations: TenantInvitationRead[];
   parameterForm: ParameterForm;
   activeJiraConnection: JiraConnection | null;
@@ -44,6 +45,10 @@ type SettingsPanelProps = {
   onCreateWorkspace: () => void | Promise<void>;
   onInvitationFormChange: Dispatch<SetStateAction<InvitationForm>>;
   onCreateTenantInvitation: () => void | Promise<void>;
+  onUpdateTenantMemberRole: (
+    member: TenantMemberRead,
+    role: string,
+  ) => void | Promise<void>;
   onParameterFormChange: Dispatch<SetStateAction<ParameterForm>>;
   onCreateParameter: () => void | Promise<void>;
   onJiraConnectionFormChange: Dispatch<SetStateAction<JiraConnectionForm>>;
@@ -63,6 +68,7 @@ export function SettingsPanel({
   workspaceName,
   sessionEmail,
   invitationForm,
+  tenantMembers,
   tenantInvitations,
   parameterForm,
   activeJiraConnection,
@@ -83,6 +89,7 @@ export function SettingsPanel({
   onCreateWorkspace,
   onInvitationFormChange,
   onCreateTenantInvitation,
+  onUpdateTenantMemberRole,
   onParameterFormChange,
   onCreateParameter,
   onJiraConnectionFormChange,
@@ -112,10 +119,12 @@ export function SettingsPanel({
         <TenantInvitationsSection
           active={active}
           invitationForm={invitationForm}
+          tenantMembers={tenantMembers}
           tenantInvitations={tenantInvitations}
           canManageTenantUsers={canManageTenantUsers}
           onInvitationFormChange={onInvitationFormChange}
           onCreateTenantInvitation={onCreateTenantInvitation}
+          onUpdateTenantMemberRole={onUpdateTenantMemberRole}
         />
       ) : null}
 

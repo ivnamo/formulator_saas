@@ -305,7 +305,8 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - `formulator`: materias primas, formulas, import/export, Jira, comparador, IA y compatibilidad.
   - `viewer`: comparador/lectura operativa, sin acciones de escritura.
   - Backend: los mutadores principales de parametros, materias primas, formulas, importaciones, IA y exports bloquean por rol; Jira/ISO mantienen helpers propios.
-  - Pendiente: UI de administracion fina de roles/permisos y permisos para borrar/archivar cuando BL-001 se cierre.
+  - Rama `codex/backlog-tenant-member-role-admin`: backend expone `GET /tenant-members` y `PATCH /tenant-members/{member_id}` para owner/admin, con proteccion de ultimo owner y bloqueo para que admin no conceda owner; Configuracion muestra miembros activos y permite cambiar roles con feedback.
+  - Pendiente: permisos para hard delete si BL-001 define borrado permanente y posible UI futura de custom roles.
 
 ### BL-018 - Foco y feedback al seleccionar/anadir materia prima en Formula Builder
 

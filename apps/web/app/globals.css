@@ -694,6 +694,67 @@ label span {
   grid-template-columns: minmax(180px, 1fr) minmax(110px, 0.45fr) auto;
 }
 
+.tenantMemberList {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tenantMemberListHead,
+.tenantMemberRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(130px, 0.45fr) 90px;
+  gap: 10px;
+  align-items: center;
+}
+
+.tenantMemberListHead {
+  min-height: 28px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tenantMemberListHead span:first-child {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tenantMemberRow {
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fbfcfb;
+}
+
+.tenantMemberRow > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tenantMemberRow strong {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.tenantMemberRow small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.tenantMemberRow code {
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .invitationList {
   display: grid;
   gap: 8px;
@@ -5374,6 +5435,8 @@ label span {
   .isoProjectForm,
   .jiraForm,
   .jiraConnectionSummary,
+  .tenantMemberListHead,
+  .tenantMemberRow,
   .jiraMetadataColumns,
   .formulaMetaGrid,
   .priceForm,

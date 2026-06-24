@@ -1,7 +1,7 @@
-import { BarChart3, KeyRound, Plus, RefreshCw, Save, Send } from "lucide-react";
+import { BarChart3, KeyRound, Plus, RefreshCw, Save, Send, UserCog } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ProductEventSummary } from "./product-observability-api";
-import type { TenantInvitationRead } from "./workspace-base-model";
+import type { TenantInvitationRead, TenantMemberRead } from "./workspace-base-model";
 import type { InvitationForm, ParameterForm } from "./workspace-core-state";
 import { formatDateTime } from "./workspace-utils";
 
@@ -79,25 +79,66 @@ export function AccountSettingsSection({
 type TenantInvitationsSectionProps = {
   active: boolean;
   invitationForm: InvitationForm;
+  tenantMembers: TenantMemberRead[];
   tenantInvitations: TenantInvitationRead[];
   canManageTenantUsers: boolean;
   onInvitationFormChange: Dispatch<SetStateAction<InvitationForm>>;
   onCreateTenantInvitation: () => void | Promise<void>;
+  onUpdateTenantMemberRole: (
+    member: TenantMemberRead,
+    role: string,
+  ) => void | Promise<void>;
 };
 
 export function TenantInvitationsSection({
   active,
   invitationForm,
+  tenantMembers,
   tenantInvitations,
   canManageTenantUsers,
   onInvitationFormChange,
   onCreateTenantInvitation,
+  onUpdateTenantMemberRole,
 }: TenantInvitationsSectionProps) {
   return (
     <section className="panel setupPanel" hidden={!active}>
       <div className="panelHeader">
-        <h2>Invitaciones</h2>
-        <span>Admin only</span>
+        <h2>Usuarios y roles</h2>
+        <span>{canManageTenantUsers ? "Admin" : "Solo lectura"}</span>
+      </div>
+      <div className="tenantMemberList">
+        <div className="tenantMemberListHead">
+          <span>
+            <UserCog size={15} />
+            Miembro
+          </span>
+          <span>Rol</span>
+          <span>Estado</span>
+        </div>
+        {tenantMembers.length === 0 ? (
+          <div className="empty">No hay miembros activos cargados.</div>
+        ) : (
+          tenantMembers.map((member) => (
+            <div className="tenantMemberRow" key={member.id}>
+              <span>
+                <strong>{member.name || member.email}</strong>
+                <small>{member.email}</small>
+              </span>
+              <select
+                aria-label={`Rol de ${member.email}`}
+                value={member.role}
+                onChange={(event) => void onUpdateTenantMemberRole(member, event.target.value)}
+                disabled={!canManageTenantUsers}
+              >
+                <option value="owner">Owner</option>
+                <option value="admin">Admin</option>
+                <option value="formulator">Formulator</option>
+                <option value="viewer">Viewer</option>
+              </select>
+              <code>{member.status}</code>
+            </div>
+          ))
+        )}
       </div>
       <div className="formGrid inviteFormGrid">
         <label>

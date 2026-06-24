@@ -10,6 +10,7 @@ from formulia_api.models import TenantMember, User
 
 USER_A = "10000000-0000-0000-0000-000000000001"
 USER_B = "20000000-0000-0000-0000-000000000001"
+USER_C = "30000000-0000-0000-0000-000000000001"
 
 
 def make_client() -> TestClient:
@@ -118,6 +119,59 @@ def test_product_event_summary_requires_admin_role() -> None:
 
     assert recorded.status_code == 201
     assert forbidden_summary.status_code == 403
+
+
+def test_tenant_admin_can_list_and_update_member_roles() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    add_tenant_member(client, tenant_id, USER_B, "formulator")
+    owner_headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    formulator_headers = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_id}
+
+    forbidden = client.get("/api/v1/tenant-members", headers=formulator_headers)
+    listed = client.get("/api/v1/tenant-members", headers=owner_headers)
+    member = next(row for row in listed.json() if row["user_id"] == USER_B)
+    updated = client.patch(
+        f"/api/v1/tenant-members/{member['id']}",
+        headers=owner_headers,
+        json={"role": "viewer"},
+    )
+    relisted = client.get("/api/v1/tenant-members", headers=owner_headers)
+
+    assert forbidden.status_code == 403
+    assert listed.status_code == 200
+    assert {row["role"] for row in listed.json()} == {"owner", "formulator"}
+    assert updated.status_code == 200
+    assert updated.json()["role"] == "viewer"
+    assert next(row for row in relisted.json() if row["user_id"] == USER_B)["role"] == "viewer"
+
+
+def test_tenant_member_role_updates_protect_owner_role() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    add_tenant_member(client, tenant_id, USER_B, "admin")
+    add_tenant_member(client, tenant_id, USER_C, "viewer")
+    owner_headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    admin_headers = {"X-User-Id": USER_B, "X-Tenant-Id": tenant_id}
+    members = client.get("/api/v1/tenant-members", headers=owner_headers).json()
+    owner_member = next(row for row in members if row["user_id"] == USER_A)
+    viewer_member = next(row for row in members if row["user_id"] == USER_C)
+
+    last_owner_demote = client.patch(
+        f"/api/v1/tenant-members/{owner_member['id']}",
+        headers=owner_headers,
+        json={"role": "admin"},
+    )
+    admin_grant_owner = client.patch(
+        f"/api/v1/tenant-members/{viewer_member['id']}",
+        headers=admin_headers,
+        json={"role": "owner"},
+    )
+
+    assert last_owner_demote.status_code == 400
+    assert last_owner_demote.json()["detail"] == "At least one owner is required."
+    assert admin_grant_owner.status_code == 403
+    assert admin_grant_owner.json()["detail"] == "Only owners can assign owner role."
 
 
 def test_formula_item_payload_rejects_negative_percentage() -> None:

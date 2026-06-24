@@ -7,6 +7,7 @@ type BuildWorkspaceSettingsPanelPropsArgs = {
   workspaceName: SettingsPanelProps["workspaceName"];
   sessionEmail: SettingsPanelProps["sessionEmail"];
   invitationForm: SettingsPanelProps["invitationForm"];
+  tenantMembers: SettingsPanelProps["tenantMembers"];
   tenantInvitations: SettingsPanelProps["tenantInvitations"];
   parameterForm: SettingsPanelProps["parameterForm"];
   activeJiraConnection: SettingsPanelProps["activeJiraConnection"];
@@ -27,6 +28,7 @@ type BuildWorkspaceSettingsPanelPropsArgs = {
   createWorkspace: SettingsPanelProps["onCreateWorkspace"];
   setInvitationForm: SettingsPanelProps["onInvitationFormChange"];
   createTenantInvitation: SettingsPanelProps["onCreateTenantInvitation"];
+  updateTenantMemberRole: SettingsPanelProps["onUpdateTenantMemberRole"];
   setParameterForm: SettingsPanelProps["onParameterFormChange"];
   createParameter: SettingsPanelProps["onCreateParameter"];
   setJiraConnectionForm: SettingsPanelProps["onJiraConnectionFormChange"];
@@ -48,6 +50,7 @@ export function buildWorkspaceSettingsPanelProps(
     workspaceName: args.workspaceName,
     sessionEmail: args.sessionEmail,
     invitationForm: args.invitationForm,
+    tenantMembers: args.tenantMembers,
     tenantInvitations: args.tenantInvitations,
     parameterForm: args.parameterForm,
     activeJiraConnection: args.activeJiraConnection,
@@ -68,6 +71,7 @@ export function buildWorkspaceSettingsPanelProps(
     onCreateWorkspace: args.createWorkspace,
     onInvitationFormChange: args.setInvitationForm,
     onCreateTenantInvitation: args.createTenantInvitation,
+    onUpdateTenantMemberRole: args.updateTenantMemberRole,
     onParameterFormChange: args.setParameterForm,
     onCreateParameter: args.createParameter,
     onJiraConnectionFormChange: args.setJiraConnectionForm,

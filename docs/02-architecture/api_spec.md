@@ -45,10 +45,13 @@ La API debe validar tenant membership antes de ejecutar cualquier endpoint funci
 GET /me
 GET /tenants
 POST /tenants
-GET /tenants/{tenant_id}
-POST /tenants/{tenant_id}/members
-PATCH /tenants/{tenant_id}/members/{member_id}
+GET /tenant-invitations
+POST /tenant-invitations
+GET /tenant-members
+PATCH /tenant-members/{member_id}
 ```
+
+`GET /tenant-members` y `PATCH /tenant-members/{member_id}` son rutas owner/admin. Un admin no puede conceder rol `owner`; el backend bloquea dejar un tenant sin al menos un owner activo.
 
 ## Parámetros
 

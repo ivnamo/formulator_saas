@@ -5,6 +5,7 @@ import type { CalculationResult } from "./formula-model";
 import type {
   Status,
   TenantInvitationRead,
+  TenantMemberRead,
 } from "./workspace-base-model";
 import { emptyWorkspace, type WorkspaceState } from "./workspace-state-model";
 import type { ComparisonConstraintField } from "./saved-formula-comparison-state";
@@ -18,8 +19,10 @@ import {
   createTenantWorkspace,
   createWorkspaceParameter,
   listTenantInvitations,
+  listTenantMembers,
   listTenantWorkspaces,
   listWorkspaceParameters,
+  updateTenantMemberRole as updateTenantMemberRoleRequest,
 } from "./workspace-settings-api";
 import { listRawMaterials } from "./raw-material-api";
 import { toWorkspaceRawMaterial } from "./raw-material-model";
@@ -34,6 +37,7 @@ type WorkspaceSettingsActionsOptions = {
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
   setWorkspaceName: Dispatch<SetStateAction<string>>;
   setResult: Dispatch<SetStateAction<CalculationResult | null>>;
+  setTenantMembers: Dispatch<SetStateAction<TenantMemberRead[]>>;
   setTenantInvitations: Dispatch<SetStateAction<TenantInvitationRead[]>>;
   setStatus: Dispatch<SetStateAction<Status>>;
   setInvitationForm: Dispatch<SetStateAction<InvitationForm>>;
@@ -63,6 +67,7 @@ export function useWorkspaceSettingsActions({
   setWorkspace,
   setWorkspaceName,
   setResult,
+  setTenantMembers,
   setTenantInvitations,
   setStatus,
   setInvitationForm,
@@ -100,6 +105,7 @@ export function useWorkspaceSettingsActions({
       resetCompatibilityState();
       resetJiraConnectionState();
       resetIsoDesignState();
+      setTenantMembers([]);
       setTenantInvitations([]);
       resetAiWorkflowState();
       resetSavedFormulaComparisonState();
@@ -120,6 +126,7 @@ export function useWorkspaceSettingsActions({
     runAction,
     setMessage,
     setTenantInvitations,
+    setTenantMembers,
     setWorkspace,
     workspaceName,
   ]);
@@ -154,6 +161,7 @@ export function useWorkspaceSettingsActions({
         resetCompatibilityState();
         resetJiraConnectionState();
         resetIsoDesignState();
+        setTenantMembers([]);
         setTenantInvitations([]);
         resetAiWorkflowState();
         resetSavedFormulaComparisonState();
@@ -162,11 +170,14 @@ export function useWorkspaceSettingsActions({
         setMessage(`${tenant.name} loaded`);
         void (async () => {
           try {
-            const [parameters, rawMaterials, invitations] = await Promise.all([
+            const [parameters, rawMaterials, invitations, members] = await Promise.all([
               listWorkspaceParameters(tenantHeaders),
               listRawMaterials(tenantHeaders),
               isTenantAdminRole(tenant.role)
                 ? listTenantInvitations(tenantHeaders)
+                : Promise.resolve([]),
+              isTenantAdminRole(tenant.role)
+                ? listTenantMembers(tenantHeaders)
                 : Promise.resolve([]),
             ]);
             const activeParameter = parameters[0] ?? null;
@@ -183,6 +194,7 @@ export function useWorkspaceSettingsActions({
                 : current,
             );
             setTenantInvitations(invitations);
+            setTenantMembers(members);
           } catch (error) {
             setError(error instanceof Error ? error.message : "Could not load tenant metadata");
           }
@@ -205,6 +217,7 @@ export function useWorkspaceSettingsActions({
       setMessage,
       setStatus,
       setTenantInvitations,
+      setTenantMembers,
       setWorkspace,
       setWorkspaceName,
     ],
@@ -245,6 +258,32 @@ export function useWorkspaceSettingsActions({
     setTenantInvitations,
     workspace.tenant,
   ]);
+
+  const updateTenantMemberRole = useCallback(
+    async (member: TenantMemberRead, role: string) => {
+      if (!workspace.tenant) {
+        setError("Create a workspace first");
+        return;
+      }
+      if (!isTenantAdminRole(workspace.tenant.role)) {
+        setError("Only tenant admins can manage member roles");
+        return;
+      }
+      const nextRole = role.trim();
+      if (!nextRole || nextRole === member.role) {
+        return;
+      }
+
+      await runAction("Updating member role", async () => {
+        const updated = await updateTenantMemberRoleRequest(headers, member.id, nextRole);
+        setTenantMembers((current) =>
+          current.map((item) => (item.id === updated.id ? updated : item)),
+        );
+        setMessage(`Rol actualizado para ${updated.email}`);
+      });
+    },
+    [headers, runAction, setError, setMessage, setTenantMembers, workspace.tenant],
+  );
 
   const createParameter = useCallback(async () => {
     if (!workspace.tenant) {
@@ -288,6 +327,7 @@ export function useWorkspaceSettingsActions({
     loadAuthenticatedWorkspace,
     signOut,
     createTenantInvitation,
+    updateTenantMemberRole,
     createParameter,
   };
 }

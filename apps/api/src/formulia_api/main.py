@@ -133,6 +133,8 @@ from .schemas import (
     TenantCreate,
     TenantInvitationCreate,
     TenantInvitationRead,
+    TenantMemberRead,
+    TenantMemberUpdate,
     TenantRead,
 )
 from .tenant import (
@@ -284,6 +286,57 @@ def register_routes(app: FastAPI) -> None:
             send_supabase_invite_email(email)
             email_delivery_status = "sent"
         return _tenant_invitation_read(invitation, email_delivery_status)
+
+    @app.get("/api/v1/tenant-members", response_model=list[TenantMemberRead])
+    def list_tenant_members(
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> list[dict[str, Any]]:
+        require_tenant_admin(tenant)
+        rows = session.exec(
+            select(TenantMember, User)
+            .join(User, TenantMember.user_id == User.id)
+            .where(
+                TenantMember.tenant_id == tenant.tenant_id,
+                TenantMember.status == "active",
+            )
+            .order_by(TenantMember.role, User.email)
+        ).all()
+        return [_tenant_member_read(member, user) for member, user in rows]
+
+    @app.patch("/api/v1/tenant-members/{member_id}", response_model=TenantMemberRead)
+    def update_tenant_member(
+        member_id: uuid.UUID,
+        payload: TenantMemberUpdate,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        require_tenant_admin(tenant)
+        member = session.exec(
+            select(TenantMember).where(
+                TenantMember.id == member_id,
+                TenantMember.tenant_id == tenant.tenant_id,
+                TenantMember.status == "active",
+            )
+        ).first()
+        if member is None:
+            raise HTTPException(status_code=404, detail="Tenant member not found.")
+        role = normalize_tenant_role(payload.role)
+        if role == "owner" and tenant.role != "owner":
+            raise HTTPException(status_code=403, detail="Only owners can assign owner role.")
+        if member.role == "owner" and role != "owner" and _tenant_owner_count(
+            session,
+            tenant.tenant_id,
+        ) <= 1:
+            raise HTTPException(status_code=400, detail="At least one owner is required.")
+        member.role = role
+        session.add(member)
+        session.commit()
+        session.refresh(member)
+        user = session.get(User, member.user_id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="Tenant member user not found.")
+        return _tenant_member_read(member, user)
 
     @app.post("/api/v1/product-events", response_model=ProductEventRead, status_code=201)
     def create_product_event(
@@ -2201,6 +2254,31 @@ def _tenant_read(tenant: Tenant, role: str | None) -> dict[str, Any]:
         "status": tenant.status,
         "role": role,
     }
+
+
+def _tenant_member_read(member: TenantMember, user: User) -> dict[str, Any]:
+    return {
+        "id": member.id,
+        "tenant_id": member.tenant_id,
+        "user_id": member.user_id,
+        "email": user.email,
+        "name": user.name,
+        "role": member.role,
+        "status": member.status,
+        "created_at": member.created_at,
+    }
+
+
+def _tenant_owner_count(session: Session, tenant_id: uuid.UUID) -> int:
+    return len(
+        session.exec(
+            select(TenantMember).where(
+                TenantMember.tenant_id == tenant_id,
+                TenantMember.role == "owner",
+                TenantMember.status == "active",
+            )
+        ).all()
+    )
 
 
 def _tenant_invitation_read(
