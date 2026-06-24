@@ -1,6 +1,7 @@
 import type {
   ParameterRead,
   TenantInvitationRead,
+  TenantMemberRead,
   TenantRead,
 } from "./workspace-base-model";
 import {
@@ -43,6 +44,25 @@ export function listTenantInvitations(
   return request<TenantInvitationRead[]>("/api/v1/tenant-invitations", {
     method: "GET",
     headers,
+  });
+}
+
+export function listTenantMembers(headers: HeadersInit): Promise<TenantMemberRead[]> {
+  return request<TenantMemberRead[]>("/api/v1/tenant-members", {
+    method: "GET",
+    headers,
+  });
+}
+
+export function updateTenantMemberRole(
+  headers: HeadersInit,
+  memberId: string,
+  role: string,
+): Promise<TenantMemberRead> {
+  return request<TenantMemberRead>(`/api/v1/tenant-members/${memberId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ role }),
   });
 }
 

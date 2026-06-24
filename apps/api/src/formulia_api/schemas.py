@@ -71,6 +71,21 @@ class TenantInvitationRead(BaseModel):
     email_delivery_status: str | None = None
 
 
+class TenantMemberRead(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID
+    email: str
+    name: str | None
+    role: str
+    status: str
+    created_at: datetime
+
+
+class TenantMemberUpdate(BaseModel):
+    role: Literal["owner", "admin", "formulator", "formulador", "viewer"]
+
+
 class ProductEventCreate(BaseModel):
     event_type: str = Field(min_length=1, max_length=80)
     surface: str = Field(min_length=1, max_length=80)

@@ -36,6 +36,17 @@ export type TenantInvitationRead = {
   email_delivery_status?: string | null;
 };
 
+export type TenantMemberRead = {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  status: string;
+  created_at: string;
+};
+
 export type ParameterRead = Parameter & {
   tenant_id: string;
   is_active: boolean;

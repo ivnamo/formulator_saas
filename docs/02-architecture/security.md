@@ -58,6 +58,18 @@ Auditar:
 - Owner es el unico rol que puede archivar o restaurar formulas y materias primas operativas.
 - Formulator puede editar datos tecnicos, pero no cambiar `status`, `is_active` o `is_obsolete`.
 - Owner/admin pueden ver observabilidad de producto agregada del tenant; formulator/viewer no.
+- Owner/admin pueden listar miembros activos y cambiar roles desde Configuracion.
+- Solo owner puede conceder rol `owner`.
+- El backend impide degradar al ultimo owner activo de un tenant.
+
+## Matriz inicial de roles
+
+| Rol | Capacidades principales |
+| --- | --- |
+| owner | Usuarios/roles, integraciones, ISO, observabilidad, archivar/restaurar, materias primas, formulas, import/export, Jira, comparador, IA y compatibilidad. |
+| admin | Usuarios excepto conceder owner, integraciones, ISO, observabilidad, materias primas, formulas, import/export, Jira, comparador, IA y compatibilidad. |
+| formulator | Materias primas y formulas operativas, import/export, Jira, comparador, IA y compatibilidad. Sin gestion de usuarios ni archivo/restauracion. |
+| viewer | Lectura operativa y comparador. Sin mutaciones funcionales. |
 
 ## Rate limiting
 
