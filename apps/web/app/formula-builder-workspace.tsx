@@ -19,6 +19,7 @@ import {
   type FormulaReviewStepProps,
 } from "./formula-builder-ui/formula-review-step";
 import { FormulaWorkModeBanner } from "./formula-builder-ui/formula-work-mode-banner";
+import type { FormulaBuilderMode } from "./formula-builder-model";
 import {
   formatResultPrice,
   formatSignedDelta,
@@ -51,11 +52,19 @@ export function FormulaBuilderWorkspace({
   calculation,
   review,
 }: FormulaBuilderWorkspaceProps) {
+  const workKindLabel = formulaBuilderWorkKindLabel(
+    basics.values.formulaBuilderMode,
+    Boolean(basics.values.formulaId),
+  );
+  const balanceLabel = isFormulaBalanced ? "Balanced" : `${totalPercentage.toFixed(1)}%`;
+
   return (
     <section id="formula" className="panel formulaPanel formulaBuilder" hidden={!active}>
       <div className="panelHeader">
         <h2>Formula Builder</h2>
-        <span>{isFormulaBalanced ? "Balanced" : `${totalPercentage.toFixed(1)}%`}</span>
+        <span>
+          {workKindLabel} - {balanceLabel}
+        </span>
       </div>
       <FormulaWorkModeBanner
         values={basics.values}
@@ -74,4 +83,14 @@ export function FormulaBuilderWorkspace({
       <FormulaReviewStep {...review} />
     </section>
   );
+}
+
+function formulaBuilderWorkKindLabel(mode: FormulaBuilderMode, hasLoadedFormula: boolean) {
+  if (hasLoadedFormula && mode === "editing") {
+    return "Modificando cargada";
+  }
+  if (hasLoadedFormula && mode === "version") {
+    return "Nueva version";
+  }
+  return "Nueva";
 }

@@ -3781,7 +3781,7 @@ label span {
 
 .formulaWorkModeBanner {
   display: grid;
-  grid-template-columns: minmax(180px, 0.7fr) minmax(220px, 1fr) minmax(320px, 1.15fr);
+  grid-template-columns: minmax(260px, 0.95fr) minmax(220px, 0.85fr) minmax(360px, 1.35fr);
   gap: 12px;
   align-items: stretch;
   margin-bottom: 12px;
@@ -3805,6 +3805,14 @@ label span {
   background: #fff1cf;
 }
 
+.formulaWorkModeHeader {
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .formulaWorkModeStatus,
 .formulaWorkModeSource {
   min-width: 0;
@@ -3814,7 +3822,8 @@ label span {
 }
 
 .formulaWorkModeStatus > span,
-.formulaWorkModeSource > span {
+.formulaWorkModeSource > span,
+.formulaWorkModeDecision > span {
   color: #45534d;
   font-size: 11px;
   font-weight: 900;
@@ -3835,6 +3844,26 @@ label span {
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.formulaWorkModeBadge {
+  flex: 0 0 auto;
+  border: 1px solid rgba(13, 76, 61, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #173d34;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.formulaWorkModeDecision {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  align-content: center;
 }
 
 .formulaModeChoices {
@@ -3879,6 +3908,16 @@ label span {
 .formulaModeChoices button[aria-pressed="true"] span,
 .formulaModeChoices button[aria-pressed="true"] small {
   color: white;
+}
+
+.formulaWorkModeBanner[data-mode="editing"] .formulaModeChoices button[aria-pressed="true"] {
+  border-color: #2563eb;
+  background: #2563eb;
+}
+
+.formulaWorkModeBanner[data-mode="version"] .formulaModeChoices button[aria-pressed="true"] {
+  border-color: #b7791f;
+  background: #b7791f;
 }
 
 .formulaModeChoices button:disabled {
