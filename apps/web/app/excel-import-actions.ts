@@ -272,6 +272,7 @@ export function useExcelImportActions({
       ...current,
       formulaId: null,
       formulaBaseName: null,
+      formulaBaseVersion: null,
       formulaBuilderMode: "new",
       formulaName: importFormulaName || importPreview.formula_name || "",
       formulaJiraDescription: importFormulaDescription,

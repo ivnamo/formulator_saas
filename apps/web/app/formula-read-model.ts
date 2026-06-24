@@ -9,6 +9,7 @@ export type EditableFormulaMetadata = Pick<
   WorkspaceState,
   | "formulaId"
   | "formulaBaseName"
+  | "formulaBaseVersion"
   | "formulaBuilderMode"
   | "formulaName"
   | "formulaJiraProjectId"
@@ -30,6 +31,7 @@ export function toEditableFormulaMetadata(
   return {
     formulaId: formula.id,
     formulaBaseName: formula.name,
+    formulaBaseVersion: formula.version,
     formulaBuilderMode: "editing",
     formulaName: formula.name,
     formulaJiraProjectId: formula.jira_project_id ?? "",

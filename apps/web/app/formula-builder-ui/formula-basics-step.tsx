@@ -1,4 +1,10 @@
 import type { BuilderSectionKey } from "../formula-builder-model";
+import {
+  formatLoadedFormulaSource,
+  FORMULA_WORK_MODE_OPTIONS,
+  formulaBuilderModeForDisplay,
+  formulaWorkKindIntent,
+} from "../formula-work-mode-model";
 import type { IsoDesignProject } from "../iso-design-model";
 import type { WorkspaceState } from "../workspace-state-model";
 import { BuilderStep } from "./builder-step";
@@ -8,6 +14,7 @@ export type FormulaBasicsValue = Pick<
   WorkspaceState,
   | "formulaId"
   | "formulaBaseName"
+  | "formulaBaseVersion"
   | "formulaBuilderMode"
   | "formulaName"
   | "formulaJiraDescription"
@@ -56,6 +63,16 @@ export function FormulaBasicsStep({
     jiraProjectIdOptions,
     values.formulaJiraProjectId,
   );
+  const hasLoadedFormula = Boolean(values.formulaId);
+  const selectedMode = formulaBuilderModeForDisplay(
+    values.formulaBuilderMode,
+    values.formulaId,
+  );
+  const workIntent = formulaWorkKindIntent(selectedMode, hasLoadedFormula);
+  const sourceLabel = formatLoadedFormulaSource(
+    values.formulaBaseName,
+    values.formulaBaseVersion,
+  );
   const isQualityJiraIssueType =
     values.formulaJiraIssueType.trim().toLowerCase() === "calidad";
   return (
@@ -66,6 +83,44 @@ export function FormulaBasicsStep({
       isOpen={isOpen}
       onToggle={onToggle}
     >
+      <div className="formulaWorkTypeField" data-mode={selectedMode}>
+        <div className="formulaWorkTypeHeader">
+          <div>
+            <span>
+              Tipo de trabajo <span className="requiredMark">*</span>
+            </span>
+            <strong>{workIntent.title}</strong>
+            <small>
+              {hasLoadedFormula
+                ? `Origen cargado: ${sourceLabel}.`
+                : "Sin formula cargada: solo puedes crear una formula nueva."}
+            </small>
+          </div>
+          <span className="formulaWorkModeBadge">{workIntent.badge}</span>
+        </div>
+        <div className="formulaModeChoices" role="group" aria-label="Tipo de trabajo">
+          {FORMULA_WORK_MODE_OPTIONS.map((option) => {
+            const isLocked = option.requiresLoadedFormula && !hasLoadedFormula;
+            const isSelected = selectedMode === option.mode;
+            return (
+              <button
+                key={option.mode}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => onChange({ formulaBuilderMode: option.mode })}
+                disabled={isBusy || isLocked}
+                title={
+                  isLocked ? "Abre una formula desde Biblioteca para activar este modo." : undefined
+                }
+              >
+                <span>{option.label}</span>
+                <small>{isLocked ? "Requiere formula cargada" : option.helper}</small>
+              </button>
+            );
+          })}
+        </div>
+        <small className="formulaWorkTypeHelp">{workIntent.helper}</small>
+      </div>
       <label className="fullWidthLabel">
         <span>
           Nombre <span className="requiredMark">*</span>

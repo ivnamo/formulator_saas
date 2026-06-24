@@ -103,7 +103,7 @@ Objetivo: guiar a un betatester por los flujos principales del sistema, dejar es
 
 | ID | Caso | Pasos | Resultado esperado | Estado | Evidencia | Mejora propuesta |
 | --- | --- | --- | --- | --- | --- | --- |
-| FB-01 | Crear formula nueva | Completar nombre, proyecto Jira opcional y metadatos basicos. | La formula queda lista para composicion. |  |  |  |
+| FB-01 | Crear formula nueva | En Datos basicos seleccionar `Formula nueva independiente`, completar nombre, descripcion y metadatos. | La formula queda como nueva y lista para composicion. |  |  |  |
 | FB-02 | Buscar y agregar materia | Buscar materia en catalogo y agregarla a la formula. | Se crea una linea con porcentaje editable. |  |  |  |
 | FB-03 | Editar porcentaje | Cambiar porcentaje de una linea. | Total de formula se actualiza al instante. |  |  |  |
 | FB-04 | Reordenar lineas | Mover lineas arriba/abajo. | Orden visual y orden guardado coinciden. |  |  |  |
@@ -113,6 +113,7 @@ Objetivo: guiar a un betatester por los flujos principales del sistema, dejar es
 | FB-08 | Formula balanceada | Ajustar total a 100%. | Guardado queda disponible. |  |  |  |
 | FB-09 | Vista de parametros | Cambiar presets o parametros visibles. | La tabla cambia sin perder datos. |  |  |  |
 | FB-10 | Solo positivos | Activar filtro de parametros > 0. | Solo se ven parametros con valor positivo. |  |  |  |
+| FB-11 | Modificar o versionar cargada | Abrir una formula desde Biblioteca y volver a Datos basicos. Elegir `Modificar formula cargada` y despues `Nueva version ligada`. | La UI muestra origen con version, cambia la banda superior y Revision explica si se actualizara o se creara version nueva. |  |  |  |
 
 ## 6. Calculo, warnings y resultados
 
