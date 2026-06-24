@@ -330,6 +330,7 @@ export function useSavedFormulaActions({
             ...current,
             formulaId: null,
             formulaBaseName: null,
+            formulaBaseVersion: null,
             formulaBuilderMode: "new",
           }));
           setCalculationHistory([]);

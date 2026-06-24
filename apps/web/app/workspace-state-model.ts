@@ -9,6 +9,7 @@ export type WorkspaceState = {
   rawMaterials: RawMaterial[];
   formulaId: string | null;
   formulaBaseName: string | null;
+  formulaBaseVersion: number | null;
   formulaBuilderMode: FormulaBuilderMode;
   formulaName: string;
   formulaJiraProjectId: string;
@@ -25,6 +26,7 @@ export const emptyWorkspace: WorkspaceState = {
   rawMaterials: [],
   formulaId: null,
   formulaBaseName: null,
+  formulaBaseVersion: null,
   formulaBuilderMode: "new",
   formulaName: "",
   formulaJiraProjectId: "",

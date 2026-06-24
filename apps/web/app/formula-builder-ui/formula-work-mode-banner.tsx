@@ -1,10 +1,18 @@
-import type { FormulaBuilderMode } from "../formula-builder-model";
 import { suggestNextFormulaVersionName } from "../formula-version-name";
+import {
+  formatLoadedFormulaSource,
+  formulaBuilderModeForDisplay,
+  formulaWorkKindIntent,
+} from "../formula-work-mode-model";
 import type { WorkspaceState } from "../workspace-state-model";
 
 type FormulaWorkModeValue = Pick<
   WorkspaceState,
-  "formulaId" | "formulaBaseName" | "formulaBuilderMode" | "formulaName"
+  | "formulaId"
+  | "formulaBaseName"
+  | "formulaBaseVersion"
+  | "formulaBuilderMode"
+  | "formulaName"
 >;
 
 type FormulaWorkModeBannerProps = {
@@ -19,7 +27,10 @@ export function FormulaWorkModeBanner({
   onChange,
 }: FormulaWorkModeBannerProps) {
   const hasLoadedFormula = Boolean(values.formulaId);
-  const selectedMode = modeForDisplay(values.formulaBuilderMode, values.formulaId);
+  const selectedMode = formulaBuilderModeForDisplay(
+    values.formulaBuilderMode,
+    values.formulaId,
+  );
   const formulaName = values.formulaName.trim();
   const formulaBaseName = values.formulaBaseName?.trim() || formulaName;
   const suggestedVersionName = suggestNextFormulaVersionName(formulaBaseName);
@@ -27,7 +38,11 @@ export function FormulaWorkModeBanner({
     selectedMode === "version" &&
     Boolean(formulaBaseName) &&
     suggestedVersionName !== formulaName;
-  const intent = workKindIntent(selectedMode, hasLoadedFormula);
+  const intent = formulaWorkKindIntent(selectedMode, hasLoadedFormula);
+  const loadedFormulaLabel = formatLoadedFormulaSource(
+    values.formulaBaseName,
+    values.formulaBaseVersion,
+  );
 
   return (
     <div className="formulaWorkModeBanner" data-mode={selectedMode} aria-live="polite">
@@ -42,36 +57,9 @@ export function FormulaWorkModeBanner({
       <div className="formulaWorkModeSource">
         <span>{hasLoadedFormula ? "Formula cargada como origen" : "Formula cargada"}</span>
         <strong>
-          {hasLoadedFormula ? formulaBaseName || "Formula sin nombre" : "Ninguna"}
+          {hasLoadedFormula ? loadedFormulaLabel : "Ninguna"}
         </strong>
         <small>{intent.context}</small>
-      </div>
-      <div className="formulaWorkModeDecision">
-        <span>Indica que estas haciendo</span>
-        <div
-          className="formulaModeChoices formulaModeChoicesCompact"
-          aria-label="Tipo de trabajo en Formula Builder"
-        >
-          {formulaModeOptions.map((option) => {
-            const isLocked = option.requiresLoadedFormula && !hasLoadedFormula;
-            const isSelected = selectedMode === option.mode;
-            return (
-              <button
-                key={option.mode}
-                type="button"
-                aria-pressed={isSelected}
-                onClick={() => onChange({ formulaBuilderMode: option.mode })}
-                disabled={isBusy || isLocked}
-                title={
-                  isLocked ? "Carga una formula de biblioteca para activar este modo." : undefined
-                }
-              >
-                <span>{option.label}</span>
-                <small>{isLocked ? "Requiere formula cargada" : option.helper}</small>
-              </button>
-            );
-          })}
-        </div>
       </div>
       {canUseSuggestedVersionName ? (
         <div className="formulaVersionSuggestion">
@@ -89,70 +77,4 @@ export function FormulaWorkModeBanner({
       ) : null}
     </div>
   );
-}
-
-const formulaModeOptions: Array<{
-  mode: FormulaBuilderMode;
-  label: string;
-  helper: string;
-  requiresLoadedFormula: boolean;
-}> = [
-  {
-    mode: "new",
-    label: "Nueva independiente",
-    helper: "Crea registro nuevo",
-    requiresLoadedFormula: false,
-  },
-  {
-    mode: "editing",
-    label: "Modificar cargada",
-    helper: "Actualiza el registro",
-    requiresLoadedFormula: true,
-  },
-  {
-    mode: "version",
-    label: "Nueva version",
-    helper: "Liga con el origen",
-    requiresLoadedFormula: true,
-  },
-];
-
-function modeForDisplay(mode: FormulaBuilderMode, formulaId: string | null) {
-  if (!formulaId) {
-    return "new";
-  }
-  return mode;
-}
-
-function workKindIntent(mode: FormulaBuilderMode, hasLoadedFormula: boolean) {
-  if (mode === "editing") {
-    return {
-      title: "Modificacion de formula cargada",
-      badge: "Editando existente",
-      helper: "Guardar actualizara el registro abierto en biblioteca.",
-      context: "Cualquier cambio sustituye los datos de esta misma formula.",
-    };
-  }
-  if (mode === "version") {
-    return {
-      title: "Nueva version ligada",
-      badge: "Version",
-      helper: "Guardar creara otro registro ligado a la formula cargada.",
-      context: "La formula cargada se conserva y queda como origen.",
-    };
-  }
-  if (hasLoadedFormula) {
-    return {
-      title: "Formula nueva independiente",
-      badge: "Nueva",
-      helper: "Guardar creara otro registro y no pisara la formula cargada.",
-      context: "La formula cargada solo sirve como punto de partida visual.",
-    };
-  }
-  return {
-    title: "Formula nueva desde cero",
-    badge: "Nueva",
-    helper: "Guardar creara una formula nueva en biblioteca.",
-    context: "Modificar y versionar se activan al abrir una formula desde biblioteca.",
-  };
 }
