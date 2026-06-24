@@ -16,7 +16,10 @@ import {
   TenantInvitationsSection,
   WorkspaceSettingsSection,
 } from "./settings-panel-sections";
-import type { ProductEventSummary } from "./product-observability-api";
+import type {
+  ProductEventSummary,
+  ProductEventSummaryFilters,
+} from "./product-observability-api";
 
 type SettingsPanelProps = {
   active: boolean;
@@ -41,6 +44,7 @@ type SettingsPanelProps = {
   showInvitationAdminPanel: boolean;
   canViewObservability: boolean;
   productEventSummary: ProductEventSummary | null;
+  productEventFilters: ProductEventSummaryFilters;
   onWorkspaceNameChange: (value: string) => void;
   onCreateWorkspace: () => void | Promise<void>;
   onInvitationFormChange: Dispatch<SetStateAction<InvitationForm>>;
@@ -59,6 +63,7 @@ type SettingsPanelProps = {
   onAuthorizeJiraOAuth: () => void | Promise<void>;
   onJiraMappingKeyChange: (value: string) => void;
   onMapJiraField: (field: JiraFieldMetadata) => void;
+  onProductEventFiltersChange: Dispatch<SetStateAction<ProductEventSummaryFilters>>;
   onRefreshProductEvents: () => void | Promise<void>;
 };
 
@@ -85,6 +90,7 @@ export function SettingsPanel({
   showInvitationAdminPanel,
   canViewObservability,
   productEventSummary,
+  productEventFilters,
   onWorkspaceNameChange,
   onCreateWorkspace,
   onInvitationFormChange,
@@ -100,6 +106,7 @@ export function SettingsPanel({
   onAuthorizeJiraOAuth,
   onJiraMappingKeyChange,
   onMapJiraField,
+  onProductEventFiltersChange,
   onRefreshProductEvents,
 }: SettingsPanelProps) {
   return (
@@ -162,7 +169,9 @@ export function SettingsPanel({
         <ProductObservabilitySection
           active={active}
           summary={productEventSummary}
+          filters={productEventFilters}
           isBusy={isBusy}
+          onFiltersChange={onProductEventFiltersChange}
           onRefresh={onRefreshProductEvents}
         />
       ) : null}

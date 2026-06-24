@@ -98,7 +98,31 @@ def test_product_events_can_be_recorded_and_summarized_by_admin() -> None:
     assert payload["total"] == 2
     assert payload["by_event_type"][0] == {"key": "action_success", "count": 1}
     assert {item["key"] for item in payload["by_surface"]} == {"formula", "library"}
+    assert {"key": "Refresh library", "count": 1} in payload["by_element"]
+    assert payload["by_user"] == [
+        {
+            "user_id": USER_A,
+            "user_email": f"{USER_A}@local.formulia",
+            "user_role": "owner",
+            "count": 2,
+        }
+    ]
     assert len(payload["recent"]) == 2
+
+    filtered = client.get(
+        "/api/v1/product-events/summary?surface=library&event_type=action_success",
+        headers=headers,
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()["total"] == 1
+    assert filtered.json()["by_surface"] == [{"key": "library", "count": 1}]
+
+    invalid_range = client.get(
+        "/api/v1/product-events/summary"
+        "?date_from=2026-06-24T12:00:00Z&date_to=2026-06-24T11:00:00Z",
+        headers=headers,
+    )
+    assert invalid_range.status_code == 400
 
 
 def test_product_event_summary_requires_admin_role() -> None:

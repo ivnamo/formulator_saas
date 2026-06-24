@@ -75,6 +75,7 @@ Objetivo: guiar a un betatester por los flujos principales del sistema, dejar es
 | SET-03 | Editar parametro | Cambiar nombre/unidad/decimales. | La UI refleja el cambio sin romper formulas existentes. |  |  |  |
 | SET-04 | Desactivar parametro | Marcar parametro como inactivo. | Deja de usarse en nuevas vistas/exportaciones activas. |  |  |  |
 | SET-05 | Persistencia | Recargar la pagina. | Los parametros se mantienen. |  |  |  |
+| SET-06 | Observabilidad de uso | Navegar por varias pantallas, ejecutar acciones y abrir Settings > Observabilidad. Filtrar por fecha, pantalla, evento y usuario. | Se ven eventos recientes, top pantallas, top eventos, top elementos y actividad por usuario filtrada. |  |  |  |
 
 ## 3. Materias primas
 
