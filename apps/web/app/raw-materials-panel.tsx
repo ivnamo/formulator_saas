@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   History,
   Plus,
+  RotateCcw,
   Save,
   Search,
   SlidersHorizontal,
@@ -51,6 +52,7 @@ type RawMaterialsPanelProps = {
     form: RawMaterialUpdateForm,
   ) => RawMaterial | null | Promise<RawMaterial | null>;
   onArchiveMaterial: (rawMaterialId: string) => RawMaterial | null | Promise<RawMaterial | null>;
+  onRestoreMaterial: (rawMaterialId: string) => RawMaterial | null | Promise<RawMaterial | null>;
   onUpdateMaterialParameterValue: (
     rawMaterialId: string,
     parameter: Parameter,
@@ -163,6 +165,7 @@ export function RawMaterialsPanel({
   onCreateAlias,
   onUpdateMaterial,
   onArchiveMaterial,
+  onRestoreMaterial,
   onUpdateMaterialParameterValue,
   onLoadMaterialPriceHistory,
   onAddMaterialPrice,
@@ -432,6 +435,16 @@ export function RawMaterialsPanel({
       return;
     }
     const updated = await onArchiveMaterial(selectedMaterial.id);
+    if (updated) {
+      setEditForm(buildRawMaterialUpdateForm(updated));
+    }
+  }
+
+  async function restoreSelectedMaterial() {
+    if (!selectedMaterial) {
+      return;
+    }
+    const updated = await onRestoreMaterial(selectedMaterial.id);
     if (updated) {
       setEditForm(buildRawMaterialUpdateForm(updated));
     }
@@ -1160,6 +1173,17 @@ export function RawMaterialsPanel({
                     >
                       <Archive size={16} />
                       Archive
+                    </button>
+                  ) : null}
+                  {canArchiveEntities && selectedMaterial.isObsolete ? (
+                    <button
+                      className="secondaryButton"
+                      type="button"
+                      onClick={() => void restoreSelectedMaterial()}
+                      disabled={isBusy}
+                    >
+                      <RotateCcw size={16} />
+                      Restore
                     </button>
                   ) : null}
                   <button

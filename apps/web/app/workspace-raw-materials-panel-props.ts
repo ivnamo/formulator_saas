@@ -18,6 +18,7 @@ type BuildWorkspaceRawMaterialsPanelPropsArgs = {
   createAlias: RawMaterialsPanelProps["onCreateAlias"];
   updateMaterial: RawMaterialsPanelProps["onUpdateMaterial"];
   archiveMaterial: RawMaterialsPanelProps["onArchiveMaterial"];
+  restoreMaterial: RawMaterialsPanelProps["onRestoreMaterial"];
   updateMaterialParameterValue: RawMaterialsPanelProps["onUpdateMaterialParameterValue"];
   loadMaterialPriceHistory: RawMaterialsPanelProps["onLoadMaterialPriceHistory"];
   addMaterialPrice: RawMaterialsPanelProps["onAddMaterialPrice"];
@@ -44,6 +45,7 @@ export function buildWorkspaceRawMaterialsPanelProps(
     onCreateAlias: args.createAlias,
     onUpdateMaterial: args.updateMaterial,
     onArchiveMaterial: args.archiveMaterial,
+    onRestoreMaterial: args.restoreMaterial,
     onUpdateMaterialParameterValue: args.updateMaterialParameterValue,
     onLoadMaterialPriceHistory: args.loadMaterialPriceHistory,
     onAddMaterialPrice: args.addMaterialPrice,

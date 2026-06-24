@@ -3206,8 +3206,24 @@ label span {
 }
 
 .libraryActionsCompact {
-  grid-template-columns: auto;
+  grid-template-columns: auto auto;
   justify-content: start;
+}
+
+.inlineCheckbox {
+  min-height: 38px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.inlineCheckbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--teal);
 }
 
 .materialComparatorControls {
@@ -3301,14 +3317,14 @@ label span {
 .formulaListHead,
 .formulaListRow {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 120px 58px 48px 48px;
+  grid-template-columns: minmax(180px, 1fr) 120px 92px 58px 48px 48px;
   gap: 10px;
   align-items: center;
 }
 
 .formulaListHead[data-archive="true"],
 .formulaListRow[data-archive="true"] {
-  grid-template-columns: minmax(180px, 1fr) 120px 58px 48px 48px 58px;
+  grid-template-columns: minmax(180px, 1fr) 120px 92px 58px 48px 48px 58px;
 }
 
 .formulaListHead {

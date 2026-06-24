@@ -18,6 +18,7 @@ import {
   fetchFormulaReviewRequests,
   listSavedFormulas,
   persistSavedFormula,
+  restoreSavedFormula,
 } from "./saved-formula-api";
 import {
   getFormulaSaveBlocker,
@@ -47,6 +48,7 @@ type SavedFormulaActionsOptions = {
   headers: HeadersInit;
   isFormulaBalanced: boolean;
   hasPendingDraftReview: boolean;
+  showArchivedFormulas: boolean;
   setWorkspace: Dispatch<SetStateAction<WorkspaceState>>;
   setFormulas: Dispatch<SetStateAction<FormulaRead[]>>;
   setCalculationHistory: Dispatch<SetStateAction<FormulaCalculationHistory[]>>;
@@ -73,6 +75,7 @@ export function useSavedFormulaActions({
   headers,
   isFormulaBalanced,
   hasPendingDraftReview,
+  showArchivedFormulas,
   setWorkspace,
   setFormulas,
   setCalculationHistory,
@@ -125,17 +128,29 @@ export function useSavedFormulaActions({
         return;
       }
       if (options.silent) {
-        const nextFormulas = await listSavedFormulas(headers);
+        const nextFormulas = await listSavedFormulas(headers, {
+          includeArchived: showArchivedFormulas,
+        });
         setFormulas(nextFormulas);
         return;
       }
       await runAction("Refreshing formula library", async () => {
-        const nextFormulas = await listSavedFormulas(headers);
+        const nextFormulas = await listSavedFormulas(headers, {
+          includeArchived: showArchivedFormulas,
+        });
         setFormulas(nextFormulas);
         setMessage("Formula library refreshed");
       });
     },
-    [headers, runAction, setError, setFormulas, setMessage, workspace.tenant],
+    [
+      headers,
+      runAction,
+      setError,
+      setFormulas,
+      setMessage,
+      showArchivedFormulas,
+      workspace.tenant,
+    ],
   );
 
   const compareSavedFormulas = useCallback(async () => {
@@ -305,7 +320,7 @@ export function useSavedFormulaActions({
 
       await runAction("Archiving formula", async () => {
         await archiveSavedFormula(headers, formula.id);
-        setFormulas((current) => current.filter((item) => item.id !== formula.id));
+        await refreshFormulaLibrary({ silent: true });
         setSavedFormulaComparison(null);
         setFormulaReviewRequests((current) =>
           current.filter((review) => review.formula_id !== formula.id),
@@ -327,12 +342,30 @@ export function useSavedFormulaActions({
       runAction,
       setCalculationHistory,
       setFormulaReviewRequests,
-      setFormulas,
       setMessage,
       setSavedFormulaComparison,
       setWorkspace,
+      refreshFormulaLibrary,
       workspace.formulaId,
     ],
+  );
+
+  const restoreFormula = useCallback(
+    async (formula: FormulaRead) => {
+      const confirmed = window.confirm(
+        `Restaurar "${formula.name}"? Volvera a aparecer en la biblioteca operativa.`,
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      await runAction("Restoring formula", async () => {
+        await restoreSavedFormula(headers, formula.id);
+        await refreshFormulaLibrary({ silent: true });
+        setMessage("Formula restaurada");
+      });
+    },
+    [headers, refreshFormulaLibrary, runAction, setMessage],
   );
 
   const openFormula = useCallback(
@@ -380,6 +413,7 @@ export function useSavedFormulaActions({
     exportCurrentFormulaIdLabExcel,
     exportSavedFormulaIdLabExcel,
     archiveFormula,
+    restoreFormula,
     refreshFormulaLibrary,
     openFormula,
     loadCalculationHistory,

@@ -220,6 +220,7 @@ export function RawMaterialsE2EHarness() {
           return updated;
         }}
         onArchiveMaterial={() => null}
+        onRestoreMaterial={() => null}
         onUpdateMaterialParameterValue={(rawMaterialId, parameterToUpdate, value) => {
           let updated: RawMaterial | null = null;
           setRawMaterials((current) =>

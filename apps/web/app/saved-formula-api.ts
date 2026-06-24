@@ -10,8 +10,12 @@ import type {
 
 type ManualFormulaSavePayload = ReturnType<typeof buildManualFormulaSavePayload>;
 
-export function listSavedFormulas(headers: HeadersInit): Promise<FormulaRead[]> {
-  return request<FormulaRead[]>("/api/v1/formulas", {
+export function listSavedFormulas(
+  headers: HeadersInit,
+  options: { includeArchived?: boolean } = {},
+): Promise<FormulaRead[]> {
+  const query = options.includeArchived ? "?include_archived=true" : "";
+  return request<FormulaRead[]>(`/api/v1/formulas${query}`, {
     method: "GET",
     headers,
   });
@@ -94,6 +98,16 @@ export function archiveSavedFormula(
   formulaId: string,
 ): Promise<FormulaRead> {
   return request<FormulaRead>(`/api/v1/formulas/${formulaId}/archive`, {
+    method: "POST",
+    headers,
+  });
+}
+
+export function restoreSavedFormula(
+  headers: HeadersInit,
+  formulaId: string,
+): Promise<FormulaRead> {
+  return request<FormulaRead>(`/api/v1/formulas/${formulaId}/restore`, {
     method: "POST",
     headers,
   });

@@ -452,6 +452,22 @@ def register_routes(app: FastAPI) -> None:
         session.refresh(raw_material)
         return _raw_material_read(session, tenant.tenant_id, raw_material)
 
+    @app.post("/api/v1/raw-materials/{raw_material_id}/restore", response_model=RawMaterialRead)
+    def restore_raw_material(
+        raw_material_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        require_tenant_owner(tenant)
+        raw_material = _get_raw_material(session, tenant.tenant_id, raw_material_id)
+        raw_material.is_active = True
+        raw_material.is_obsolete = False
+        raw_material.updated_at = utc_now()
+        session.add(raw_material)
+        session.commit()
+        session.refresh(raw_material)
+        return _raw_material_read(session, tenant.tenant_id, raw_material)
+
     @app.get(
         "/api/v1/raw-materials/{raw_material_id}/aliases",
         response_model=list[RawMaterialAliasRead],
@@ -699,6 +715,8 @@ def register_routes(app: FastAPI) -> None:
         session: Session = Depends(get_session),
         tenant: TenantContext = Depends(require_tenant_context),
     ) -> list[dict[str, Any]]:
+        if include_archived:
+            require_tenant_owner(tenant)
         statement = select(Formula).where(Formula.tenant_id == tenant.tenant_id)
         if not include_archived:
             statement = statement.where(Formula.status != "archived")
@@ -782,6 +800,21 @@ def register_routes(app: FastAPI) -> None:
         require_tenant_owner(tenant)
         formula = _get_formula(session, tenant.tenant_id, formula_id)
         formula.status = "archived"
+        formula.updated_at = utc_now()
+        session.add(formula)
+        session.commit()
+        session.refresh(formula)
+        return _formula_read(session, formula)
+
+    @app.post("/api/v1/formulas/{formula_id}/restore", response_model=FormulaRead)
+    def restore_formula(
+        formula_id: uuid.UUID,
+        session: Session = Depends(get_session),
+        tenant: TenantContext = Depends(require_tenant_context),
+    ) -> dict[str, Any]:
+        require_tenant_owner(tenant)
+        formula = _get_formula(session, tenant.tenant_id, formula_id)
+        formula.status = "draft"
         formula.updated_at = utc_now()
         session.add(formula)
         session.commit()

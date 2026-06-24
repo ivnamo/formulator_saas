@@ -55,7 +55,7 @@ Auditar:
 - Formulador no puede cambiar billing ni credenciales ERP.
 - Admin puede gestionar datos técnicos.
 - Owner controla billing y usuarios.
-- Owner es el unico rol que puede archivar formulas y materias primas operativas.
+- Owner es el unico rol que puede archivar o restaurar formulas y materias primas operativas.
 - Formulator puede editar datos tecnicos, pero no cambiar `status`, `is_active` o `is_obsolete`.
 
 ## Rate limiting

@@ -68,6 +68,8 @@ POST /raw-materials
 GET /raw-materials/{id}
 PATCH /raw-materials/{id}
 DELETE /raw-materials/{id}
+POST /raw-materials/{id}/archive
+POST /raw-materials/{id}/restore
 POST /raw-materials/{id}/aliases
 GET /raw-materials/{id}/prices
 POST /raw-materials/{id}/prices
@@ -82,6 +84,8 @@ POST /formulas
 GET /formulas/{id}
 PATCH /formulas/{id}
 DELETE /formulas/{id}
+POST /formulas/{id}/archive
+POST /formulas/{id}/restore
 POST /formulas/{id}/calculate
 POST /formulas/{id}/duplicate
 POST /formulas/{id}/export/excel
@@ -93,6 +97,9 @@ una formula del mismo tenant; la nueva formula queda ligada como version derivad
 el backend asigna el siguiente `version` numerico de esa rama. `GET /formulas` y
 `GET /formulas/{id}` devuelven `source_formula_id` para que Biblioteca, Jira e ISO
 puedan reconstruir la relacion.
+
+`GET /formulas?include_archived=true` y las acciones `archive`/`restore` son
+owner-only. Las formulas archivadas quedan fuera del listado operativo por defecto.
 
 ## Cálculo ad hoc
 

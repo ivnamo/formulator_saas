@@ -61,6 +61,7 @@ export function useSavedFormulaComparisonState() {
   const [comparisonConstraintForm, setComparisonConstraintForm] =
     useState<ComparisonConstraintForm>(defaultComparisonConstraintForm);
   const [showOnlyConstraintIssues, setShowOnlyConstraintIssues] = useState(false);
+  const [showArchivedFormulas, setShowArchivedFormulas] = useState(false);
   const [savedFormulaComparison, setSavedFormulaComparison] =
     useState<SavedFormulaComparison | null>(null);
 
@@ -86,6 +87,7 @@ export function useSavedFormulaComparisonState() {
     setFormulaCompareSelection(defaultFormulaCompareSelection);
     setComparisonConstraintForm(defaultComparisonConstraintForm);
     setShowOnlyConstraintIssues(false);
+    setShowArchivedFormulas(false);
     setSavedFormulaComparison(null);
   }
 
@@ -93,11 +95,13 @@ export function useSavedFormulaComparisonState() {
     formulaCompareSelection,
     comparisonConstraintForm,
     showOnlyConstraintIssues,
+    showArchivedFormulas,
     savedFormulaComparison,
     selectFormulaForComparison,
     updateComparisonConstraint,
     resetSavedFormulaComparisonState,
     setShowOnlyConstraintIssues,
+    setShowArchivedFormulas,
     setSavedFormulaComparison,
   };
 }

@@ -9,6 +9,7 @@ import {
   fetchRawMaterialPrices,
   previewSapRawMaterialImport,
   fetchRawMaterialDetail,
+  restoreRawMaterial,
   updateRawMaterial,
 } from "./raw-material-api";
 import {
@@ -374,6 +375,60 @@ export function useRawMaterialActions({
     ],
   );
 
+  const restoreMaterial = useCallback(
+    async (rawMaterialId: string) => {
+      if (!workspace.tenant) {
+        setError("Create a workspace first");
+        return null;
+      }
+      const materialName = rawMaterialsById.get(rawMaterialId)?.name ?? "esta materia prima";
+      const confirmed = window.confirm(
+        `Restaurar "${materialName}"? Volvera a aparecer en selectores operativos.`,
+      );
+      if (!confirmed) {
+        return null;
+      }
+
+      let updatedMaterial: RawMaterial | null = null;
+      await runAction("Restoring raw material", async () => {
+        const material = await restoreRawMaterial(headers, rawMaterialId);
+        updatedMaterial = toWorkspaceRawMaterial(
+          material,
+          {
+            parameterValue: workspace.parameter
+              ? (material.parameters.find((parameter) => parameter.code === workspace.parameter?.code)
+                  ?.value ?? null)
+              : null,
+          },
+          workspace.parameters,
+        );
+        setWorkspace((current) => ({
+          ...current,
+          rawMaterials: mergeRawMaterials(current.rawMaterials, [updatedMaterial as RawMaterial]),
+        }));
+        refreshCatalog();
+        resetImportState();
+        setResult(null);
+        setMessage("Materia prima restaurada");
+      });
+      return updatedMaterial;
+    },
+    [
+      headers,
+      rawMaterialsById,
+      refreshCatalog,
+      resetImportState,
+      runAction,
+      setError,
+      setMessage,
+      setResult,
+      setWorkspace,
+      workspace.parameter,
+      workspace.parameters,
+      workspace.tenant,
+    ],
+  );
+
   const updateMaterialParameterValue = useCallback(
     async (
       rawMaterialId: string,
@@ -550,6 +605,7 @@ export function useRawMaterialActions({
     createAlias,
     updateMaterial,
     archiveMaterial,
+    restoreMaterial,
     updateMaterialParameterValue,
     loadMaterialPriceHistory,
     addMaterialPrice,

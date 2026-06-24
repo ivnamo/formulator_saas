@@ -181,11 +181,13 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     formulaCompareSelection,
     comparisonConstraintForm,
     showOnlyConstraintIssues,
+    showArchivedFormulas,
     savedFormulaComparison,
     selectFormulaForComparison,
     updateComparisonConstraint,
     resetSavedFormulaComparisonState,
     setShowOnlyConstraintIssues,
+    setShowArchivedFormulas,
     setSavedFormulaComparison,
   } = useSavedFormulaComparisonState();
   const {
@@ -392,6 +394,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     createAlias,
     updateMaterial,
     archiveMaterial,
+    restoreMaterial,
     updateMaterialParameterValue,
     loadMaterialPriceHistory,
     addMaterialPrice,
@@ -675,6 +678,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     exportCurrentFormulaIdLabExcel,
     exportSavedFormulaIdLabExcel,
     archiveFormula,
+    restoreFormula,
     refreshFormulaLibrary,
     openFormula,
     loadCalculationHistory,
@@ -687,6 +691,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     headers,
     isFormulaBalanced,
     hasPendingDraftReview,
+    showArchivedFormulas,
     setWorkspace,
     setFormulas,
     setCalculationHistory,
@@ -712,7 +717,13 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       return;
     }
     void refreshFormulaLibrary({ silent: true });
-  }, [activeView, refreshFormulaLibrary, session?.access_token, workspace.tenant]);
+  }, [
+    activeView,
+    refreshFormulaLibrary,
+    session?.access_token,
+    showArchivedFormulas,
+    workspace.tenant,
+  ]);
 
   const {
     sendCurrentFormulaToJira,
@@ -867,6 +878,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       createAlias,
       updateMaterial,
       archiveMaterial,
+      restoreMaterial,
       updateMaterialParameterValue,
       loadMaterialPriceHistory,
       addMaterialPrice,
@@ -902,14 +914,17 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
         comparisonConstraintIssueCount,
         visibleComparisonConstraintEvaluations,
         showOnlyConstraintIssues,
+        showArchivedFormulas,
         onSelectFormula: selectFormulaForComparison,
         onRefreshLibrary: refreshFormulaLibrary,
         onCompareSavedFormulas: compareSavedFormulas,
         onExportFormula: exportSavedFormulaIdLabExcel,
         onArchiveFormula: archiveFormula,
+        onRestoreFormula: restoreFormula,
         onOpenFormula: openFormula,
         onUpdateConstraint: updateComparisonConstraint,
         onShowOnlyConstraintIssuesChange: setShowOnlyConstraintIssues,
+        onShowArchivedFormulasChange: setShowArchivedFormulas,
       },
       rawMaterials: selectableRawMaterials,
       materialComparisonIds: comparisonMaterialIds,
@@ -940,14 +955,17 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       comparisonConstraintIssueCount,
       visibleComparisonConstraintEvaluations,
       showOnlyConstraintIssues,
+      showArchivedFormulas,
       selectFormulaForComparison,
       refreshFormulaLibrary,
       compareSavedFormulas,
       exportSavedFormulaIdLabExcel,
       archiveFormula,
+      restoreFormula,
       openFormula,
       updateComparisonConstraint,
       setShowOnlyConstraintIssues,
+      setShowArchivedFormulas,
     },
     excelImport: {
       importPreview,

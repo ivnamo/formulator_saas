@@ -234,6 +234,11 @@ def test_owner_can_archive_formula_and_default_list_hides_it() -> None:
         "/api/v1/formulas?include_archived=true",
         headers=headers,
     )
+    restored = client.post(
+        f"/api/v1/formulas/{formula['id']}/restore",
+        headers=headers,
+    )
+    listed_after_restore = client.get("/api/v1/formulas", headers=headers)
 
     assert archived.status_code == 200
     assert archived.json()["status"] == "archived"
@@ -241,6 +246,10 @@ def test_owner_can_archive_formula_and_default_list_hides_it() -> None:
     assert listed.json() == []
     assert listed_with_archive.status_code == 200
     assert [item["id"] for item in listed_with_archive.json()] == [formula["id"]]
+    assert restored.status_code == 200
+    assert restored.json()["status"] == "draft"
+    assert listed_after_restore.status_code == 200
+    assert [item["id"] for item in listed_after_restore.json()] == [formula["id"]]
 
 
 def test_only_owner_can_archive_formula() -> None:
@@ -259,8 +268,18 @@ def test_only_owner_can_archive_formula() -> None:
         f"/api/v1/formulas/{formula['id']}/archive",
         headers=formulator_headers,
     )
+    forbidden_archived_list = client.get(
+        "/api/v1/formulas?include_archived=true",
+        headers=formulator_headers,
+    )
+    forbidden_restore = client.post(
+        f"/api/v1/formulas/{formula['id']}/restore",
+        headers=formulator_headers,
+    )
 
     assert forbidden.status_code == 403
+    assert forbidden_archived_list.status_code == 403
+    assert forbidden_restore.status_code == 403
 
 
 def test_lists_only_data_for_active_tenant() -> None:
@@ -586,6 +605,11 @@ def test_owner_can_archive_raw_material() -> None:
     )
     catalog = client.get("/api/v1/raw-materials/catalog", headers=headers)
     full_list = client.get("/api/v1/raw-materials", headers=headers)
+    restored = client.post(
+        f"/api/v1/raw-materials/{active['id']}/restore",
+        headers=headers,
+    )
+    restored_catalog = client.get("/api/v1/raw-materials/catalog", headers=headers)
 
     assert archived.status_code == 200
     assert archived.json()["is_obsolete"] is True
@@ -594,6 +618,11 @@ def test_owner_can_archive_raw_material() -> None:
     assert catalog.json()["total"] == 0
     assert full_list.status_code == 200
     assert [item["id"] for item in full_list.json()] == [active["id"]]
+    assert restored.status_code == 200
+    assert restored.json()["is_obsolete"] is False
+    assert restored.json()["is_active"] is True
+    assert restored_catalog.status_code == 200
+    assert [item["id"] for item in restored_catalog.json()["items"]] == [active["id"]]
 
 
 def test_only_owner_can_archive_raw_material_or_change_material_status() -> None:
@@ -617,9 +646,14 @@ def test_only_owner_can_archive_raw_material_or_change_material_status() -> None
         headers=formulator_headers,
         json={"is_obsolete": True},
     )
+    forbidden_restore = client.post(
+        f"/api/v1/raw-materials/{material['id']}/restore",
+        headers=formulator_headers,
+    )
 
     assert forbidden_archive.status_code == 403
     assert forbidden_status_patch.status_code == 403
+    assert forbidden_restore.status_code == 403
 
 
 def test_raw_material_master_blocks_duplicate_identity() -> None:

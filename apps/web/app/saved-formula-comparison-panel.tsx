@@ -7,6 +7,7 @@ import {
   History,
   ListChecks,
   RefreshCw,
+  RotateCcw,
   SlidersHorizontal,
 } from "lucide-react";
 import type {
@@ -49,14 +50,17 @@ export type SavedFormulaComparisonPanelProps = {
   comparisonConstraintIssueCount: number;
   visibleComparisonConstraintEvaluations: SavedFormulaConstraintEvaluation[];
   showOnlyConstraintIssues: boolean;
+  showArchivedFormulas: boolean;
   onSelectFormula: (field: FormulaCompareSelectionField, formulaId: string) => void;
   onRefreshLibrary: () => void | Promise<void>;
   onCompareSavedFormulas: () => void | Promise<void>;
   onExportFormula: (formula: FormulaRead) => void | Promise<void>;
   onArchiveFormula: (formula: FormulaRead) => void | Promise<void>;
+  onRestoreFormula: (formula: FormulaRead) => void | Promise<void>;
   onOpenFormula: (formula: FormulaRead) => void | Promise<void>;
   onUpdateConstraint: (field: ComparisonConstraintField, value: string) => void;
   onShowOnlyConstraintIssuesChange: (checked: boolean) => void;
+  onShowArchivedFormulasChange: (checked: boolean) => void;
 };
 
 export function SavedFormulaComparisonPanel({
@@ -78,14 +82,17 @@ export function SavedFormulaComparisonPanel({
   comparisonConstraintIssueCount,
   visibleComparisonConstraintEvaluations,
   showOnlyConstraintIssues,
+  showArchivedFormulas,
   onSelectFormula,
   onRefreshLibrary,
   onCompareSavedFormulas,
   onExportFormula,
   onArchiveFormula,
+  onRestoreFormula,
   onOpenFormula,
   onUpdateConstraint,
   onShowOnlyConstraintIssuesChange,
+  onShowArchivedFormulasChange,
 }: SavedFormulaComparisonPanelProps) {
   const isComparator = variant === "comparator";
   const hasParameterConstraint = Boolean(
@@ -167,6 +174,16 @@ export function SavedFormulaComparisonPanel({
           <RefreshCw size={17} />
           Refresh library
         </button>
+        {!isComparator && canArchiveEntities ? (
+          <label className="inlineCheckbox">
+            <input
+              type="checkbox"
+              checked={showArchivedFormulas}
+              onChange={(event) => onShowArchivedFormulasChange(event.target.checked)}
+            />
+            <span>Show archived</span>
+          </label>
+        ) : null}
         {isComparator ? (
           <button
             className="secondaryButton"
@@ -263,10 +280,11 @@ export function SavedFormulaComparisonPanel({
           <div className="formulaListHead" data-archive={canArchiveEntities}>
             <span>Name</span>
             <span>Price</span>
+            <span>Status</span>
             <span>Lines</span>
             <span>Excel</span>
             <span>Open</span>
-            {canArchiveEntities ? <span>Archive</span> : null}
+            {canArchiveEntities ? <span>Action</span> : null}
           </div>
           {formulas.length === 0 ? (
             <div className="empty">No saved formulas yet.</div>
@@ -294,6 +312,9 @@ export function SavedFormulaComparisonPanel({
                       ? "-"
                       : `${formula.total_price.toFixed(2)} ${formula.currency}/kg`}
                   </span>
+                  <span>
+                    <code className="statusPill">{formula.status}</code>
+                  </span>
                   <span>{formula.items.length}</span>
                   <button
                     className="iconButton"
@@ -315,7 +336,7 @@ export function SavedFormulaComparisonPanel({
                   >
                     <FolderOpen size={16} />
                   </button>
-                  {canArchiveEntities ? (
+                  {canArchiveEntities && formula.status !== "archived" ? (
                     <button
                       className="iconButton dangerIconButton"
                       type="button"
@@ -325,6 +346,18 @@ export function SavedFormulaComparisonPanel({
                       aria-label={`Archive ${formula.name}`}
                     >
                       <Archive size={16} />
+                    </button>
+                  ) : null}
+                  {canArchiveEntities && formula.status === "archived" ? (
+                    <button
+                      className="iconButton"
+                      type="button"
+                      onClick={() => void onRestoreFormula(formula)}
+                      disabled={isBusy}
+                      title="Restore formula"
+                      aria-label={`Restore ${formula.name}`}
+                    >
+                      <RotateCcw size={16} />
                     </button>
                   ) : null}
                 </div>

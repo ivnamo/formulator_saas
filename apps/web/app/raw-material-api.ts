@@ -123,6 +123,16 @@ export function archiveRawMaterial(
   });
 }
 
+export function restoreRawMaterial(
+  headers: HeadersInit,
+  rawMaterialId: string,
+): Promise<RawMaterialRead> {
+  return request<RawMaterialRead>(`/api/v1/raw-materials/${rawMaterialId}/restore`, {
+    method: "POST",
+    headers,
+  });
+}
+
 export function fetchRawMaterialPrices(
   headers: HeadersInit,
   rawMaterialId: string,

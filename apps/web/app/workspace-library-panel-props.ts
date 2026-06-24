@@ -20,14 +20,17 @@ type BuildWorkspaceLibraryPanelPropsArgs = {
   comparisonConstraintIssueCount: LibraryPanelProps["comparisonConstraintIssueCount"];
   visibleComparisonConstraintEvaluations: LibraryPanelProps["visibleComparisonConstraintEvaluations"];
   showOnlyConstraintIssues: LibraryPanelProps["showOnlyConstraintIssues"];
+  showArchivedFormulas: LibraryPanelProps["showArchivedFormulas"];
   selectFormulaForComparison: LibraryPanelProps["onSelectFormula"];
   refreshFormulaLibrary: LibraryPanelProps["onRefreshLibrary"];
   compareSavedFormulas: LibraryPanelProps["onCompareSavedFormulas"];
   exportSavedFormulaIdLabExcel: LibraryPanelProps["onExportFormula"];
   archiveFormula: LibraryPanelProps["onArchiveFormula"];
+  restoreFormula: LibraryPanelProps["onRestoreFormula"];
   openFormula: LibraryPanelProps["onOpenFormula"];
   updateComparisonConstraint: LibraryPanelProps["onUpdateConstraint"];
   setShowOnlyConstraintIssues: LibraryPanelProps["onShowOnlyConstraintIssuesChange"];
+  setShowArchivedFormulas: LibraryPanelProps["onShowArchivedFormulasChange"];
 };
 
 export function buildWorkspaceLibraryPanelProps(
@@ -51,13 +54,16 @@ export function buildWorkspaceLibraryPanelProps(
     comparisonConstraintIssueCount: args.comparisonConstraintIssueCount,
     visibleComparisonConstraintEvaluations: args.visibleComparisonConstraintEvaluations,
     showOnlyConstraintIssues: args.showOnlyConstraintIssues,
+    showArchivedFormulas: args.showArchivedFormulas,
     onSelectFormula: args.selectFormulaForComparison,
     onRefreshLibrary: args.refreshFormulaLibrary,
     onCompareSavedFormulas: args.compareSavedFormulas,
     onExportFormula: args.exportSavedFormulaIdLabExcel,
     onArchiveFormula: args.archiveFormula,
+    onRestoreFormula: args.restoreFormula,
     onOpenFormula: args.openFormula,
     onUpdateConstraint: args.updateComparisonConstraint,
     onShowOnlyConstraintIssuesChange: args.setShowOnlyConstraintIssues,
+    onShowArchivedFormulasChange: args.setShowArchivedFormulas,
   };
 }
