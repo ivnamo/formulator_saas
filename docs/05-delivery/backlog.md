@@ -281,7 +281,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - El tracking no degrada la experiencia ni bloquea acciones si falla.
   - Se documenta el diccionario de eventos.
 - Validacion beta: Durante una sesion de beta, revisar que se ve que pantallas se usan mas y donde se producen clicks/errores frecuentes.
-- Notas: Evaluar si usar PostHog/Plausible/Supabase events propio. Importante separar observabilidad de producto de logs tecnicos/auditoria. Rama `codex/backlog-product-observability`: primer corte con tabla/API propia `product_events`, tracking central de navegacion y acciones (`action_start`, `action_success`, `action_error`) y resumen visible en Configuracion para owner/admin. Pendiente instrumentar clicks especificos de controles finos, abandonos de flujo y dashboards historicos por rango temporal.
+- Notas: Evaluar si usar PostHog/Plausible/Supabase events propio. Importante separar observabilidad de producto de logs tecnicos/auditoria. Rama `codex/backlog-product-observability`: primer corte con tabla/API propia `product_events`, tracking central de navegacion y acciones (`action_start`, `action_success`, `action_error`) y resumen visible en Configuracion para owner/admin. Rama `codex/backlog-navigation-click-events`: se registra `navigation_click` con origen/destino para medir clicks de navegacion. Pendiente instrumentar clicks especificos de controles finos, abandonos de flujo y dashboards historicos por rango temporal.
 
 ### BL-017 - Sistema de roles y permisos por feature
 

@@ -1192,6 +1192,23 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
     results: { result },
   });
 
+  const handleViewChange = useCallback(
+    (nextView: typeof activeView) => {
+      trackProductEvent({
+        event_type: "navigation_click",
+        surface: activeView,
+        element: nextView,
+        metadata: {
+          from: activeView,
+          to: nextView,
+          role: workspace.tenant?.role ?? null,
+        },
+      });
+      setActiveView(nextView);
+    },
+    [activeView, setActiveView, trackProductEvent, workspace.tenant?.role],
+  );
+
   return {
     isReady: true,
     viewProps: {
@@ -1201,7 +1218,7 @@ export function useWorkspaceHomeController(): WorkspaceHomeControllerState {
       status,
       message,
       isBusy,
-      onViewChange: setActiveView,
+      onViewChange: handleViewChange,
       onClearStatus: clearStatus,
       onSignOut: signOut,
       panels,

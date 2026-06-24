@@ -151,6 +151,9 @@ Diccionario inicial:
 - `navigation_view`: cambio de pantalla. `surface` es la vista activa; `element`
   suele ser `workspace_navigation`; `metadata.view` y `metadata.role` ayudan a
   segmentar por flujo y perfil.
+- `navigation_click`: click sobre navegacion lateral o acceso de cuenta.
+  `metadata.from` y `metadata.to` permiten ver intencion de navegacion incluso
+  si el usuario vuelve a la misma pantalla.
 - `action_start`: inicio de una accion de negocio envuelta por `runAction`.
   `element`/`metadata.label` identifican la accion.
 - `action_success`: accion completada correctamente.
