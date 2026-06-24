@@ -1758,9 +1758,43 @@ def _formula_read(session: Session, formula: Formula) -> dict[str, Any]:
         .where(FormulaItem.tenant_id == formula.tenant_id, FormulaItem.formula_id == formula.id)
         .order_by(FormulaItem.order_index)
     ).all()
+    live_price = _formula_live_price_summary(session, formula.tenant_id, items)
     return {
         **_model_dict(formula),
+        **live_price,
         "items": [_model_dict(item) for item in items],
+    }
+
+
+def _formula_live_price_summary(
+    session: Session,
+    tenant_id: uuid.UUID,
+    items: list[FormulaItem],
+) -> dict[str, Any]:
+    prices_by_material_id = current_prices_by_material_id(
+        session,
+        tenant_id,
+        [item.raw_material_id for item in items],
+    )
+    price_total = 0.0
+    has_missing_price = False
+    currencies: set[str] = set()
+    valid_from_dates: list[date] = []
+    for item in items:
+        price = prices_by_material_id.get(item.raw_material_id)
+        if price is None:
+            has_missing_price = True
+            continue
+        price_total += price.price * (item.percentage / 100.0)
+        currencies.add(price.currency)
+        valid_from_dates.append(price.valid_from)
+    return {
+        "total_price": None if has_missing_price else price_total,
+        "currency": next(iter(currencies)) if len(currencies) == 1 else "EUR",
+        "total_price_source": (
+            "missing_raw_material_price" if has_missing_price else "current_raw_material_prices"
+        ),
+        "total_price_updated_at": max(valid_from_dates) if valid_from_dates else None,
     }
 
 

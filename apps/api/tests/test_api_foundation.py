@@ -1031,6 +1031,62 @@ def test_persisted_formula_calculation_uses_backend_core() -> None:
     assert result["warnings"] == []
 
 
+def test_formula_library_returns_live_price_without_new_calculation_history() -> None:
+    client = make_client()
+    tenant_id = create_tenant(client, USER_A, "tenant-a")
+    headers = {"X-User-Id": USER_A, "X-Tenant-Id": tenant_id}
+    raw_material = client.post(
+        "/api/v1/raw-materials",
+        headers=headers,
+        json={"name": "Live Price Material", "code": "LIVE-PRICE"},
+    ).json()
+    first_price = client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers,
+        json={"price": 1.25, "currency": "EUR", "unit": "kg", "valid_from": "2026-01-01"},
+    )
+    assert first_price.status_code == 201
+    formula = client.post(
+        "/api/v1/formulas",
+        headers=headers,
+        json={
+            "name": "Live Price Formula",
+            "objective": "Formula used to verify library live prices.",
+            "items": [{"raw_material_id": raw_material["id"], "percentage": 100}],
+        },
+    ).json()
+
+    calculation = client.post(
+        f"/api/v1/formulas/{formula['id']}/calculate",
+        headers=headers,
+    )
+    second_price = client.post(
+        f"/api/v1/raw-materials/{raw_material['id']}/prices",
+        headers=headers,
+        json={"price": 1.45, "currency": "EUR", "unit": "kg", "valid_from": "2026-06-01"},
+    )
+    listed = client.get("/api/v1/formulas", headers=headers)
+    opened = client.get(f"/api/v1/formulas/{formula['id']}", headers=headers)
+    history = client.get(
+        f"/api/v1/formulas/{formula['id']}/calculations",
+        headers=headers,
+    )
+
+    assert calculation.status_code == 200
+    assert calculation.json()["price_total"] == 1.25
+    assert second_price.status_code == 201
+    assert listed.status_code == 200
+    assert opened.status_code == 200
+    assert listed.json()[0]["total_price"] == 1.45
+    assert listed.json()[0]["total_price_source"] == "current_raw_material_prices"
+    assert listed.json()[0]["total_price_updated_at"] == "2026-06-01"
+    assert opened.json()["total_price"] == 1.45
+    assert opened.json()["total_price_source"] == "current_raw_material_prices"
+    assert opened.json()["total_price_updated_at"] == "2026-06-01"
+    assert history.status_code == 200
+    assert len(history.json()) == 1
+
+
 def test_persisted_formula_treats_missing_active_parameters_as_zero() -> None:
     client = make_client()
     tenant_id = create_tenant(client, USER_A, "tenant-a")

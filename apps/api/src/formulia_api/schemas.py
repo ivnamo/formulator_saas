@@ -331,6 +331,8 @@ class FormulaRead(BaseModel):
     jira_product_type: str
     total_price: float | None
     currency: str
+    total_price_source: str
+    total_price_updated_at: date | None
     items: list[dict[str, Any]]
 
 

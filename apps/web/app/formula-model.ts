@@ -11,6 +11,8 @@ export type FormulaRead = {
   jira_product_type: string;
   total_price: number | null;
   currency: string;
+  total_price_source: string;
+  total_price_updated_at: string | null;
   items: Array<{
     raw_material_id: string;
     percentage: number;
