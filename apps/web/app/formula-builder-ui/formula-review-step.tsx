@@ -114,27 +114,27 @@ function formulaSaveIntent(
   const loadedName = formulaName.trim() || "la formula cargada";
   if (mode === "editing" && hasLoadedFormula) {
     return {
-      title: "Se actualizara la formula cargada",
-      description: `Guardar pisara los datos actuales de ${loadedName}.`,
+      title: "Tipo de trabajo: modificacion de formula cargada",
+      description: `Guardar actualizara el registro abierto: ${loadedName}.`,
       buttonLabel: "Actualizar formula cargada",
     };
   }
   if (mode === "version" && hasLoadedFormula) {
     return {
-      title: "Se creara una nueva version",
-      description: `Guardar creara otro registro basado en ${loadedName}.`,
+      title: "Tipo de trabajo: nueva version ligada",
+      description: `Guardar creara otro registro versionado a partir de ${loadedName}.`,
       buttonLabel: "Guardar nueva version",
     };
   }
   if (hasLoadedFormula) {
     return {
-      title: "Se creara una formula nueva",
-      description: `Guardar duplicara/derivara ${loadedName} sin modificarla.`,
-      buttonLabel: "Guardar formula nueva",
+      title: "Tipo de trabajo: formula nueva independiente",
+      description: `Guardar creara una copia independiente sin modificar ${loadedName}.`,
+      buttonLabel: "Guardar nueva independiente",
     };
   }
   return {
-    title: "Se creara una formula nueva",
+    title: "Tipo de trabajo: formula nueva",
     description: "Guardar creara el primer registro de esta formula en biblioteca.",
     buttonLabel: "Guardar formula nueva",
   };
