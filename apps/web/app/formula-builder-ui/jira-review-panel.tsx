@@ -46,6 +46,8 @@ export function JiraReviewPanel({
         <button
           className="secondaryButton"
           type="button"
+          data-track-click="jira_prepare_and_send_current_formula"
+          data-track-section="jira_review"
           onClick={() => void onSendCurrentFormulaToJira()}
           disabled={!canSendCurrentFormulaToJira}
         >
@@ -91,6 +93,8 @@ export function JiraReviewPanel({
                   <button
                     className="iconButton"
                     type="button"
+                    data-track-click="jira_review_generate_excel"
+                    data-track-section="jira_review"
                     onClick={() => void onGenerateReviewExcel(review.id)}
                     disabled={isBusy}
                     title="Generate Excel"
@@ -102,6 +106,8 @@ export function JiraReviewPanel({
                     <button
                       className="iconButton"
                       type="button"
+                      data-track-click="jira_review_download_excel"
+                      data-track-section="jira_review"
                       onClick={() => void onDownloadArtifact(excelArtifact)}
                       disabled={isBusy}
                       title="Download Excel"
@@ -114,6 +120,8 @@ export function JiraReviewPanel({
                     <button
                       className="iconButton"
                       type="button"
+                      data-track-click="jira_review_send"
+                      data-track-section="jira_review"
                       onClick={() => void onSendReviewToJira(review.id)}
                       disabled={isBusy}
                       title="Send to Jira"
@@ -126,6 +134,8 @@ export function JiraReviewPanel({
                       <button
                         className="iconButton"
                         type="button"
+                        data-track-click="jira_review_sync"
+                        data-track-section="jira_review"
                         onClick={() => void onSyncReviewStatus(review.id)}
                         disabled={isBusy}
                         title="Sync Jira status"
@@ -137,6 +147,8 @@ export function JiraReviewPanel({
                         <button
                           className="iconButton"
                           type="button"
+                          data-track-click="jira_review_retry_attachment"
+                          data-track-section="jira_review"
                           onClick={() => void onRetryReviewAttachment(review.id)}
                           disabled={isBusy}
                           title="Retry Excel attachment"
@@ -148,6 +160,8 @@ export function JiraReviewPanel({
                       {review.jira_issue_url ? (
                         <a
                           className="iconButton"
+                          data-track-click="jira_review_open_issue"
+                          data-track-section="jira_review"
                           href={review.jira_issue_url}
                           target="_blank"
                           rel="noreferrer"

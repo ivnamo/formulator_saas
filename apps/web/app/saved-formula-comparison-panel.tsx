@@ -173,6 +173,8 @@ export function SavedFormulaComparisonPanel({
         <button
           className="secondaryButton"
           type="button"
+          data-track-click="formula_library_refresh"
+          data-track-section={isComparator ? "comparator" : "library"}
           onClick={() => void onRefreshLibrary()}
           disabled={isBusy}
         >
@@ -193,6 +195,8 @@ export function SavedFormulaComparisonPanel({
           <button
             className="secondaryButton"
             type="button"
+            data-track-click="formula_compare_run"
+            data-track-section="comparator"
             onClick={() => void onCompareSavedFormulas()}
             disabled={!canCompareSavedFormulas}
           >
@@ -334,6 +338,8 @@ export function SavedFormulaComparisonPanel({
                     <button
                       className="iconButton"
                       type="button"
+                      data-track-click="formula_library_export"
+                      data-track-section="library"
                       onClick={() => void onExportFormula(formula)}
                       disabled={!canExportFormulas}
                       title="Export Excel I+D"
@@ -344,6 +350,8 @@ export function SavedFormulaComparisonPanel({
                     <button
                       className="iconButton"
                       type="button"
+                      data-track-click="formula_library_open"
+                      data-track-section="library"
                       onClick={() => void onOpenFormula(formula)}
                       disabled={isBusy}
                       title="Open formula"
@@ -355,6 +363,8 @@ export function SavedFormulaComparisonPanel({
                       <button
                         className="iconButton dangerIconButton"
                         type="button"
+                        data-track-click="formula_library_archive"
+                        data-track-section="library"
                         onClick={() => void onArchiveFormula(formula)}
                         disabled={isBusy}
                         title="Archive formula"
@@ -367,6 +377,8 @@ export function SavedFormulaComparisonPanel({
                       <button
                         className="iconButton"
                         type="button"
+                        data-track-click="formula_library_restore"
+                        data-track-section="library"
                         onClick={() => void onRestoreFormula(formula)}
                         disabled={isBusy}
                         title="Restore formula"
@@ -505,6 +517,8 @@ function FormulaVersionFamilyPanel({
                   <button
                     className="iconButton"
                     type="button"
+                    data-track-click="formula_version_export"
+                    data-track-section="library_versions"
                     onClick={() => void onExportFormula(node.formula)}
                     disabled={!canExportFormulas}
                     title="Export Excel I+D"
@@ -515,6 +529,8 @@ function FormulaVersionFamilyPanel({
                   <button
                     className="iconButton"
                     type="button"
+                    data-track-click="formula_version_open"
+                    data-track-section="library_versions"
                     onClick={() => void onOpenFormula(node.formula)}
                     disabled={isBusy}
                     title="Open formula"

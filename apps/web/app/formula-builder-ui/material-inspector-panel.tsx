@@ -50,6 +50,8 @@ export function MaterialInspectorPanel({
         <button
           className="secondaryButton compactButton"
           type="button"
+          data-track-click="material_inspector_add_to_formula"
+          data-track-section="materials"
           onClick={() => void onAddFormulaLine(selectedMaterial.id)}
           disabled={isBusy || isSelectedInFormula}
         >

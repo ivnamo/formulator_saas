@@ -86,6 +86,8 @@ export function MaterialCatalogList({
               <button
                 className="quickMaterialPick"
                 type="button"
+                data-track-click="material_catalog_select"
+                data-track-section="materials"
                 onClick={() => void onInspectMaterial(material.id)}
                 aria-pressed={selectedMaterialId === material.id}
                 aria-label={`Seleccionar ${material.name} y ver detalle`}
@@ -124,6 +126,8 @@ export function MaterialCatalogList({
                 <button
                   className="secondaryButton compactButton"
                   type="button"
+                  data-track-click="material_catalog_detail"
+                  data-track-section="materials"
                   onClick={() => void onInspectMaterial(material.id)}
                   title="Inspeccionar materia"
                   aria-label={`Inspeccionar ${material.name}`}
@@ -135,6 +139,8 @@ export function MaterialCatalogList({
                   className="secondaryButton compactButton"
                   type="button"
                   data-selected={isCompared}
+                  data-track-click="material_catalog_compare"
+                  data-track-section="materials"
                   onClick={() => void onToggleCompareMaterial(material.id)}
                   title="Comparar materia"
                   aria-label={`Comparar ${material.name}`}
@@ -145,6 +151,8 @@ export function MaterialCatalogList({
                 <button
                   className="secondaryButton compactButton"
                   type="button"
+                  data-track-click="material_catalog_add_to_formula"
+                  data-track-section="materials"
                   onClick={() => void onAddFormulaLine(material.id)}
                   disabled={isBusy || isSelected}
                 >
@@ -154,6 +162,8 @@ export function MaterialCatalogList({
                 <button
                   className="iconButton"
                   type="button"
+                  data-track-click="material_catalog_expand_parameters"
+                  data-track-section="materials"
                   onClick={() => void onToggleExpandedMaterial(material.id)}
                   aria-label={`Ver parametros de ${material.name}`}
                   title="Ver parametros"

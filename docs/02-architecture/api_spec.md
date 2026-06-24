@@ -163,6 +163,10 @@ Diccionario inicial:
   `element`/`metadata.label` identifican la accion.
 - `action_success`: accion completada correctamente.
 - `action_error`: accion fallida; `metadata.message` conserva el error resumido.
+- `control_click`: click sobre un control UI marcado con `data-track-click`.
+  `element` contiene un identificador estable de accion y `metadata` solo recibe
+  valores explicitos `data-track-*` como `section`, `value` o `state`; no se
+  capturan nombres de formulas, materias primas ni contenido escrito por el usuario.
 
 ## Incompatibilidades manuales
 
