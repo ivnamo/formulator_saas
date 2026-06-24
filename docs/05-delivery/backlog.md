@@ -73,7 +73,7 @@ _Tareas nuevas sin refinar. Anadir aqui lo que vaya dictando el usuario._
   - Se distingue precio guardado, precio recalculado y fuente/fecha del calculo si aplica.
   - Al cambiar precio de materia prima, la formula afectada se actualiza o queda marcada como pendiente de recalculo.
 - Validacion beta: Cambiar precio de materia prima y verificar formula afectada en biblioteca.
-- Notas: Investigar si el fallo es de cache, snapshot, query o recalculo.
+- Notas: Rama `codex/backlog-library-live-formula-prices`: `FormulaRead` devuelve `total_price` calculado en vivo con los precios vigentes de materias primas, sin crear historial de calculo artificial. Biblioteca muestra etiqueta de fuente (`Precio vigente`/`Faltan precios`) y fecha `total_price_updated_at`. Cubierto por test que cambia un precio de materia prima y verifica que biblioteca/apertura de formula reflejan el nuevo precio sin anadir otra entrada de historico.
 
 ### BL-004 - Crear herramienta unica de comparador
 

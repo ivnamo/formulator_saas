@@ -321,10 +321,11 @@ export function SavedFormulaComparisonPanel({
                       </small>
                       {formula.objective ? <small>{formula.objective}</small> : null}
                     </span>
-                    <span>
+                    <span className="formulaPriceCell">
                       {formula.total_price === null
                         ? "-"
                         : `${formula.total_price.toFixed(2)} ${formula.currency}/kg`}
+                      <small>{formulaPriceMetadataLabel(formula)}</small>
                     </span>
                     <span>
                       <code className="statusPill">{formula.status}</code>
@@ -616,4 +617,14 @@ function compareFormulaVersionNodes(left: FormulaVersionNode, right: FormulaVers
     return depthDelta;
   }
   return left.formula.name.localeCompare(right.formula.name, "es");
+}
+
+function formulaPriceMetadataLabel(formula: FormulaRead) {
+  const source =
+    formula.total_price_source === "missing_raw_material_price"
+      ? "Faltan precios"
+      : "Precio vigente";
+  return formula.total_price_updated_at
+    ? `${source} desde ${formula.total_price_updated_at}`
+    : source;
 }
